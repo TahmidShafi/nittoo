@@ -1,0 +1,38 @@
+{
+  "name": "nittoo",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "verify:data": "tsx scripts/verify-data-layer.ts",
+    "verify:auth": "tsx scripts/verify-auth.ts",
+    "verify:add-product": "tsx scripts/verify-add-product.ts",
+    "verify:dashboard": "tsx scripts/verify-dashboard.ts",
+    "verify:product-detail": "tsx scripts/verify-product-detail.ts",
+    "verify:analytics": "tsx scripts/verify-analytics.ts",
+    "verify:walkthrough": "tsx scripts/verify-full-walkthrough.ts",
+    "verify:supabase": "tsx scripts/verify-supabase-live.ts",
+    "verify:rls": "tsx scripts/verify-supabase-rls.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.3.0",
+    "recharts": "^2.15.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.9",
+    "@types/node": "^22.13.9",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tailwindcss": "^4.0.9",
+    "tsx": "^4.23.13",
+    "typescript": "~5.7.2",
+    "vite": "^6.2.0"
+  }
+}
