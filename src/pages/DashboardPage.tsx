@@ -1,6 +1,7 @@
 // ==============================================================================
 // Nittoo Dashboard Page
-// Editorial Essentials Overview, Summary Metrics, Filter Tabs & Product Grid
+// Linear-inspired High-Density Personal Consumption Workspace
+// Predictable Header System, Compact Summary Strip, Filter Tabs, and Product Grid
 // ==============================================================================
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
@@ -165,18 +166,18 @@ export const DashboardPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 animate-page-in">
+    <div className="space-y-6 animate-page-in">
       {/* Notice Banner */}
       {infoNotice && (
-        <div className="p-4 rounded-xl bg-amber-50/90 border border-amber-200/80 text-amber-900 text-xs font-medium flex items-start justify-between shadow-xs">
-          <div className="flex items-center gap-2.5">
+        <div className="p-3.5 rounded-lg bg-amber-50/90 border border-amber-200/80 text-amber-900 text-xs font-medium flex items-start justify-between shadow-xs">
+          <div className="flex items-center gap-2">
             <span className="text-sm">💡</span>
             <span className="leading-relaxed">{infoNotice}</span>
           </div>
           <button
             type="button"
             onClick={() => setInfoNotice(null)}
-            className="text-amber-600 hover:text-amber-900 text-base font-bold ml-3"
+            className="text-amber-600 hover:text-amber-900 text-sm font-bold ml-3 cursor-pointer"
             aria-label="Dismiss notice"
           >
             ×
@@ -184,25 +185,25 @@ export const DashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* Page Header Area */}
+      {/* Predictable Header System (Section 5) */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-[#2D6A4F] block mb-1">
+          <span className="text-[10px] uppercase font-semibold tracking-wider text-[#2D6A4F] block mb-1">
             Personal Dashboard
           </span>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900">
             Your Essentials
           </h1>
-          <p className="text-xs sm:text-sm text-neutral-500 mt-1 max-w-xl">
-            See what's running low, what it costs, and what you've learned about your products.
+          <p className="text-xs text-neutral-500 mt-1 max-w-xl">
+            See what's running low, what it costs, and what you've learned.
           </p>
         </div>
         <div>
           <Link
             to="/add-product"
-            className="btn-press inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#2D6A4F] hover:bg-[#24563F] text-white text-xs sm:text-sm font-semibold transition-all shadow-xs cursor-pointer w-full sm:w-auto"
+            className="btn-press inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#2D6A4F] hover:bg-[#24563F] text-white text-xs font-semibold transition-all shadow-xs cursor-pointer w-full sm:w-auto"
           >
-            <span className="text-base leading-none font-bold">+</span>
+            <span className="text-sm leading-none font-bold">+</span>
             <span>Add Product</span>
           </Link>
         </div>
@@ -210,47 +211,55 @@ export const DashboardPage: React.FC = () => {
 
       {/* Error State */}
       {error && (
-        <div className="p-6 bg-rose-50 border border-rose-200 rounded-2xl text-center max-w-md mx-auto space-y-3">
-          <p className="text-sm font-semibold text-rose-900">Unable to load active essentials</p>
-          <p className="text-xs text-rose-600">A connection issue occurred. Please try again.</p>
+        <div className="p-5 bg-rose-50 border border-rose-200 rounded-xl text-center max-w-md mx-auto space-y-2.5">
+          <p className="text-xs font-semibold text-rose-900">Unable to load active essentials</p>
+          <p className="text-[11px] text-rose-600">A connection issue occurred. Please try again.</p>
           <button
             type="button"
             onClick={loadActiveProducts}
-            className="btn-press min-h-[40px] px-5 py-2 rounded-xl bg-[#2D6A4F] text-white text-xs font-semibold hover:bg-[#24563F] transition-colors shadow-xs"
+            className="btn-press min-h-[36px] px-4 py-1.5 rounded-lg bg-[#2D6A4F] text-white text-xs font-semibold hover:bg-[#24563F] transition-colors shadow-xs cursor-pointer"
           >
             Retry Loading
           </button>
         </div>
       )}
 
-      {/* Refined Summary Editorial Data Cards */}
+      {/* Compact Summary Strip (Section 8) */}
       {!loading && !error && products.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white border border-[#E8ECE9] rounded-xl p-4 sm:p-5 shadow-xs grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-[#F0F2F1]">
           {/* Card 1: Active Essentials */}
-          <div className="bg-white border border-neutral-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
+          <div className="px-0 sm:px-5 first:pl-0 pb-3 sm:pb-0 flex flex-col justify-between">
+            <span className="text-[10px] uppercase font-semibold tracking-wider text-neutral-400 block mb-1">
               Active Essentials
             </span>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-3xl font-bold text-neutral-900 tracking-tight">
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight">
                 {summaryMetrics.activeCount}
               </span>
-              <span className="text-xs text-neutral-500 font-medium">
+              <span className="text-xs text-neutral-500 font-normal">
                 in daily use
               </span>
             </div>
           </div>
 
-          {/* Card 2: Running Low / Overdue */}
-          <div className="bg-white border border-neutral-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
-              Attention Needed
+          {/* Card 2: Attention */}
+          <div className="px-0 sm:px-5 py-3 sm:py-0 flex flex-col justify-between">
+            <span className="text-[10px] uppercase font-semibold tracking-wider text-neutral-400 block mb-1">
+              Attention
             </span>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className={`text-3xl font-bold tracking-tight ${summaryMetrics.overdueCount > 0 ? 'text-rose-600' : summaryMetrics.runningSoonCount > 0 ? 'text-amber-600' : 'text-neutral-900'}`}>
+            <div className="flex items-baseline gap-2">
+              <span
+                className={`text-2xl sm:text-3xl font-bold tracking-tight ${
+                  summaryMetrics.overdueCount > 0
+                    ? 'text-rose-600'
+                    : summaryMetrics.runningSoonCount > 0
+                    ? 'text-amber-600'
+                    : 'text-neutral-900'
+                }`}
+              >
                 {summaryMetrics.overdueCount + summaryMetrics.runningSoonCount}
               </span>
-              <span className="text-xs text-neutral-500 font-medium">
+              <span className="text-xs text-neutral-500 font-normal">
                 {summaryMetrics.overdueCount > 0
                   ? `${summaryMetrics.overdueCount} overdue`
                   : summaryMetrics.runningSoonCount > 0
@@ -261,15 +270,15 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           {/* Card 3: Estimated Monthly Consumption */}
-          <div className="bg-white border border-neutral-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
-              Monthly Consumption
+          <div className="px-0 sm:px-5 last:pr-0 pt-3 sm:pt-0 flex flex-col justify-between">
+            <span className="text-[10px] uppercase font-semibold tracking-wider text-neutral-400 block mb-1">
+              Est. Monthly Consumption
             </span>
-            <div className="mt-2 flex items-baseline gap-1.5">
-              <span className="text-3xl font-bold text-neutral-900 tracking-tight">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight">
                 ৳{summaryMetrics.estimatedMonthlyCost}
               </span>
-              <span className="text-xs text-neutral-500 font-medium">
+              <span className="text-xs text-neutral-500 font-normal">
                 / month run rate
               </span>
             </div>
@@ -277,20 +286,20 @@ export const DashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* Filter and Search Bar (shown when products exist) */}
+      {/* Filter and Search Bar */}
       {!loading && !error && products.length > 0 && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
-          {/* Category Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+          {/* Category Filter Tabs */}
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
             {categories.map((cat) => (
               <button
                 key={cat}
                 type="button"
                 onClick={() => setSelectedCategory(cat)}
-                className={`btn-press px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
+                className={`btn-press px-2.5 py-1 rounded-md text-xs transition-all cursor-pointer ${
                   selectedCategory === cat
                     ? 'bg-[#2D6A4F] text-white font-semibold shadow-xs'
-                    : 'bg-white border border-neutral-200/80 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50'
+                    : 'bg-white border border-[#E8ECE9] text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50'
                 }`}
               >
                 {cat}
@@ -299,13 +308,13 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           {/* Search Input */}
-          <div className="relative min-w-[200px] sm:w-64">
+          <div className="relative min-w-[180px] sm:w-60">
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search essentials..."
-              className="w-full px-3 py-1.5 pl-8 rounded-xl border border-neutral-200/80 text-xs bg-white focus:outline-none focus:border-[#2D6A4F] focus:ring-2 focus:ring-[#2D6A4F]/10 transition-all placeholder:text-neutral-400"
+              className="w-full px-3 py-1.5 pl-8 rounded-lg border border-[#E8ECE9] text-xs bg-white focus:outline-none focus:border-[#2D6A4F] focus:ring-2 focus:ring-[#2D6A4F]/10 transition-all placeholder:text-neutral-400"
             />
             <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 text-xs pointer-events-none">
               🔍
@@ -314,7 +323,7 @@ export const DashboardPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 text-xs font-bold"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 text-xs font-bold cursor-pointer"
               >
                 ×
               </button>
@@ -326,39 +335,39 @@ export const DashboardPage: React.FC = () => {
       {/* Loading Skeleton */}
       {loading && !error && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-white border border-[#E8ECE9] rounded-xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-24 bg-neutral-200/60 rounded-2xl animate-pulse" />
+              <div key={i} className="h-14 bg-neutral-100/80 rounded-lg animate-pulse" />
             ))}
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="h-64 bg-neutral-200/50 rounded-2xl animate-pulse" />
+              <div key={i} className="h-56 bg-neutral-100/70 rounded-xl animate-pulse" />
             ))}
           </div>
         </div>
       )}
 
-      {/* Empty State: Intentional, Calm Onboarding */}
+      {/* Empty State: Intentional, Calm Onboarding (Section 18) */}
       {!loading && !error && products.length === 0 && (
-        <div className="bg-white border border-neutral-200/80 rounded-3xl p-10 sm:p-16 text-center max-w-xl mx-auto space-y-5 shadow-xs my-8">
-          <div className="w-16 h-16 rounded-2xl bg-[#EBF4F0] text-[#2D6A4F] flex items-center justify-center mx-auto text-2xl shadow-xs">
+        <div className="bg-white border border-[#E8ECE9] rounded-xl p-8 sm:p-12 text-center max-w-md mx-auto space-y-4 shadow-xs my-8">
+          <div className="w-11 h-11 rounded-lg bg-[#EBF4F0] text-[#2D6A4F] flex items-center justify-center mx-auto text-lg shadow-xs">
             🧴
           </div>
-          <div className="space-y-2">
-            <h2 className="text-xl font-bold text-neutral-900 tracking-tight">
-              No active essentials yet
+          <div className="space-y-1.5">
+            <h2 className="text-base font-bold text-neutral-900 tracking-tight">
+              No active essentials
             </h2>
-            <p className="text-xs sm:text-sm text-neutral-500 max-w-md mx-auto leading-relaxed">
-              Start tracking a product to learn how long it really lasts, what it costs to use each day, and when you will need to rebuy.
+            <p className="text-xs text-neutral-500 max-w-sm mx-auto leading-relaxed">
+              Start tracking a product to learn how long it lasts.
             </p>
           </div>
-          <div className="pt-2">
+          <div className="pt-1">
             <Link
               to="/add-product"
-              className="btn-press inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#2D6A4F] hover:bg-[#24563F] text-white text-xs sm:text-sm font-semibold transition-all shadow-xs cursor-pointer"
+              className="btn-press inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#2D6A4F] hover:bg-[#24563F] text-white text-xs font-semibold transition-all shadow-xs cursor-pointer"
             >
-              <span>+ Add First Essential</span>
+              <span>+ Add Product</span>
             </Link>
           </div>
         </div>
@@ -366,9 +375,9 @@ export const DashboardPage: React.FC = () => {
 
       {/* No Search Results */}
       {!loading && !error && products.length > 0 && filteredProducts.length === 0 && (
-        <div className="bg-white border border-neutral-200/80 rounded-2xl p-12 text-center max-w-md mx-auto space-y-3">
-          <p className="text-sm font-semibold text-neutral-800">No matching essentials found</p>
-          <p className="text-xs text-neutral-500">
+        <div className="bg-white border border-[#E8ECE9] rounded-xl p-8 text-center max-w-sm mx-auto space-y-2">
+          <p className="text-xs font-semibold text-neutral-800">No matching essentials found</p>
+          <p className="text-[11px] text-neutral-500">
             No products match "{searchQuery}" in category "{selectedCategory}".
           </p>
           <button
@@ -377,16 +386,16 @@ export const DashboardPage: React.FC = () => {
               setSearchQuery('');
               setSelectedCategory('All');
             }}
-            className="btn-press text-xs font-semibold text-[#2D6A4F] hover:underline pt-1"
+            className="btn-press text-xs font-semibold text-[#2D6A4F] hover:underline pt-1 cursor-pointer"
           >
             Clear filters
           </button>
         </div>
       )}
 
-      {/* Active Essentials Product Grid */}
+      {/* Active Essentials Product Grid (Responsive: grid-cols-1 on mobile) */}
       {!loading && !error && filteredProducts.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredProducts.map((product) => (
             <ProductCard
               key={product.id}

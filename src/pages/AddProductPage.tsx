@@ -1,11 +1,11 @@
 // ==============================================================================
 // Nittoo Add Product Page
-// Free-form Product Creation, Live Existing Product Suggestions, and Repeat Purchases
-// Premium product onboarding layout with clear logical groupings
+// Focused Creation Workspace with Intelligent Suggestions & Repeat Purchases
+// High-density Linear-style sections: Product, Size, Purchase, and Usage
 // ==============================================================================
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { db } from '../lib/dataSource';
 import { getTodayUTC } from '../lib/dateUtils';
@@ -148,115 +148,102 @@ export const AddProductPage: React.FC = () => {
     }
 
     if (openedDate < purchaseDate) {
-      return 'Opened date cannot be earlier than purchase date';
+      return 'Opened date cannot be before purchase date';
     }
 
     return null;
   };
 
-  // Submission Flow
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
+
     setError(null);
     setActiveBottleWarning(null);
 
-    if (!user) {
-      setError('You must be logged in to add a product');
-      return;
-    }
-
-    const validationError = validateForm();
-    if (validationError) {
-      setError(validationError);
+    const validationErr = validateForm();
+    if (validationErr) {
+      setError(validationErr);
       return;
     }
 
     setSubmitting(true);
-    const parsedPrice = Number(price);
-    const parsedSize = sizeValue.trim() !== '' ? Number(sizeValue) : null;
 
     try {
-      let targetProductId = selectedProduct?.id;
+      let productId = selectedProduct?.id;
 
-      // 1. If not an existing product, create new product record
-      if (!targetProductId) {
-        const newProduct = await db.createProduct(user.id, {
+      // Step 1: If brand new product, create it
+      if (!productId) {
+        const createdProduct = await db.createProduct(user.id, {
           name: name.trim(),
           category,
-          brand: brand.trim() ? brand.trim() : null,
-          size_value: parsedSize,
-          size_unit: parsedSize ? sizeUnit : null,
+          brand: brand.trim() || undefined,
+          size_value: sizeValue.trim() ? Number(sizeValue) : undefined,
+          size_unit: sizeValue.trim() ? sizeUnit : undefined,
         });
-        targetProductId = newProduct.id;
+        productId = createdProduct.id;
       }
 
-      // 2. Create the purchase record
-      let newPurchase;
-      try {
-        newPurchase = await db.createPurchase(user.id, {
-          product_id: targetProductId,
-          purchase_date: purchaseDate,
-          price: parsedPrice,
-          currency: 'BDT',
+      // Step 2: Record the purchase
+      const purchase = await db.createPurchase(user.id, {
+        product_id: productId,
+        price: Number(price),
+        purchase_date: purchaseDate,
+        currency: 'BDT',
+      });
+
+      // Step 3: Check if product already has an active usage period
+      const existingHistory = await db.getProductHistory(productId, user.id);
+      const hasActive = Boolean(existingHistory?.active_usage);
+
+      if (hasActive) {
+        // Safe: log purchase only, do not open duplicate active bottle
+        navigate('/dashboard', {
+          state: {
+            infoNotice: `Purchase of ৳${price} for "${name.trim()}" logged. The active bottle is still in use, so this new bottle will be ready when you finish it.`,
+          },
         });
-      } catch (purErr: unknown) {
-        const msg = purErr instanceof Error ? purErr.message : 'Failed to create purchase';
-        setError(`Product saved, but failed to log purchase: ${msg}`);
-        setSubmitting(false);
         return;
       }
 
-      // 3. Start active usage period
-      try {
-        await db.startUsagePeriod(user.id, {
-          product_id: targetProductId,
-          purchase_id: newPurchase.id,
-          opened_date: openedDate,
-        });
+      // Step 4: No active bottle exists, so open one
+      await db.startUsagePeriod(user.id, {
+        product_id: productId,
+        purchase_id: purchase.id,
+        opened_date: openedDate,
+      });
 
-        navigate('/dashboard', { replace: true });
-      } catch (usageErr: unknown) {
-        const msg = usageErr instanceof Error ? usageErr.message : 'Failed to start usage';
-
-        if (msg.includes('already has an active usage period')) {
-          navigate('/dashboard', {
-            replace: true,
-            state: {
-              infoNotice:
-                "Purchase recorded. Your current bottle is still in use, so Nittoo didn't start the new usage period yet. Mark the current bottle as finished when you switch to the new one.",
-            },
-          });
-          return;
-        }
-
-        setError(`Purchase recorded, but failed to start usage: ${msg}`);
-        setSubmitting(false);
-      }
+      navigate('/dashboard', {
+        state: {
+          infoNotice: `Started tracking "${name.trim()}". We'll calculate its daily cost and lifespan as you use it.`,
+        },
+      });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'An error occurred';
+      const msg = err instanceof Error ? err.message : 'Failed to save product';
       setError(msg);
+    } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="max-w-xl mx-auto py-2 animate-page-in">
-      {/* Header */}
-      <div className="mb-6">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-[#2D6A4F] block mb-1">
+    <div className="max-w-2xl mx-auto space-y-6 animate-page-in">
+      {/* 1. Predictable Header System (Section 5 & 11) */}
+      <div className="pb-4 border-b border-[#F0F2F1]">
+        <span className="text-[10px] uppercase font-semibold tracking-wider text-[#2D6A4F] block mb-1">
           Product Tracking
         </span>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900">
           Add Essential
         </h1>
-        <p className="text-xs sm:text-sm text-neutral-500 mt-1">
+        <p className="text-xs text-neutral-500 mt-0.5">
           Log a purchase and start tracking its usage lifecycle.
         </p>
       </div>
 
       {/* Error Alert */}
       {error && (
-        <div className="mb-5 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-start justify-between animate-page-in">
+        <div className="p-3 rounded-lg bg-rose-50 border border-rose-200/80 text-rose-800 text-xs font-medium flex items-start justify-between shadow-xs">
           <div className="flex items-start gap-2">
             <span className="text-rose-600 font-bold leading-none mt-0.5">!</span>
             <span className="leading-relaxed">{error}</span>
@@ -264,7 +251,7 @@ export const AddProductPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setError(null)}
-            className="text-rose-400 hover:text-rose-700 text-sm font-bold ml-2 leading-none p-1"
+            className="text-rose-400 hover:text-rose-700 text-sm font-bold ml-2 leading-none cursor-pointer"
           >
             ×
           </button>
@@ -273,45 +260,45 @@ export const AddProductPage: React.FC = () => {
 
       {/* Active Bottle Notice */}
       {activeBottleWarning && (
-        <div className="mb-5 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
+        <div className="p-3 rounded-lg bg-amber-50 border border-amber-200/80 text-amber-800 text-xs font-medium shadow-xs">
           {activeBottleWarning}
         </div>
       )}
 
-      {/* Form Container */}
-      <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 sm:p-8 shadow-xs">
+      {/* Form Workspace */}
+      <div className="bg-white border border-[#E8ECE9] rounded-xl p-5 sm:p-6 shadow-xs">
         {/* Repeat Purchase Badge */}
         {selectedProduct && (
-          <div className="mb-6 p-3.5 rounded-xl bg-[#EBF4F0] border border-[#2D6A4F]/20 flex items-center justify-between gap-3 text-xs animate-page-in">
+          <div className="mb-5 p-3 rounded-lg bg-[#EBF4F0] border border-[#2D6A4F]/20 flex items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-[#2D6A4F]" />
               <span className="font-semibold text-[#2D6A4F]">
                 Repeat Purchase Mode (Existing essential)
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleDeselectExisting}
-                className="btn-press text-neutral-500 hover:text-neutral-900 font-medium hover:underline"
-              >
-                Deselect
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleDeselectExisting}
+              className="btn-press text-neutral-500 hover:text-neutral-900 font-medium hover:underline text-xs cursor-pointer"
+            >
+              Deselect
+            </button>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* GROUP 1: PRODUCT IDENTITY */}
-          <div className="space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-400 pb-1 border-b border-neutral-100">
-              Product Identity
-            </h3>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* SECTION: PRODUCT (Visual Focus) */}
+          <div className="space-y-3.5">
+            <div className="pb-1 border-b border-[#F0F2F1]">
+              <h3 className="text-[10px] uppercase font-bold tracking-wider text-neutral-400">
+                Product
+              </h3>
+            </div>
 
-            {/* Product Name (Free-form with suggestions) */}
+            {/* Product Name (Visual Focus) */}
             <div className="relative" ref={suggestionsRef}>
               <label
-                className="block text-xs font-semibold text-neutral-700 mb-1.5"
+                className="block text-xs font-semibold text-neutral-800 mb-1"
                 htmlFor="product-name"
               >
                 Product Name *
@@ -332,16 +319,16 @@ export const AddProductPage: React.FC = () => {
                   setIsSearchFocused(true);
                   setShowSuggestions(true);
                 }}
-                placeholder="e.g. CeraVe Hydrating Facial Cleanser, Dove Soap, etc."
+                placeholder="e.g. CeraVe Hydrating Facial Cleanser"
                 disabled={submitting}
                 autoComplete="off"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#2D6A4F]/10 transition-all bg-neutral-50/40 disabled:opacity-60 placeholder:text-neutral-400"
+                className="w-full px-3.5 py-2 rounded-lg border border-[#E8ECE9] text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-2 focus:ring-[#2D6A4F]/15 transition-all bg-white disabled:opacity-60 placeholder:text-neutral-400"
               />
 
               {/* Suggestions Popover */}
               {showSuggestions && isSearchFocused && suggestions.length > 0 && !selectedProduct && (
-                <div className="absolute z-20 top-full left-0 right-0 mt-1.5 bg-white border border-neutral-200/80 rounded-2xl shadow-xl max-h-56 overflow-y-auto divide-y divide-neutral-100 animate-page-in">
-                  <div className="px-3.5 py-2 bg-neutral-50 text-[11px] font-bold text-neutral-500 uppercase tracking-wider">
+                <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-[#E8ECE9] rounded-xl shadow-lg max-h-52 overflow-y-auto divide-y divide-[#F0F2F1]">
+                  <div className="px-3 py-1.5 bg-neutral-50 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
                     Existing Tracked Essentials
                   </div>
                   {suggestions.map((p) => (
@@ -349,31 +336,31 @@ export const AddProductPage: React.FC = () => {
                       key={p.id}
                       type="button"
                       onClick={() => handleSelectExisting(p)}
-                      className="w-full text-left px-3.5 py-2.5 hover:bg-[#EBF4F0]/60 transition-colors flex items-center justify-between group cursor-pointer"
+                      className="w-full text-left px-3.5 py-2 hover:bg-[#EBF4F0]/60 transition-colors flex items-center justify-between group cursor-pointer"
                     >
                       <div>
-                        <span className="text-sm font-semibold text-neutral-900 group-hover:text-[#2D6A4F]">
+                        <span className="text-xs font-semibold text-neutral-900 group-hover:text-[#2D6A4F]">
                           {p.name}
                         </span>
-                        <span className="text-xs text-neutral-500 block">
+                        <span className="text-[11px] text-neutral-400 block">
                           {[p.brand, p.category, p.size_value ? `${p.size_value} ${p.size_unit}` : null]
                             .filter(Boolean)
-                            .join(' • ')}
+                            .join(' · ')}
                         </span>
                       </div>
-                      <span className="text-xs font-semibold text-[#2D6A4F] opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="text-xs font-medium text-[#2D6A4F] opacity-0 group-hover:opacity-100 transition-opacity">
                         Select →
                       </span>
                     </button>
                   ))}
-                  <div className="px-3.5 py-2.5 bg-neutral-50/80 text-xs text-neutral-500 flex items-center justify-between">
+                  <div className="px-3 py-2 bg-neutral-50 text-xs text-neutral-500 flex items-center justify-between">
                     <span>Not in the list?</span>
                     <button
                       type="button"
                       onClick={() => setShowSuggestions(false)}
                       className="text-[#2D6A4F] font-semibold hover:underline cursor-pointer"
                     >
-                      + Add as brand new product
+                      + Add as new product
                     </button>
                   </div>
                 </div>
@@ -381,10 +368,10 @@ export const AddProductPage: React.FC = () => {
             </div>
 
             {/* Category & Brand */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
                 <label
-                  className="block text-xs font-semibold text-neutral-700 mb-1.5"
+                  className="block text-xs font-semibold text-neutral-700 mb-1"
                   htmlFor="category"
                 >
                   Category *
@@ -394,7 +381,7 @@ export const AddProductPage: React.FC = () => {
                   value={category}
                   onChange={(e) => setCategory(e.target.value as ProductCategory)}
                   disabled={submitting}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#2D6A4F]/10 transition-all bg-white disabled:opacity-60 text-neutral-900"
+                  className="w-full px-3 py-2 rounded-lg border border-[#E8ECE9] text-xs focus:outline-none focus:border-[#2D6A4F] focus:ring-2 focus:ring-[#2D6A4F]/15 transition-all bg-white disabled:opacity-60 text-neutral-900"
                 >
                   <option value="Skincare">Skincare</option>
                   <option value="Haircare">Haircare</option>
@@ -406,7 +393,7 @@ export const AddProductPage: React.FC = () => {
 
               <div>
                 <label
-                  className="block text-xs font-semibold text-neutral-700 mb-1.5"
+                  className="block text-xs font-semibold text-neutral-700 mb-1"
                   htmlFor="brand"
                 >
                   Brand (Optional)
@@ -416,24 +403,26 @@ export const AddProductPage: React.FC = () => {
                   type="text"
                   value={brand}
                   onChange={(e) => setBrand(e.target.value)}
-                  placeholder="e.g. CeraVe, Dove, Oral-B"
+                  placeholder="e.g. CeraVe, Oral-B"
                   disabled={submitting}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#2D6A4F]/10 transition-all bg-neutral-50/40 disabled:opacity-60 placeholder:text-neutral-400"
+                  className="w-full px-3 py-2 rounded-lg border border-[#E8ECE9] text-xs focus:outline-none focus:border-[#2D6A4F] focus:ring-2 focus:ring-[#2D6A4F]/15 transition-all bg-white disabled:opacity-60 placeholder:text-neutral-400"
                 />
               </div>
             </div>
           </div>
 
-          {/* GROUP 2: SIZE & SPECIFICATIONS */}
-          <div className="space-y-4 pt-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-400 pb-1 border-b border-neutral-100">
-              Volume / Size Specifications
-            </h3>
+          {/* SECTION: SIZE */}
+          <div className="space-y-3.5 pt-2">
+            <div className="pb-1 border-b border-[#F0F2F1]">
+              <h3 className="text-[10px] uppercase font-bold tracking-wider text-neutral-400">
+                Size
+              </h3>
+            </div>
 
             <div className="grid grid-cols-3 gap-3">
               <div className="col-span-2">
                 <label
-                  className="block text-xs font-semibold text-neutral-700 mb-1.5"
+                  className="block text-xs font-semibold text-neutral-700 mb-1"
                   htmlFor="size"
                 >
                   Size / Volume (Optional)
@@ -447,13 +436,13 @@ export const AddProductPage: React.FC = () => {
                   onChange={(e) => setSizeValue(e.target.value)}
                   placeholder="e.g. 236"
                   disabled={submitting}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#2D6A4F]/10 transition-all bg-neutral-50/40 disabled:opacity-60 placeholder:text-neutral-400"
+                  className="w-full px-3 py-2 rounded-lg border border-[#E8ECE9] text-xs focus:outline-none focus:border-[#2D6A4F] focus:ring-2 focus:ring-[#2D6A4F]/15 transition-all bg-white disabled:opacity-60 placeholder:text-neutral-400"
                 />
               </div>
 
               <div>
                 <label
-                  className="block text-xs font-semibold text-neutral-700 mb-1.5"
+                  className="block text-xs font-semibold text-neutral-700 mb-1"
                   htmlFor="unit"
                 >
                   Unit
@@ -463,7 +452,7 @@ export const AddProductPage: React.FC = () => {
                   value={sizeUnit}
                   onChange={(e) => setSizeUnit(e.target.value as SizeUnit)}
                   disabled={submitting}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#2D6A4F]/10 transition-all bg-white disabled:opacity-60 text-neutral-900"
+                  className="w-full px-3 py-2 rounded-lg border border-[#E8ECE9] text-xs focus:outline-none focus:border-[#2D6A4F] focus:ring-2 focus:ring-[#2D6A4F]/15 transition-all bg-white disabled:opacity-60 text-neutral-900"
                 >
                   <option value="ml">ml</option>
                   <option value="g">g</option>
@@ -473,44 +462,44 @@ export const AddProductPage: React.FC = () => {
             </div>
           </div>
 
-          {/* GROUP 3: PURCHASE & USAGE LIFECYCLE */}
-          <div className="space-y-4 pt-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-400 pb-1 border-b border-neutral-100">
-              Purchase & Initial Usage
-            </h3>
-
-            {/* Purchase Price */}
-            <div>
-              <label
-                className="block text-xs font-semibold text-neutral-700 mb-1.5"
-                htmlFor="price"
-              >
-                Purchase Price (BDT ৳) *
-              </label>
-              <div className="relative">
-                <span className="absolute left-3.5 top-2.5 text-neutral-400 text-sm font-semibold">
-                  ৳
-                </span>
-                <input
-                  id="price"
-                  type="number"
-                  required
-                  min="0"
-                  step="any"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  placeholder="1250"
-                  disabled={submitting}
-                  className="w-full pl-8 pr-3.5 py-2.5 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#2D6A4F]/10 transition-all bg-neutral-50/40 disabled:opacity-60 placeholder:text-neutral-400"
-                />
-              </div>
+          {/* SECTION: PURCHASE */}
+          <div className="space-y-3.5 pt-2">
+            <div className="pb-1 border-b border-[#F0F2F1]">
+              <h3 className="text-[10px] uppercase font-bold tracking-wider text-neutral-400">
+                Purchase
+              </h3>
             </div>
 
-            {/* Dates */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
                 <label
-                  className="block text-xs font-semibold text-neutral-700 mb-1.5"
+                  className="block text-xs font-semibold text-neutral-700 mb-1"
+                  htmlFor="price"
+                >
+                  Price (BDT ৳) *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2 text-neutral-400 text-xs font-semibold">
+                    ৳
+                  </span>
+                  <input
+                    id="price"
+                    type="number"
+                    required
+                    min="0"
+                    step="any"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    placeholder="1250"
+                    disabled={submitting}
+                    className="w-full pl-7 pr-3 py-2 rounded-lg border border-[#E8ECE9] text-xs focus:outline-none focus:border-[#2D6A4F] focus:ring-2 focus:ring-[#2D6A4F]/15 transition-all bg-white disabled:opacity-60 placeholder:text-neutral-400"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label
+                  className="block text-xs font-semibold text-neutral-700 mb-1"
                   htmlFor="purchase-date"
                 >
                   Purchase Date *
@@ -522,41 +511,57 @@ export const AddProductPage: React.FC = () => {
                   value={purchaseDate}
                   onChange={(e) => setPurchaseDate(e.target.value)}
                   disabled={submitting}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#2D6A4F]/10 transition-all bg-white disabled:opacity-60 text-neutral-900"
-                />
-              </div>
-
-              <div>
-                <label
-                  className="block text-xs font-semibold text-neutral-700 mb-1.5"
-                  htmlFor="opened-date"
-                >
-                  Opened / Start Using *
-                </label>
-                <input
-                  id="opened-date"
-                  type="date"
-                  required
-                  value={openedDate}
-                  onChange={(e) => setOpenedDate(e.target.value)}
-                  disabled={submitting}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#2D6A4F]/10 transition-all bg-white disabled:opacity-60 text-neutral-900"
+                  className="w-full px-3 py-2 rounded-lg border border-[#E8ECE9] text-xs focus:outline-none focus:border-[#2D6A4F] focus:ring-2 focus:ring-[#2D6A4F]/15 transition-all bg-white disabled:opacity-60 text-neutral-900"
                 />
               </div>
             </div>
           </div>
 
+          {/* SECTION: USAGE */}
+          <div className="space-y-3.5 pt-2">
+            <div className="pb-1 border-b border-[#F0F2F1]">
+              <h3 className="text-[10px] uppercase font-bold tracking-wider text-neutral-400">
+                Usage
+              </h3>
+            </div>
+
+            <div>
+              <label
+                className="block text-xs font-semibold text-neutral-700 mb-1"
+                htmlFor="opened-date"
+              >
+                Opened / Start Using *
+              </label>
+              <input
+                id="opened-date"
+                type="date"
+                required
+                value={openedDate}
+                onChange={(e) => setOpenedDate(e.target.value)}
+                disabled={submitting}
+                className="w-full px-3 py-2 rounded-lg border border-[#E8ECE9] text-xs focus:outline-none focus:border-[#2D6A4F] focus:ring-2 focus:ring-[#2D6A4F]/15 transition-all bg-white disabled:opacity-60 text-neutral-900"
+              />
+            </div>
+          </div>
+
           {/* Submit Button */}
-          <div className="pt-4 border-t border-neutral-100">
+          <div className="pt-4 border-t border-[#F0F2F1] flex items-center justify-between gap-3">
+            <Link
+              to="/dashboard"
+              className="btn-press text-xs font-medium text-neutral-500 hover:text-neutral-800 transition-colors"
+            >
+              Cancel
+            </Link>
+
             <button
               type="submit"
               disabled={submitting}
-              className="btn-press w-full py-3 px-4 rounded-xl bg-[#2D6A4F] hover:bg-[#24563F] text-white text-sm font-semibold transition-all shadow-xs disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer"
+              className="btn-press px-5 py-2.5 rounded-lg bg-[#2D6A4F] hover:bg-[#24563F] text-white text-xs font-semibold transition-all shadow-xs disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer"
             >
               {submitting ? (
-                <span className="flex items-center gap-2">
-                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Saving Essential...</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Saving...</span>
                 </span>
               ) : selectedProduct ? (
                 <span>Log Repeat Purchase</span>

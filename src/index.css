@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
   --color-brand-primary: #2D6A4F;
   --color-brand-primary-hover: #24563F;
@@ -30,13 +30,14 @@ body {
   padding: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.011em;
 }
 
-/* Page Entry Transition */
+/* Page Entry: Linear-style calm entrance */
 @keyframes pageFadeIn {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(5px);
   }
   to {
     opacity: 1;
@@ -48,11 +49,11 @@ body {
   animation: pageFadeIn 220ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-/* Modal Entry Transition */
+/* Modal Dialog Scale In */
 @keyframes modalScaleIn {
   from {
     opacity: 0;
-    transform: scale(0.97) translateY(4px);
+    transform: scale(0.98) translateY(3px);
   }
   to {
     opacity: 1;
@@ -75,63 +76,47 @@ body {
 }
 
 .animate-backdrop-in {
-  animation: backdropFade 160ms ease-out forwards;
+  animation: backdropFade 150ms ease-out forwards;
 }
 
-/* Shimmer Loading Effect */
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-.skeleton-shimmer {
-  background: linear-gradient(90deg, #F3F4F6 25%, #E5E7EB 50%, #F3F4F6 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.6s infinite ease-in-out;
-}
-
-/* Tactile Button Response */
+/* Tactile Button Press (Micro-interaction 120-150ms) */
 .btn-press {
   transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1),
               box-shadow 140ms ease,
               background-color 140ms ease,
               border-color 140ms ease,
-              opacity 140ms ease;
+              color 140ms ease;
 }
 
 .btn-press:active:not(:disabled) {
-  transform: scale(0.98);
+  transform: scale(0.985);
 }
 
-/* Subtle Interactive Card Elevation */
+/* Compact Interactive Card / Row Elevation */
 .card-interactive {
-  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
-              box-shadow 200ms cubic-bezier(0.22, 1, 0.36, 1),
-              border-color 200ms ease;
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 180ms cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 180ms ease;
 }
 
 .card-interactive:hover {
-  transform: translateY(-1.5px);
-  box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.05),
-              0 2px 6px -1px rgba(15, 23, 42, 0.02);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.04),
+              0 1px 3px 0 rgba(15, 23, 42, 0.02);
 }
 
-/* Accessible, consistent focus treatment */
+/* Accessible focus treatment */
 :focus-visible {
   outline: 2px solid #2D6A4F;
-  outline-offset: 2px;
+  outline-offset: 1.5px;
 }
 
-/* Global input styling refinement */
+/* Precise Input focus states */
 input, select, textarea {
-  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+  transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
 }
 
-/* Motion accessibility preference */
+/* Respect user's motion preferences */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
