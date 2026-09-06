@@ -15,7 +15,8 @@
     "verify:analytics": "tsx scripts/verify-analytics.ts",
     "verify:walkthrough": "tsx scripts/verify-full-walkthrough.ts",
     "verify:supabase": "tsx scripts/verify-supabase-live.ts",
-    "verify:rls": "tsx scripts/verify-supabase-rls.ts"
+    "verify:rls": "tsx scripts/verify-supabase-rls.ts",
+    "verify:audit": "tsx scripts/verify-live-audit.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
