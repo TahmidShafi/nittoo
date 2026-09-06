@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { NittooLogo } from '../components/NittooLogo';
 
 export const ForgotPasswordPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -32,74 +33,90 @@ export const ForgotPasswordPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-[85vh] flex flex-col items-center justify-center px-4 py-8">
-      <div className="w-full max-w-md bg-white border border-neutral-200/80 rounded-2xl p-8 shadow-xs">
-        <div className="text-center mb-8">
-          <div className="w-10 h-10 rounded-xl bg-[#2D6A4F] text-white flex items-center justify-center font-bold text-lg mx-auto mb-3 shadow-xs">
-            N
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-900">Reset your password</h1>
-          <p className="text-sm text-neutral-500 mt-1">
-            Enter your email address and we'll send you a recovery link.
+    <div className="min-h-screen flex flex-col justify-between items-center px-4 py-8 sm:py-12 bg-[#FBFBFB]">
+      <div className="w-full max-w-md my-auto flex flex-col items-center">
+        {/* Brand Header */}
+        <div className="text-center mb-8 flex flex-col items-center">
+          <NittooLogo variant="horizontal" size="xl" showTagline={true} />
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900 mt-4">
+            Reset your password
+          </h1>
+          <p className="text-xs sm:text-sm text-neutral-500 mt-1 max-w-xs">
+            Enter your email address and we'll send you a secure recovery link.
           </p>
         </div>
 
-        {error && (
-          <div className="mb-5 p-3 rounded-lg bg-red-50 text-red-700 text-xs font-medium border border-red-200">
-            {error}
-          </div>
-        )}
+        {/* Card Container */}
+        <div className="w-full bg-white border border-neutral-200/80 rounded-2xl p-7 sm:p-8 shadow-xs">
+          {error && (
+            <div className="mb-5 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-start gap-2.5 animate-page-in">
+              <span className="text-rose-600 font-bold leading-none mt-0.5">!</span>
+              <span className="flex-1 leading-relaxed">{error}</span>
+            </div>
+          )}
 
-        {submitted ? (
-          <div className="p-5 rounded-xl bg-[#EBF4F0] border border-[#2D6A4F]/20 text-center space-y-3">
-            <div className="w-8 h-8 rounded-full bg-[#2D6A4F] text-white flex items-center justify-center mx-auto text-sm font-bold">
-              ✓
+          {submitted ? (
+            <div className="p-6 rounded-xl bg-[#EBF4F0] border border-[#2D6A4F]/20 text-center space-y-3 animate-page-in">
+              <div className="w-9 h-9 rounded-full bg-[#2D6A4F] text-white flex items-center justify-center mx-auto text-sm font-bold shadow-xs">
+                ✓
+              </div>
+              <p className="text-sm font-semibold text-[#2D6A4F]">Check your inbox</p>
+              <p className="text-xs text-neutral-600 leading-relaxed">
+                If an account exists for <strong>{email}</strong>, a recovery link has been dispatched. Check your inbox and spam folder.
+              </p>
+              <div className="pt-2">
+                <Link to="/login" className="btn-press inline-block text-xs font-semibold text-[#2D6A4F] hover:underline">
+                  Return to Sign In →
+                </Link>
+              </div>
             </div>
-            <p className="text-sm font-medium text-[#2D6A4F]">Check your inbox</p>
-            <p className="text-xs text-neutral-600">
-              If an account exists for <strong>{email}</strong>, a recovery link has been dispatched.
-            </p>
-            <div className="pt-2">
-              <Link to="/login" className="text-xs text-[#2D6A4F] font-semibold hover:underline">
-                Return to Sign In
-              </Link>
-            </div>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-xs font-medium text-neutral-700 mb-1.5" htmlFor="recovery-email">
-                Email address
-              </label>
-              <input
-                id="recovery-email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-neutral-700 mb-1.5" htmlFor="recovery-email">
+                  Email address
+                </label>
+                <input
+                  id="recovery-email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  disabled={submitting}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#2D6A4F]/10 transition-all bg-neutral-50/40 disabled:opacity-60 placeholder:text-neutral-400"
+                />
+              </div>
+
+              <button
+                type="submit"
                 disabled={submitting}
-                className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20 focus:border-[#2D6A4F] transition-all bg-neutral-50/40 disabled:opacity-60"
-              />
-            </div>
+                className="btn-press w-full py-2.5 px-4 rounded-xl bg-[#2D6A4F] hover:bg-[#24563F] text-white text-sm font-semibold transition-all shadow-xs disabled:opacity-60 flex items-center justify-center gap-2 mt-2 cursor-pointer"
+              >
+                {submitting ? (
+                  <span className="flex items-center gap-2">
+                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Sending link...</span>
+                  </span>
+                ) : (
+                  <span>Send Reset Link</span>
+                )}
+              </button>
+            </form>
+          )}
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full py-2.5 px-4 rounded-lg bg-[#2D6A4F] hover:bg-[#24563F] text-white text-sm font-medium transition-colors shadow-xs disabled:opacity-60 flex items-center justify-center gap-2"
-            >
-              {submitting ? 'Sending link...' : 'Send Reset Link'}
-            </button>
-          </form>
-        )}
-
-        <div className="mt-6 pt-5 border-t border-neutral-100 text-center text-xs text-neutral-500">
-          Remember your password?{' '}
-          <Link to="/login" className="text-[#2D6A4F] font-semibold hover:underline">
-            Back to Sign In
-          </Link>
+          <div className="mt-6 pt-5 border-t border-neutral-100 text-center text-xs text-neutral-500">
+            Remember your password?{' '}
+            <Link to="/login" className="text-[#2D6A4F] font-semibold hover:underline">
+              Back to Sign In
+            </Link>
+          </div>
         </div>
       </div>
+
+      <footer className="py-4 text-center text-xs text-neutral-400">
+        Nittoo — Know What Lasts
+      </footer>
     </div>
   );
 };

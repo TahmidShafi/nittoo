@@ -1,5 +1,5 @@
 // ==============================================================================
-// Nittoo Product Detail & History Page
+// Nittoo Product Detail & Personal Report Page
 // Personal Analytics Report, Weighted Cost/Day, Active Bottle, and Recharts Duration Trends
 // ==============================================================================
 
@@ -219,9 +219,7 @@ export const ProductDetailPage: React.FC = () => {
       }
     : null;
 
-  // ----------------------------------------------------------------------------
-  // Render: Loading State
-  // ----------------------------------------------------------------------------
+  // Loading State Skeleton
   if (loading) {
     return (
       <div className="space-y-6 max-w-5xl mx-auto animate-pulse">
@@ -231,30 +229,24 @@ export const ProductDetailPage: React.FC = () => {
             <div className="h-4 w-36 bg-neutral-100 rounded" />
             <div className="h-8 w-64 bg-neutral-200 rounded" />
           </div>
-          <div className="h-10 w-44 bg-neutral-200 rounded-lg shrink-0" />
+          <div className="h-10 w-44 bg-neutral-200 rounded-xl shrink-0" />
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-24 bg-white border border-neutral-200 rounded-xl p-4 flex flex-col justify-between">
-              <div className="h-3 w-20 bg-neutral-200 rounded" />
-              <div className="h-6 w-16 bg-neutral-200 rounded" />
-              <div className="h-2.5 w-24 bg-neutral-100 rounded" />
-            </div>
+            <div key={i} className="h-24 bg-white border border-neutral-200 rounded-2xl p-4 flex flex-col justify-between" />
           ))}
         </div>
-        <div className="h-44 bg-white border border-neutral-200 rounded-xl p-5" />
-        <div className="h-64 bg-white border border-neutral-200 rounded-xl p-5" />
+        <div className="h-44 bg-white border border-neutral-200 rounded-2xl p-5" />
+        <div className="h-64 bg-white border border-neutral-200 rounded-2xl p-5" />
       </div>
     );
   }
 
-  // ----------------------------------------------------------------------------
-  // Render: Error / Not Found
-  // ----------------------------------------------------------------------------
+  // Error / Not Found State
   if (error || !history) {
     return (
-      <div className="max-w-xl mx-auto py-12 text-center space-y-4">
-        <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto text-xl font-bold">
+      <div className="max-w-xl mx-auto py-16 text-center space-y-4">
+        <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto text-xl font-bold">
           !
         </div>
         <h2 className="text-xl font-bold text-neutral-900">Unable to load essential</h2>
@@ -262,7 +254,7 @@ export const ProductDetailPage: React.FC = () => {
         <div className="pt-2">
           <Link
             to="/dashboard"
-            className="inline-flex items-center gap-1.5 min-h-[44px] px-5 py-2.5 rounded-lg bg-[#2D6A4F] text-white text-xs font-semibold hover:bg-[#24563F] transition-colors shadow-xs"
+            className="btn-press inline-flex items-center gap-1.5 min-h-[42px] px-5 py-2.5 rounded-xl bg-[#2D6A4F] text-white text-xs font-semibold hover:bg-[#24563F] transition-colors shadow-xs"
           >
             ← Back to Dashboard
           </Link>
@@ -274,22 +266,23 @@ export const ProductDetailPage: React.FC = () => {
   const { product } = history;
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto">
+    <div className="space-y-8 max-w-5xl mx-auto animate-page-in">
       {/* Navigation Breadcrumb */}
       <div>
         <Link
           to="/dashboard"
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-neutral-500 hover:text-neutral-900 transition-colors py-1"
+          className="btn-press inline-flex items-center gap-1.5 text-xs font-medium text-neutral-500 hover:text-neutral-900 transition-colors py-1"
         >
-          ← Back to Dashboard
+          <span>←</span>
+          <span>Back to Essentials</span>
         </Link>
       </div>
 
-      {/* Product Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 pb-6 border-b border-neutral-200">
+      {/* Product Header Card */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 pb-6 border-b border-neutral-200/80">
         <div>
           <div className="flex flex-wrap items-center gap-2 mb-2">
-            <span className="text-xs font-medium px-2.5 py-0.5 rounded bg-neutral-100 text-neutral-700">
+            <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-md bg-neutral-100/90 text-neutral-700">
               {product.category}
             </span>
             {product.brand && (
@@ -297,7 +290,7 @@ export const ProductDetailPage: React.FC = () => {
             )}
             {product.size_value && (
               <>
-                <span className="text-xs text-neutral-300">•</span>
+                <span className="text-neutral-300">•</span>
                 <span className="text-xs text-neutral-500 font-medium">
                   {product.size_value} {product.size_unit}
                 </span>
@@ -313,96 +306,22 @@ export const ProductDetailPage: React.FC = () => {
           <button
             type="button"
             onClick={handleLogNewBottle}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2.5 rounded-lg bg-[#2D6A4F] hover:bg-[#24563F] text-white text-xs sm:text-sm font-semibold transition-colors shadow-xs"
+            className="btn-press w-full sm:w-auto inline-flex items-center justify-center gap-1.5 min-h-[42px] px-4 py-2.5 rounded-xl bg-[#2D6A4F] hover:bg-[#24563F] text-white text-xs sm:text-sm font-semibold transition-all shadow-xs cursor-pointer"
           >
-            <span>+ Log New Bottle / Purchase</span>
+            <span className="text-base leading-none font-bold">+</span>
+            <span>Log Repeat Purchase</span>
           </button>
         </div>
       </div>
 
-      {/* Summary Statistics Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {/* 1. Average Duration */}
-        <div className="bg-white border border-neutral-200/80 rounded-xl p-4 sm:p-5 shadow-xs">
-          <span className="text-xs font-medium text-neutral-500 block mb-1">
-            Average Duration
-          </span>
-          {summaryStats?.averageDuration !== null ? (
-            <div className="text-xl sm:text-2xl font-bold text-neutral-900">
-              {summaryStats?.averageDuration} days
-            </div>
-          ) : (
-            <div className="text-sm font-semibold italic text-neutral-400 mt-1">
-              Not enough data
-            </div>
-          )}
-          <span className="text-[11px] text-neutral-400 mt-1 block">
-            {history.finished_periods.length} completed cycle{history.finished_periods.length === 1 ? '' : 's'}
-          </span>
-        </div>
-
-        {/* 2. Weighted Average Cost Per Day */}
-        <div className="bg-white border border-neutral-200/80 rounded-xl p-4 sm:p-5 shadow-xs">
-          <span className="text-xs font-medium text-neutral-500 block mb-1">
-            Average Cost / Day
-          </span>
-          {summaryStats?.weightedCostPerDay !== null ? (
-            <div className="text-xl sm:text-2xl font-bold text-[#2D6A4F]">
-              ৳{summaryStats?.weightedCostPerDay}
-              <span className="text-xs text-neutral-500 font-normal"> / day</span>
-            </div>
-          ) : (
-            <div className="text-sm font-semibold italic text-neutral-400 mt-1">
-              Not enough data
-            </div>
-          )}
-          <span className="text-[11px] text-neutral-400 mt-1 block">
-            Weighted across finished cycles
-          </span>
-        </div>
-
-        {/* 3. Total Spent */}
-        <div className="bg-white border border-neutral-200/80 rounded-xl p-4 sm:p-5 shadow-xs">
-          <span className="text-xs font-medium text-neutral-500 block mb-1">
-            Total Spent
-          </span>
-          <div className="text-xl sm:text-2xl font-bold text-neutral-900">
-            ৳ {summaryStats?.totalSpent.toLocaleString()}
-          </div>
-          <span className="text-[11px] text-neutral-400 mt-1 block">
-            {summaryStats?.purchaseCount} recorded purchase{summaryStats?.purchaseCount === 1 ? '' : 's'}
-          </span>
-        </div>
-
-        {/* 4. Unit Rate */}
-        <div className="bg-white border border-neutral-200/80 rounded-xl p-4 sm:p-5 shadow-xs">
-          <span className="text-xs font-medium text-neutral-500 block mb-1">
-            Unit Rate
-          </span>
-          {summaryStats?.unitRate !== null && product.size_unit ? (
-            <div className="text-xl sm:text-2xl font-bold text-neutral-900">
-              ৳{summaryStats?.unitRate}
-              <span className="text-xs text-neutral-500 font-normal"> / {product.size_unit}</span>
-            </div>
-          ) : (
-            <div className="text-sm font-semibold italic text-neutral-400 mt-1">
-              —
-            </div>
-          )}
-          <span className="text-[11px] text-neutral-400 mt-1 block">
-            Latest purchase price ÷ size
-          </span>
-        </div>
-      </div>
-
-      {/* Prominent Active Usage Card OR No Active Bottle Banner */}
+      {/* Active Bottle Hero Card OR No Active Bottle Banner */}
       {activeUsageData ? (
-        <div className="bg-white border border-neutral-200/80 rounded-xl p-6 shadow-xs space-y-4">
+        <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 sm:p-7 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[#2D6A4F] animate-pulse" />
-                <h2 className="text-base font-bold text-neutral-900">Current In-Use Cycle</h2>
+                <span className="w-2.5 h-2.5 rounded-full bg-[#2D6A4F] animate-pulse" />
+                <h2 className="text-base font-bold text-neutral-900">Current In-Use Bottle</h2>
               </div>
               <p className="text-xs text-neutral-500 mt-0.5">
                 Opened on {formatDisplayDate(activeUsageData.active.opened_date)}
@@ -411,91 +330,183 @@ export const ProductDetailPage: React.FC = () => {
 
             <div className="flex items-center gap-3">
               {activeUsageData.urgencyState === 'overdue' ? (
-                <span className="text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-3 py-1 rounded-full">
-                  Overdue by {activeUsageData.overdueDays} day{activeUsageData.overdueDays === 1 ? '' : 's'}
+                <span className="text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-3 py-1 rounded-full flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                  <span>Overdue by {activeUsageData.overdueDays} day{activeUsageData.overdueDays === 1 ? '' : 's'}</span>
                 </span>
               ) : activeUsageData.urgencyState === 'running_soon' ? (
-                <span className="text-xs font-semibold text-[#2D6A4F] bg-[#EBF4F0] border border-[#2D6A4F]/20 px-3 py-1 rounded-full">
-                  {activeUsageData.predictedRemaining} day{activeUsageData.predictedRemaining === 1 ? '' : 's'} left
+                <span className="text-xs font-semibold text-[#2D6A4F] bg-[#EBF4F0] border border-[#2D6A4F]/20 px-3 py-1 rounded-full flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#2D6A4F]" />
+                  <span>{activeUsageData.predictedRemaining} day{activeUsageData.predictedRemaining === 1 ? '' : 's'} left</span>
                 </span>
               ) : (
                 <span className="text-xs font-medium text-neutral-600 bg-neutral-100 px-3 py-1 rounded-full">
-                  First Cycle / Not enough data
+                  First Cycle • Learning baseline
                 </span>
               )}
 
               <button
                 type="button"
                 onClick={() => setIsModalOpen(true)}
-                className="px-3 py-1.5 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs font-medium transition-colors"
+                className="btn-press px-3.5 py-1.5 rounded-xl bg-neutral-100 hover:bg-neutral-200/80 text-neutral-700 text-xs font-medium transition-colors cursor-pointer"
               >
                 Mark Finished
               </button>
             </div>
           </div>
 
-          {/* Progress Bar */}
-          <div className="space-y-1.5 pt-1">
-            <div className="flex justify-between text-xs text-neutral-600">
-              <span>{activeUsageData.daysUsed} days used so far</span>
+          {/* Progress Bar & Status */}
+          <div className="space-y-2 pt-2 border-t border-neutral-100">
+            <div className="flex justify-between items-center text-xs text-neutral-600">
+              <span>
+                Day <strong className="font-semibold text-neutral-900">{activeUsageData.daysUsed}</strong> in use
+              </span>
               {activeUsageData.avgDuration !== null ? (
-                <span className="font-medium text-neutral-800">
+                <span className="font-medium text-neutral-700">
                   Target: ~{activeUsageData.avgDuration} days
                 </span>
               ) : (
-                <span className="italic text-neutral-400">Baseline in progress</span>
+                <span className="italic text-neutral-400 text-[11px]">Collecting first cycle duration</span>
               )}
             </div>
-            <div className="h-2.5 w-full bg-neutral-100 rounded-full overflow-hidden">
+            <div className="h-2 w-full bg-neutral-100 rounded-full overflow-hidden">
               {activeUsageData.progress !== null ? (
                 <div
                   className={`h-full rounded-full transition-all duration-300 ${
-                    activeUsageData.isOverdue ? 'bg-rose-500 w-full' : 'bg-[#2D6A4F]'
+                    activeUsageData.isOverdue
+                      ? 'bg-rose-500 w-full'
+                      : activeUsageData.predictedRemaining !== null && activeUsageData.predictedRemaining < 14
+                      ? 'bg-amber-500'
+                      : 'bg-[#2D6A4F]'
                   }`}
                   style={{ width: `${activeUsageData.progress}%` }}
                 />
               ) : (
-                <div className="h-full w-full bg-neutral-200/60 rounded-full opacity-60" />
+                <div className="h-full w-full bg-neutral-200/50 rounded-full" />
               )}
             </div>
           </div>
         </div>
       ) : (
         /* No Active Bottle State */
-        <div className="bg-[#EBF4F0]/40 border border-[#2D6A4F]/20 rounded-xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="bg-[#EBF4F0]/50 border border-[#2D6A4F]/20 rounded-2xl p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h3 className="text-sm font-bold text-neutral-900">No bottle is currently in use</h3>
             <p className="text-xs text-neutral-500 mt-0.5">
-              You do not have an active bottle open for this product.
+              Open a new bottle or log a repeat purchase to continue tracking this essential.
             </p>
           </div>
           <button
             type="button"
             onClick={handleLogNewBottle}
-            className="px-4 py-2 rounded-lg bg-[#2D6A4F] hover:bg-[#24563F] text-white text-xs font-semibold transition-colors shadow-xs self-start sm:self-auto"
+            className="btn-press px-4 py-2.5 rounded-xl bg-[#2D6A4F] hover:bg-[#24563F] text-white text-xs font-semibold transition-all shadow-xs self-start sm:self-auto cursor-pointer"
           >
             + Start New Bottle
           </button>
         </div>
       )}
 
+      {/* Summary Statistics Cards (Editorial Grid) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {/* 1. Average Duration */}
+        <div className="bg-white border border-neutral-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
+            Average Lifespan
+          </span>
+          {summaryStats?.averageDuration !== null ? (
+            <div className="mt-1">
+              <span className="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight">
+                {summaryStats?.averageDuration}
+              </span>
+              <span className="text-xs text-neutral-500 ml-1">days</span>
+            </div>
+          ) : (
+            <div className="text-xs font-semibold italic text-neutral-400 mt-2">
+              Not enough data
+            </div>
+          )}
+          <span className="text-[11px] text-neutral-400 mt-2 block">
+            {history.finished_periods.length} finished cycle{history.finished_periods.length === 1 ? '' : 's'}
+          </span>
+        </div>
+
+        {/* 2. Weighted Average Cost Per Day */}
+        <div className="bg-white border border-neutral-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
+            Cost Per Day
+          </span>
+          {summaryStats?.weightedCostPerDay !== null ? (
+            <div className="mt-1">
+              <span className="text-2xl sm:text-3xl font-bold text-[#2D6A4F] tracking-tight">
+                ৳{summaryStats?.weightedCostPerDay}
+              </span>
+              <span className="text-xs text-neutral-500 ml-1">/ day</span>
+            </div>
+          ) : (
+            <div className="text-xs font-semibold italic text-neutral-400 mt-2">
+              Not enough data
+            </div>
+          )}
+          <span className="text-[11px] text-neutral-400 mt-2 block">
+            Weighted across completed cycles
+          </span>
+        </div>
+
+        {/* 3. Total Spent */}
+        <div className="bg-white border border-neutral-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
+            Total Spent
+          </span>
+          <div className="mt-1">
+            <span className="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight">
+              ৳{summaryStats?.totalSpent.toLocaleString()}
+            </span>
+          </div>
+          <span className="text-[11px] text-neutral-400 mt-2 block">
+            {summaryStats?.purchaseCount} purchase{summaryStats?.purchaseCount === 1 ? '' : 's'} recorded
+          </span>
+        </div>
+
+        {/* 4. Unit Rate */}
+        <div className="bg-white border border-neutral-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
+            Unit Rate
+          </span>
+          {summaryStats?.unitRate !== null && product.size_unit ? (
+            <div className="mt-1">
+              <span className="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight">
+                ৳{summaryStats?.unitRate}
+              </span>
+              <span className="text-xs text-neutral-500 ml-1">/ {product.size_unit}</span>
+            </div>
+          ) : (
+            <div className="text-xs font-semibold italic text-neutral-400 mt-2">
+              —
+            </div>
+          )}
+          <span className="text-[11px] text-neutral-400 mt-2 block">
+            Purchase price ÷ size
+          </span>
+        </div>
+      </div>
+
       {/* Duration Trend Chart (Recharts) */}
-      <div className="bg-white border border-neutral-200/80 rounded-xl p-6 shadow-xs space-y-4">
+      <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-xs space-y-4">
         <div>
           <h2 className="text-base font-bold text-neutral-900">Duration Trends</h2>
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-neutral-500 mt-0.5">
             Historical lifespan across completed cycles (days).
           </p>
         </div>
 
         {chartData.length === 0 ? (
-          <div className="h-44 w-full bg-neutral-50 border border-dashed border-neutral-200 rounded-xl flex flex-col items-center justify-center p-6 text-center">
-            <span className="text-2xl mb-1">📊</span>
-            <p className="text-xs font-medium text-neutral-600">
-              Complete a usage cycle to start seeing lifespan trends.
+          <div className="h-44 w-full bg-neutral-50/80 border border-dashed border-neutral-200 rounded-xl flex flex-col items-center justify-center p-6 text-center">
+            <span className="text-2xl mb-1.5">📊</span>
+            <p className="text-xs font-semibold text-neutral-700">
+              Complete a cycle to view duration trends
             </p>
             <p className="text-[11px] text-neutral-400 mt-0.5">
-              Trends are computed only after a bottle has been marked as finished.
+              Historical trends appear automatically after marking a bottle as finished.
             </p>
           </div>
         ) : (
@@ -505,15 +516,15 @@ export const ProductDetailPage: React.FC = () => {
                 data={chartData}
                 margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
               >
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F0F2F1" />
                 <XAxis
                   dataKey="cycle"
-                  tick={{ fontSize: 12, fill: '#6B7280' }}
+                  tick={{ fontSize: 11, fill: '#6B7280' }}
                   tickLine={false}
                   axisLine={{ stroke: '#E5E7EB' }}
                 />
                 <YAxis
-                  tick={{ fontSize: 12, fill: '#6B7280' }}
+                  tick={{ fontSize: 11, fill: '#6B7280' }}
                   tickLine={false}
                   axisLine={{ stroke: '#E5E7EB' }}
                   domain={[0, (dataMax: number) => Math.max(10, Math.ceil(dataMax * 1.15))]}
@@ -527,13 +538,13 @@ export const ProductDetailPage: React.FC = () => {
                   }}
                   contentStyle={{
                     backgroundColor: '#FFFFFF',
-                    border: '1px solid #E5E7EB',
-                    borderRadius: '8px',
+                    border: '1px solid #E8ECE9',
+                    borderRadius: '12px',
                     fontSize: '12px',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
                   }}
                 />
-                <Bar dataKey="duration" fill="#2D6A4F" radius={[6, 6, 0, 0]} maxBarSize={48} />
+                <Bar dataKey="duration" fill="#2D6A4F" radius={[6, 6, 0, 0]} maxBarSize={44} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -541,16 +552,16 @@ export const ProductDetailPage: React.FC = () => {
       </div>
 
       {/* Completed Lifespans Timeline */}
-      <div className="bg-white border border-neutral-200/80 rounded-xl p-6 shadow-xs space-y-4">
+      <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-xs space-y-4">
         <div>
           <h2 className="text-base font-bold text-neutral-900">Completed Lifespans Timeline</h2>
-          <p className="text-xs text-neutral-500">
-            Chronological breakdown of each depleted bottle cycle.
+          <p className="text-xs text-neutral-500 mt-0.5">
+            Chronological log of completed bottles and daily cost efficiency.
           </p>
         </div>
 
         {timelineData.length === 0 ? (
-          <p className="text-xs text-neutral-400 italic py-4 text-center">
+          <p className="text-xs text-neutral-400 italic py-6 text-center">
             No completed lifespans recorded yet.
           </p>
         ) : (
@@ -558,33 +569,33 @@ export const ProductDetailPage: React.FC = () => {
             {timelineData.map((cycle) => (
               <div
                 key={cycle.id}
-                className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:bg-neutral-50/50 transition-colors"
+                className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:bg-neutral-50/60 transition-colors"
               >
                 <div>
                   <div className="flex items-center gap-2 mb-0.5">
                     <span className="font-bold text-neutral-900">Cycle #{cycle.cycleNumber}</span>
                     <span className="text-neutral-300">•</span>
-                    <span className="text-neutral-500">
+                    <span className="text-neutral-600 font-medium">
                       {cycle.openedDate} → {cycle.finishedDate}
                     </span>
                   </div>
                   <p className="text-neutral-400 text-[11px]">
-                    Purchased {cycle.purchaseDate}
+                    Purchased on {cycle.purchaseDate}
                     {cycle.price !== null ? ` for ৳${cycle.price}` : ''}
                   </p>
                 </div>
 
                 <div className="flex items-center gap-6 sm:text-right">
                   <div>
-                    <span className="text-neutral-400 block text-[11px]">Duration</span>
-                    <span className="font-semibold text-neutral-900 text-sm">
+                    <span className="text-neutral-400 block text-[10px] uppercase font-semibold tracking-wider">Duration</span>
+                    <span className="font-bold text-neutral-900 text-sm">
                       {cycle.duration} days
                     </span>
                   </div>
                   <div>
-                    <span className="text-neutral-400 block text-[11px]">Cycle Cost/Day</span>
+                    <span className="text-neutral-400 block text-[10px] uppercase font-semibold tracking-wider">Cycle Cost/Day</span>
                     {cycle.cycleCostPerDay !== null ? (
-                      <span className="font-semibold text-[#2D6A4F] text-sm">
+                      <span className="font-bold text-[#2D6A4F] text-sm">
                         ৳{cycle.cycleCostPerDay}/day
                       </span>
                     ) : (

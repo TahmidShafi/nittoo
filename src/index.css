@@ -6,17 +6,20 @@
   --color-brand-primary: #2D6A4F;
   --color-brand-primary-hover: #24563F;
   --color-brand-primary-light: #EBF4F0;
-  --color-brand-accent: #40916C;
-  --color-brand-muted: #52B788;
+  --color-brand-dark: #1B4332;
+  --color-brand-leaf: #52B788;
+  --color-brand-coral: #F07167;
+  --color-brand-coral-light: #FFF0ED;
 
   --color-surface-bg: #FBFBFB;
   --color-surface-card: #FFFFFF;
-  --color-surface-subtle: #F4F5F6;
-  --color-surface-border: #E5E7EB;
+  --color-surface-subtle: #F8F9FA;
+  --color-surface-border: #E8ECE9;
+  --color-surface-border-subtle: #F0F2F1;
 
   --color-text-primary: #111827;
   --color-text-secondary: #4B5563;
-  --color-text-muted: #9CA3AF;
+  --color-text-muted: #8B95A5;
 }
 
 body {
@@ -29,11 +32,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Subtle page entry transition */
+/* Page Entry Transition */
 @keyframes pageFadeIn {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -42,26 +45,93 @@ body {
 }
 
 .animate-page-in {
-  animation: pageFadeIn 180ms ease-out forwards;
+  animation: pageFadeIn 220ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-/* Accessible, consistent focus treatment across interactive elements */
+/* Modal Entry Transition */
+@keyframes modalScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-modal-in {
+  animation: modalScaleIn 180ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Backdrop Fade */
+@keyframes backdropFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-backdrop-in {
+  animation: backdropFade 160ms ease-out forwards;
+}
+
+/* Shimmer Loading Effect */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #F3F4F6 25%, #E5E7EB 50%, #F3F4F6 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s infinite ease-in-out;
+}
+
+/* Tactile Button Response */
+.btn-press {
+  transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 140ms ease,
+              background-color 140ms ease,
+              border-color 140ms ease,
+              opacity 140ms ease;
+}
+
+.btn-press:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* Subtle Interactive Card Elevation */
+.card-interactive {
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 200ms cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 200ms ease;
+}
+
+.card-interactive:hover {
+  transform: translateY(-1.5px);
+  box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.05),
+              0 2px 6px -1px rgba(15, 23, 42, 0.02);
+}
+
+/* Accessible, consistent focus treatment */
 :focus-visible {
   outline: 2px solid #2D6A4F;
   outline-offset: 2px;
 }
 
-/* Standardized control transitions */
-button,
-a,
-input,
-select {
-  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 180ms;
+/* Global input styling refinement */
+input, select, textarea {
+  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
 }
 
-/* Respect user's motion preferences */
+/* Motion accessibility preference */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

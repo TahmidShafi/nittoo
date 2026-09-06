@@ -1,4 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <rect width="32" height="32" rx="8" fill="#2D6A4F"/>
-  <path d="M9 22V10L17 18V10H23V22L15 14V22H9Z" fill="#F8FDF9"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Rounded Base Background -->
+  <rect width="64" height="64" rx="16" fill="#F8FBF9"/>
+  <!-- Leaf Accent -->
+  <path d="M26 13C26 13 36 12 37 23C37 23 27 24 26 13Z" fill="#52B788"/>
+  <!-- Coral / Peach Dot -->
+  <circle cx="43" cy="27" r="4.5" fill="#F07167"/>
+  <!-- Stylized 'n' with Bottle Cutout -->
+  <path d="M16 48V32C16 23.16 23.16 16 32 16C40.84 16 48 23.16 48 32V48H40V32C40 27.58 36.42 24 32 24C27.58 24 24 27.58 24 32V48H16Z" fill="#0C3823"/>
+  <!-- Inner Pump Dispenser Silhouette in Arch -->
+  <path d="M29 38H35V48H29V38ZM28 35H36V37H28V35ZM30 33H33V35H30V33ZM27 33H31V31C31 30.4 30.6 30 30 30H27V33Z" fill="#F8FBF9"/>
 </svg>

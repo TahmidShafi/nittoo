@@ -1,6 +1,7 @@
 // ==============================================================================
 // Nittoo Add Product Page
 // Free-form Product Creation, Live Existing Product Suggestions, and Repeat Purchases
+// Premium product onboarding layout with clear logical groupings
 // ==============================================================================
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -91,7 +92,6 @@ export const AddProductPage: React.FC = () => {
   const trimmedName = name.trim().toLowerCase();
   const suggestions = existingProducts.filter((p) => {
     if (!trimmedName) return false;
-    // Don't show suggestion if exact item is already selected
     if (selectedProduct && selectedProduct.id === p.id) return false;
     const matchName = p.name.toLowerCase().includes(trimmedName);
     const matchBrand = p.brand ? p.brand.toLowerCase().includes(trimmedName) : false;
@@ -214,14 +214,11 @@ export const AddProductPage: React.FC = () => {
           opened_date: openedDate,
         });
 
-        // Redirect immediately on full success
         navigate('/dashboard', { replace: true });
       } catch (usageErr: unknown) {
         const msg = usageErr instanceof Error ? usageErr.message : 'Failed to start usage';
 
-        // Known business condition: active usage already exists for this product
         if (msg.includes('already has an active usage period')) {
-          // Keep the purchase, pass message to dashboard via state
           navigate('/dashboard', {
             replace: true,
             state: {
@@ -232,7 +229,6 @@ export const AddProductPage: React.FC = () => {
           return;
         }
 
-        // Unexpected error
         setError(`Purchase recorded, but failed to start usage: ${msg}`);
         setSubmitting(false);
       }
@@ -244,23 +240,31 @@ export const AddProductPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-xl mx-auto py-2">
+    <div className="max-w-xl mx-auto py-2 animate-page-in">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight text-neutral-900">Add Essential</h1>
-        <p className="text-sm text-neutral-500 mt-1">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-[#2D6A4F] block mb-1">
+          Product Tracking
+        </span>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900">
+          Add Essential
+        </h1>
+        <p className="text-xs sm:text-sm text-neutral-500 mt-1">
           Log a purchase and start tracking its usage lifecycle.
         </p>
       </div>
 
       {/* Error Alert */}
       {error && (
-        <div className="mb-5 p-3.5 rounded-xl bg-red-50 text-red-700 text-xs font-medium border border-red-200 flex items-start justify-between">
-          <span>{error}</span>
+        <div className="mb-5 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-start justify-between animate-page-in">
+          <div className="flex items-start gap-2">
+            <span className="text-rose-600 font-bold leading-none mt-0.5">!</span>
+            <span className="leading-relaxed">{error}</span>
+          </div>
           <button
             type="button"
             onClick={() => setError(null)}
-            className="text-red-400 hover:text-red-700 text-sm font-bold ml-2 leading-none"
+            className="text-rose-400 hover:text-rose-700 text-sm font-bold ml-2 leading-none p-1"
           >
             ×
           </button>
@@ -269,276 +273,291 @@ export const AddProductPage: React.FC = () => {
 
       {/* Active Bottle Notice */}
       {activeBottleWarning && (
-        <div className="mb-5 p-4 rounded-xl bg-amber-50 text-amber-800 text-xs font-medium border border-amber-200">
+        <div className="mb-5 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
           {activeBottleWarning}
         </div>
       )}
 
-      {/* Form Card */}
+      {/* Form Container */}
       <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 sm:p-8 shadow-xs">
         {/* Repeat Purchase Badge */}
         {selectedProduct && (
-          <div className="mb-5 p-3 rounded-xl bg-[#EBF4F0] border border-[#2D6A4F]/20 flex items-center justify-between gap-3 text-xs">
+          <div className="mb-6 p-3.5 rounded-xl bg-[#EBF4F0] border border-[#2D6A4F]/20 flex items-center justify-between gap-3 text-xs animate-page-in">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-[#2D6A4F]" />
               <span className="font-semibold text-[#2D6A4F]">
-                Repeat Purchase Mode: Existing Product Selected
+                Repeat Purchase Mode (Existing essential)
               </span>
             </div>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={handleDeselectExisting}
-                className="text-neutral-500 hover:text-neutral-800 font-medium hover:underline"
+                className="btn-press text-neutral-500 hover:text-neutral-900 font-medium hover:underline"
               >
                 Deselect
-              </button>
-              <span className="text-neutral-300">•</span>
-              <button
-                type="button"
-                onClick={handleDeselectExisting}
-                className="text-[#2D6A4F] font-semibold hover:underline"
-              >
-                Add as New Product
               </button>
             </div>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Product Name (Free-form with suggestions) */}
-          <div className="relative" ref={suggestionsRef}>
-            <label
-              className="block text-xs font-semibold uppercase tracking-wider text-neutral-700 mb-1.5"
-              htmlFor="product-name"
-            >
-              Product Name *
-            </label>
-            <input
-              id="product-name"
-              type="text"
-              required
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                setShowSuggestions(true);
-                if (selectedProduct && e.target.value !== selectedProduct.name) {
-                  setSelectedProduct(null);
-                }
-              }}
-              onFocus={() => {
-                setIsSearchFocused(true);
-                setShowSuggestions(true);
-              }}
-              placeholder="e.g. CeraVe Hydrating Facial Cleanser, Dove Soap, etc."
-              disabled={submitting}
-              autoComplete="off"
-              className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20 focus:border-[#2D6A4F] transition-all bg-neutral-50/40 disabled:opacity-60"
-            />
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* GROUP 1: PRODUCT IDENTITY */}
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-400 pb-1 border-b border-neutral-100">
+              Product Identity
+            </h3>
 
-            {/* Suggestions Popover */}
-            {showSuggestions && isSearchFocused && suggestions.length > 0 && !selectedProduct && (
-              <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-neutral-200 rounded-xl shadow-lg max-h-56 overflow-y-auto divide-y divide-neutral-100">
-                <div className="px-3 py-1.5 bg-neutral-50 text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">
-                  Existing Nittoo Products
-                </div>
-                {suggestions.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => handleSelectExisting(p)}
-                    className="w-full text-left px-3.5 py-2.5 hover:bg-[#EBF4F0]/60 transition-colors flex items-center justify-between group"
-                  >
-                    <div>
-                      <span className="text-sm font-semibold text-neutral-900 group-hover:text-[#2D6A4F]">
-                        {p.name}
-                      </span>
-                      <span className="text-xs text-neutral-500 block">
-                        {[p.brand, p.category, p.size_value ? `${p.size_value} ${p.size_unit}` : null]
-                          .filter(Boolean)
-                          .join(' • ')}
-                      </span>
-                    </div>
-                    <span className="text-xs text-[#2D6A4F] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                      Select →
-                    </span>
-                  </button>
-                ))}
-                <div className="px-3 py-2 bg-neutral-50/80 text-xs text-neutral-500 flex items-center justify-between">
-                  <span>Not what you want?</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowSuggestions(false)}
-                    className="text-[#2D6A4F] font-semibold hover:underline"
-                  >
-                    + Add "{name.trim()}" as a new product
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Category & Brand */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
+            {/* Product Name (Free-form with suggestions) */}
+            <div className="relative" ref={suggestionsRef}>
               <label
-                className="block text-xs font-semibold uppercase tracking-wider text-neutral-700 mb-1.5"
-                htmlFor="category"
+                className="block text-xs font-semibold text-neutral-700 mb-1.5"
+                htmlFor="product-name"
               >
-                Category *
-              </label>
-              <select
-                id="category"
-                value={category}
-                onChange={(e) => setCategory(e.target.value as ProductCategory)}
-                disabled={submitting}
-                className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20 focus:border-[#2D6A4F] transition-all bg-white disabled:opacity-60"
-              >
-                <option value="Skincare">Skincare</option>
-                <option value="Haircare">Haircare</option>
-                <option value="Oral Care">Oral Care</option>
-                <option value="Household">Household</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-
-            <div>
-              <label
-                className="block text-xs font-semibold uppercase tracking-wider text-neutral-700 mb-1.5"
-                htmlFor="brand"
-              >
-                Brand (Optional)
+                Product Name *
               </label>
               <input
-                id="brand"
+                id="product-name"
                 type="text"
-                value={brand}
-                onChange={(e) => setBrand(e.target.value)}
-                placeholder="e.g. CeraVe, Dove, Oral-B"
+                required
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setShowSuggestions(true);
+                  if (selectedProduct && e.target.value !== selectedProduct.name) {
+                    setSelectedProduct(null);
+                  }
+                }}
+                onFocus={() => {
+                  setIsSearchFocused(true);
+                  setShowSuggestions(true);
+                }}
+                placeholder="e.g. CeraVe Hydrating Facial Cleanser, Dove Soap, etc."
                 disabled={submitting}
-                className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20 focus:border-[#2D6A4F] transition-all bg-neutral-50/40 disabled:opacity-60"
+                autoComplete="off"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#2D6A4F]/10 transition-all bg-neutral-50/40 disabled:opacity-60 placeholder:text-neutral-400"
               />
+
+              {/* Suggestions Popover */}
+              {showSuggestions && isSearchFocused && suggestions.length > 0 && !selectedProduct && (
+                <div className="absolute z-20 top-full left-0 right-0 mt-1.5 bg-white border border-neutral-200/80 rounded-2xl shadow-xl max-h-56 overflow-y-auto divide-y divide-neutral-100 animate-page-in">
+                  <div className="px-3.5 py-2 bg-neutral-50 text-[11px] font-bold text-neutral-500 uppercase tracking-wider">
+                    Existing Tracked Essentials
+                  </div>
+                  {suggestions.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handleSelectExisting(p)}
+                      className="w-full text-left px-3.5 py-2.5 hover:bg-[#EBF4F0]/60 transition-colors flex items-center justify-between group cursor-pointer"
+                    >
+                      <div>
+                        <span className="text-sm font-semibold text-neutral-900 group-hover:text-[#2D6A4F]">
+                          {p.name}
+                        </span>
+                        <span className="text-xs text-neutral-500 block">
+                          {[p.brand, p.category, p.size_value ? `${p.size_value} ${p.size_unit}` : null]
+                            .filter(Boolean)
+                            .join(' • ')}
+                        </span>
+                      </div>
+                      <span className="text-xs font-semibold text-[#2D6A4F] opacity-0 group-hover:opacity-100 transition-opacity">
+                        Select →
+                      </span>
+                    </button>
+                  ))}
+                  <div className="px-3.5 py-2.5 bg-neutral-50/80 text-xs text-neutral-500 flex items-center justify-between">
+                    <span>Not in the list?</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowSuggestions(false)}
+                      className="text-[#2D6A4F] font-semibold hover:underline cursor-pointer"
+                    >
+                      + Add as brand new product
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Category & Brand */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label
+                  className="block text-xs font-semibold text-neutral-700 mb-1.5"
+                  htmlFor="category"
+                >
+                  Category *
+                </label>
+                <select
+                  id="category"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value as ProductCategory)}
+                  disabled={submitting}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#2D6A4F]/10 transition-all bg-white disabled:opacity-60 text-neutral-900"
+                >
+                  <option value="Skincare">Skincare</option>
+                  <option value="Haircare">Haircare</option>
+                  <option value="Oral Care">Oral Care</option>
+                  <option value="Household">Household</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label
+                  className="block text-xs font-semibold text-neutral-700 mb-1.5"
+                  htmlFor="brand"
+                >
+                  Brand (Optional)
+                </label>
+                <input
+                  id="brand"
+                  type="text"
+                  value={brand}
+                  onChange={(e) => setBrand(e.target.value)}
+                  placeholder="e.g. CeraVe, Dove, Oral-B"
+                  disabled={submitting}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#2D6A4F]/10 transition-all bg-neutral-50/40 disabled:opacity-60 placeholder:text-neutral-400"
+                />
+              </div>
             </div>
           </div>
 
-          {/* Size & Unit (Optional) */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="col-span-2">
-              <label
-                className="block text-xs font-semibold uppercase tracking-wider text-neutral-700 mb-1.5"
-                htmlFor="size"
-              >
-                Size / Volume (Optional)
-              </label>
-              <input
-                id="size"
-                type="number"
-                min="0.01"
-                step="any"
-                value={sizeValue}
-                onChange={(e) => setSizeValue(e.target.value)}
-                placeholder="e.g. 236"
-                disabled={submitting}
-                className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20 focus:border-[#2D6A4F] transition-all bg-neutral-50/40 disabled:opacity-60"
-              />
-            </div>
+          {/* GROUP 2: SIZE & SPECIFICATIONS */}
+          <div className="space-y-4 pt-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-400 pb-1 border-b border-neutral-100">
+              Volume / Size Specifications
+            </h3>
 
-            <div>
-              <label
-                className="block text-xs font-semibold uppercase tracking-wider text-neutral-700 mb-1.5"
-                htmlFor="unit"
-              >
-                Unit
-              </label>
-              <select
-                id="unit"
-                value={sizeUnit}
-                onChange={(e) => setSizeUnit(e.target.value as SizeUnit)}
-                disabled={submitting}
-                className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20 focus:border-[#2D6A4F] transition-all bg-white disabled:opacity-60"
-              >
-                <option value="ml">ml</option>
-                <option value="g">g</option>
-                <option value="count">count</option>
-              </select>
-            </div>
-          </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="col-span-2">
+                <label
+                  className="block text-xs font-semibold text-neutral-700 mb-1.5"
+                  htmlFor="size"
+                >
+                  Size / Volume (Optional)
+                </label>
+                <input
+                  id="size"
+                  type="number"
+                  min="0.01"
+                  step="any"
+                  value={sizeValue}
+                  onChange={(e) => setSizeValue(e.target.value)}
+                  placeholder="e.g. 236"
+                  disabled={submitting}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#2D6A4F]/10 transition-all bg-neutral-50/40 disabled:opacity-60 placeholder:text-neutral-400"
+                />
+              </div>
 
-          {/* Purchase Price */}
-          <div>
-            <label
-              className="block text-xs font-semibold uppercase tracking-wider text-neutral-700 mb-1.5"
-              htmlFor="price"
-            >
-              Purchase Price (BDT ৳) *
-            </label>
-            <div className="relative">
-              <span className="absolute left-3.5 top-2.5 text-neutral-400 text-sm font-semibold">
-                ৳
-              </span>
-              <input
-                id="price"
-                type="number"
-                required
-                min="0"
-                step="any"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                placeholder="1250"
-                disabled={submitting}
-                className="w-full pl-8 pr-3.5 py-2.5 rounded-lg border border-neutral-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20 focus:border-[#2D6A4F] transition-all bg-neutral-50/40 disabled:opacity-60"
-              />
+              <div>
+                <label
+                  className="block text-xs font-semibold text-neutral-700 mb-1.5"
+                  htmlFor="unit"
+                >
+                  Unit
+                </label>
+                <select
+                  id="unit"
+                  value={sizeUnit}
+                  onChange={(e) => setSizeUnit(e.target.value as SizeUnit)}
+                  disabled={submitting}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#2D6A4F]/10 transition-all bg-white disabled:opacity-60 text-neutral-900"
+                >
+                  <option value="ml">ml</option>
+                  <option value="g">g</option>
+                  <option value="count">count</option>
+                </select>
+              </div>
             </div>
           </div>
 
-          {/* Dates */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* GROUP 3: PURCHASE & USAGE LIFECYCLE */}
+          <div className="space-y-4 pt-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-400 pb-1 border-b border-neutral-100">
+              Purchase & Initial Usage
+            </h3>
+
+            {/* Purchase Price */}
             <div>
               <label
-                className="block text-xs font-semibold uppercase tracking-wider text-neutral-700 mb-1.5"
-                htmlFor="purchase-date"
+                className="block text-xs font-semibold text-neutral-700 mb-1.5"
+                htmlFor="price"
               >
-                Purchase Date *
+                Purchase Price (BDT ৳) *
               </label>
-              <input
-                id="purchase-date"
-                type="date"
-                required
-                value={purchaseDate}
-                onChange={(e) => setPurchaseDate(e.target.value)}
-                disabled={submitting}
-                className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20 focus:border-[#2D6A4F] transition-all bg-white disabled:opacity-60"
-              />
+              <div className="relative">
+                <span className="absolute left-3.5 top-2.5 text-neutral-400 text-sm font-semibold">
+                  ৳
+                </span>
+                <input
+                  id="price"
+                  type="number"
+                  required
+                  min="0"
+                  step="any"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  placeholder="1250"
+                  disabled={submitting}
+                  className="w-full pl-8 pr-3.5 py-2.5 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#2D6A4F]/10 transition-all bg-neutral-50/40 disabled:opacity-60 placeholder:text-neutral-400"
+                />
+              </div>
             </div>
 
-            <div>
-              <label
-                className="block text-xs font-semibold uppercase tracking-wider text-neutral-700 mb-1.5"
-                htmlFor="opened-date"
-              >
-                Opened / Start Using *
-              </label>
-              <input
-                id="opened-date"
-                type="date"
-                required
-                value={openedDate}
-                onChange={(e) => setOpenedDate(e.target.value)}
-                disabled={submitting}
-                className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20 focus:border-[#2D6A4F] transition-all bg-white disabled:opacity-60"
-              />
+            {/* Dates */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label
+                  className="block text-xs font-semibold text-neutral-700 mb-1.5"
+                  htmlFor="purchase-date"
+                >
+                  Purchase Date *
+                </label>
+                <input
+                  id="purchase-date"
+                  type="date"
+                  required
+                  value={purchaseDate}
+                  onChange={(e) => setPurchaseDate(e.target.value)}
+                  disabled={submitting}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#2D6A4F]/10 transition-all bg-white disabled:opacity-60 text-neutral-900"
+                />
+              </div>
+
+              <div>
+                <label
+                  className="block text-xs font-semibold text-neutral-700 mb-1.5"
+                  htmlFor="opened-date"
+                >
+                  Opened / Start Using *
+                </label>
+                <input
+                  id="opened-date"
+                  type="date"
+                  required
+                  value={openedDate}
+                  onChange={(e) => setOpenedDate(e.target.value)}
+                  disabled={submitting}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#2D6A4F]/10 transition-all bg-white disabled:opacity-60 text-neutral-900"
+                />
+              </div>
             </div>
           </div>
 
           {/* Submit Button */}
-          <div className="pt-3">
+          <div className="pt-4 border-t border-neutral-100">
             <button
               type="submit"
               disabled={submitting}
-              className="w-full py-3 px-4 rounded-lg bg-[#2D6A4F] hover:bg-[#24563F] text-white text-sm font-semibold transition-colors shadow-xs disabled:opacity-60 flex items-center justify-center gap-2"
+              className="btn-press w-full py-3 px-4 rounded-xl bg-[#2D6A4F] hover:bg-[#24563F] text-white text-sm font-semibold transition-all shadow-xs disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer"
             >
               {submitting ? (
-                <span>Saving Essential...</span>
+                <span className="flex items-center gap-2">
+                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Saving Essential...</span>
+                </span>
               ) : selectedProduct ? (
                 <span>Log Repeat Purchase</span>
               ) : (
