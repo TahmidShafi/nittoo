@@ -377,7 +377,19 @@ export const ProductDetailPage: React.FC = () => {
           </h1>
         </div>
 
-        <div className="flex items-center gap-2.5 w-full sm:w-auto shrink-0">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto shrink-0 flex-wrap sm:flex-nowrap">
+          <Link
+            to={`/compare?base=${product.id}`}
+            className="btn-press w-full sm:w-auto inline-flex items-center justify-center gap-1.5 min-h-[42px] px-3.5 py-2.5 rounded-xl border border-neutral-200/80 hover:bg-neutral-50 text-neutral-700 text-xs sm:text-sm font-semibold transition-all shadow-xs cursor-pointer"
+          >
+            <svg className="w-4 h-4 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m16 3 4 4-4 4" />
+              <path d="M20 7H4" />
+              <path d="m8 21-4-4 4-4" />
+              <path d="M4 17h16" />
+            </svg>
+            <span>Compare</span>
+          </Link>
           <button
             type="button"
             onClick={handleAddInventory}

@@ -84,6 +84,12 @@ Nittoo replaces guesswork with data-driven personal consumption intelligence.
 - **Cost Efficiency Leaderboard**: Ranked comparison of most cost-effective vs. least cost-effective essentials.
 - **Visual Cost-Per-Day Comparison**: Interactive bar chart powered by Recharts.
 
+### ⚖️ Personal Product Comparison & Value Intelligence
+- **Head-to-Head Value Comparison**: Select any reference essential and compare against any other tracked product.
+- **Strict Observed vs. Predicted Isolation**: Historical observed metrics (lifespan, cost/day, monthly consumption) are strictly grounded in completed cycles. Predictions for currently active containers are displayed solely as non-historical context.
+- **Package Size & Unit Price Economics**: Calculates price per unit (`৳/ml`, `৳/g`) and validates unit compatibility to prevent false comparisons across mismatched units.
+- **Deterministic Value Insight Engine**: Produces objective, evidence-based conclusions without subjective marketing claims (no "better" or "superior"). Early or limited data is prominently flagged.
+
 ### 🛡️ Multi-Tenant Security & Dual Storage Engine
 - **Cloud Mode**: Backed by live Supabase PostgreSQL with strict Row Level Security (RLS). Each user's data is strictly isolated at the database engine level.
 - **Development Mock Mode**: Built-in, zero-dependency offline mock database in `localStorage` with deterministic user isolation for offline development and testing.
@@ -377,6 +383,7 @@ Run any verification script with `npm run`:
 | `npm run verify:unopened` | Unopened Lifecycle | Storage, backup purchases, separate purchase/usage, and activation |
 | `npm run verify:edit-inventory` | Edit Current Inventory | In-place metadata, purchase, and opened date editing without duplication |
 | `npm run verify:inventory` | Inventory Management UX | Derived inventory query, Active vs Unopened sections, Add Inventory flow |
+| `npm run verify:comparison` | Product Comparison & Value Intelligence | 1-on-1 personal comparison, unit economics, observed vs predicted isolation, deterministic insights |
 | `npm run verify:rls` | Security & RLS | **Two-account live RLS audit**: verifies Account B cannot read, write, update, or delete Account A's data |
 | `npm run verify:audit` | 9-Domain Full Audit | 100% comprehensive production audit across all 9 architectural domains |
 

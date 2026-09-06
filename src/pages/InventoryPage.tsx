@@ -299,6 +299,13 @@ export const InventoryPage: React.FC = () => {
                       {/* Actions */}
                       <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                         <Link
+                          to={`/compare?base=${prod.id}`}
+                          className="btn-press inline-flex items-center justify-center min-h-[36px] px-3 py-1.5 rounded-xl border border-neutral-200/80 hover:bg-neutral-50 text-xs font-semibold text-neutral-700 transition-colors cursor-pointer"
+                          title="Compare with another essential"
+                        >
+                          Compare
+                        </Link>
+                        <Link
                           to={`/product/${prod.id}`}
                           className="btn-press inline-flex items-center justify-center min-h-[36px] px-3.5 py-1.5 rounded-xl border border-neutral-200/80 hover:bg-neutral-50 text-xs font-semibold text-neutral-700 transition-colors cursor-pointer"
                         >

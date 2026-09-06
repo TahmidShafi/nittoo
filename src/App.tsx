@@ -20,6 +20,7 @@ import { AddProductPage } from './pages/AddProductPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { InventoryPage } from './pages/InventoryPage';
 import { AddInventoryPage } from './pages/AddInventoryPage';
+import { ProductComparisonPage } from './pages/ProductComparisonPage';
 
 export const App: React.FC = () => {
   return (
@@ -101,6 +102,16 @@ export const App: React.FC = () => {
             <ProtectedRoute>
               <Layout>
                 <AddInventoryPage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/compare"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <ProductComparisonPage />
               </Layout>
             </ProtectedRoute>
           }
