@@ -1,7 +1,6 @@
 // ==============================================================================
 // Nittoo Product Detail & Personal Report Page
-// Personal Consumption Intelligence Report
-// Predictable Header, Dominant Active State, Key Metrics Row, Recharts Trend & Timeline
+// Personal Analytics Report, Weighted Cost/Day, Active Bottle, and Recharts Duration Trends
 // ==============================================================================
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
@@ -223,18 +222,22 @@ export const ProductDetailPage: React.FC = () => {
   // Loading State Skeleton
   if (loading) {
     return (
-      <div className="space-y-6 animate-pulse">
-        <div className="h-4 w-28 bg-neutral-100 rounded" />
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-neutral-200/60">
-          <div className="space-y-2 w-full max-w-sm">
-            <div className="h-3 w-24 bg-neutral-100 rounded" />
-            <div className="h-7 w-48 bg-neutral-200/70 rounded-lg" />
+      <div className="space-y-6 max-w-5xl mx-auto animate-pulse">
+        <div className="h-4 w-32 bg-neutral-200 rounded" />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-neutral-200">
+          <div className="space-y-2 w-full max-w-md">
+            <div className="h-4 w-36 bg-neutral-100 rounded" />
+            <div className="h-8 w-64 bg-neutral-200 rounded" />
           </div>
-          <div className="h-9 w-36 bg-neutral-200/60 rounded-lg shrink-0" />
+          <div className="h-10 w-44 bg-neutral-200 rounded-xl shrink-0" />
         </div>
-        <div className="h-28 bg-white border border-[#E8ECE9] rounded-xl p-4" />
-        <div className="h-20 bg-white border border-[#E8ECE9] rounded-xl p-4" />
-        <div className="h-56 bg-white border border-[#E8ECE9] rounded-xl p-4" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-24 bg-white border border-neutral-200 rounded-2xl p-4 flex flex-col justify-between" />
+          ))}
+        </div>
+        <div className="h-44 bg-white border border-neutral-200 rounded-2xl p-5" />
+        <div className="h-64 bg-white border border-neutral-200 rounded-2xl p-5" />
       </div>
     );
   }
@@ -242,18 +245,18 @@ export const ProductDetailPage: React.FC = () => {
   // Error / Not Found State
   if (error || !history) {
     return (
-      <div className="max-w-md mx-auto py-16 text-center space-y-3">
-        <div className="w-10 h-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center mx-auto text-base font-bold">
+      <div className="max-w-xl mx-auto py-16 text-center space-y-4">
+        <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto text-xl font-bold">
           !
         </div>
-        <h2 className="text-base font-bold text-neutral-900">Unable to load essential</h2>
+        <h2 className="text-xl font-bold text-neutral-900">Unable to load essential</h2>
         <p className="text-xs text-neutral-500">{error || 'This product could not be found or you do not have permission to view it.'}</p>
         <div className="pt-2">
           <Link
             to="/dashboard"
-            className="btn-press inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#2D6A4F] text-white text-xs font-semibold hover:bg-[#24563F] transition-colors shadow-xs"
+            className="btn-press inline-flex items-center gap-1.5 min-h-[42px] px-5 py-2.5 rounded-xl bg-[#2D6A4F] text-white text-xs font-semibold hover:bg-[#24563F] transition-colors shadow-xs"
           >
-            ← Back to Essentials
+            ← Back to Dashboard
           </Link>
         </div>
       </div>
@@ -263,324 +266,336 @@ export const ProductDetailPage: React.FC = () => {
   const { product } = history;
 
   return (
-    <div className="space-y-6 animate-page-in">
-      {/* 1. PRODUCT HEADER & BREADCRUMB */}
-      <div className="space-y-2">
+    <div className="space-y-8 max-w-5xl mx-auto animate-page-in">
+      {/* Navigation Breadcrumb */}
+      <div>
+        <Link
+          to="/dashboard"
+          className="btn-press inline-flex items-center gap-1.5 text-xs font-medium text-neutral-500 hover:text-neutral-900 transition-colors py-1"
+        >
+          <span>←</span>
+          <span>Back to Essentials</span>
+        </Link>
+      </div>
+
+      {/* Product Header Card */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 pb-6 border-b border-neutral-200/80">
         <div>
-          <Link
-            to="/dashboard"
-            className="btn-press inline-flex items-center gap-1 text-xs font-medium text-neutral-400 hover:text-neutral-700 transition-colors"
-          >
-            <span>←</span>
-            <span>Essentials</span>
-          </Link>
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-md bg-neutral-100/90 text-neutral-700">
+              {product.category}
+            </span>
+            {product.brand && (
+              <span className="text-xs text-neutral-500 font-medium">{product.brand}</span>
+            )}
+            {product.size_value && (
+              <>
+                <span className="text-neutral-300">•</span>
+                <span className="text-xs text-neutral-500 font-medium">
+                  {product.size_value} {product.size_unit}
+                </span>
+              </>
+            )}
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900">
+            {product.name}
+          </h1>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 pb-4 border-b border-[#F0F2F1]">
-          <div>
-            <div className="flex items-center gap-2 text-[10px] uppercase font-semibold tracking-wider text-neutral-400 mb-1">
-              <span>{product.category}</span>
-              {product.brand && (
-                <>
-                  <span className="text-neutral-300">·</span>
-                  <span>{product.brand}</span>
-                </>
-              )}
-              {product.size_value && (
-                <>
-                  <span className="text-neutral-300">·</span>
-                  <span>{product.size_value} {product.size_unit}</span>
-                </>
-              )}
-            </div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900">
-              {product.name}
-            </h1>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={handleLogNewBottle}
-              className="btn-press inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#2D6A4F] hover:bg-[#24563F] text-white text-xs font-semibold transition-all shadow-xs cursor-pointer w-full sm:w-auto"
-            >
-              <span className="text-sm leading-none font-bold">+</span>
-              <span>Log Repeat Purchase</span>
-            </button>
-          </div>
+        <div className="flex items-center gap-2.5 w-full sm:w-auto shrink-0">
+          <button
+            type="button"
+            onClick={handleLogNewBottle}
+            className="btn-press w-full sm:w-auto inline-flex items-center justify-center gap-1.5 min-h-[42px] px-4 py-2.5 rounded-xl bg-[#2D6A4F] hover:bg-[#24563F] text-white text-xs sm:text-sm font-semibold transition-all shadow-xs cursor-pointer"
+          >
+            <span className="text-base leading-none font-bold">+</span>
+            <span>Log Repeat Purchase</span>
+          </button>
         </div>
       </div>
 
-      {/* 2. CURRENT BOTTLE / ACTIVE STATE (DOMINANT) */}
+      {/* Active Bottle Hero Card OR No Active Bottle Banner */}
       {activeUsageData ? (
-        <div className="bg-white border border-[#E8ECE9] rounded-xl p-5 shadow-xs space-y-3.5">
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+        <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 sm:p-7 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <span className="text-[10px] uppercase font-semibold tracking-wider text-neutral-400 block mb-1">
-                Currently Using
-              </span>
-              <div className="flex items-baseline gap-3 flex-wrap">
-                {activeUsageData.urgencyState === 'overdue' ? (
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse shrink-0" />
-                    <span className="text-xl sm:text-2xl font-bold text-rose-600 tracking-tight">
-                      Overdue by {activeUsageData.overdueDays} day{activeUsageData.overdueDays === 1 ? '' : 's'}
-                    </span>
-                  </div>
-                ) : activeUsageData.urgencyState === 'running_soon' && activeUsageData.predictedRemaining !== null ? (
-                  <div className="flex items-center gap-1.5">
-                    <span
-                      className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                        activeUsageData.predictedRemaining < 14 ? 'bg-amber-500' : 'bg-[#2D6A4F]'
-                      }`}
-                    />
-                    <span className="text-xl sm:text-2xl font-bold text-neutral-900 tracking-tight">
-                      {activeUsageData.predictedRemaining} days remaining
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-neutral-300 shrink-0" />
-                    <span className="text-base font-semibold text-neutral-600">
-                      First Cycle · Learning baseline
-                    </span>
-                  </div>
-                )}
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#2D6A4F] animate-pulse" />
+                <h2 className="text-base font-bold text-neutral-900">Current In-Use Bottle</h2>
               </div>
-              <p className="text-xs text-neutral-500 mt-1">
-                {activeUsageData.avgDuration !== null ? (
-                  <span>
-                    <strong className="font-semibold text-neutral-800">{activeUsageData.avgDuration}-day</strong> average lifespan
-                    <span className="text-neutral-300 mx-1.5">·</span>
-                    Day {activeUsageData.daysUsed} in use (opened {formatDisplayDate(activeUsageData.active.opened_date)})
-                  </span>
-                ) : (
-                  <span>Opened on {formatDisplayDate(activeUsageData.active.opened_date)} · Day {activeUsageData.daysUsed} in use</span>
-                )}
+              <p className="text-xs text-neutral-500 mt-0.5">
+                Opened on {formatDisplayDate(activeUsageData.active.opened_date)}
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setIsModalOpen(true)}
-              className="btn-press px-3 py-1.5 rounded-md bg-neutral-100 hover:bg-neutral-200/80 text-neutral-700 text-xs font-medium transition-colors self-start cursor-pointer"
-            >
-              Finish Bottle
-            </button>
+            <div className="flex items-center gap-3">
+              {activeUsageData.urgencyState === 'overdue' ? (
+                <span className="text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-3 py-1 rounded-full flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                  <span>Overdue by {activeUsageData.overdueDays} day{activeUsageData.overdueDays === 1 ? '' : 's'}</span>
+                </span>
+              ) : activeUsageData.urgencyState === 'running_soon' ? (
+                <span className="text-xs font-semibold text-[#2D6A4F] bg-[#EBF4F0] border border-[#2D6A4F]/20 px-3 py-1 rounded-full flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#2D6A4F]" />
+                  <span>{activeUsageData.predictedRemaining} day{activeUsageData.predictedRemaining === 1 ? '' : 's'} left</span>
+                </span>
+              ) : (
+                <span className="text-xs font-medium text-neutral-600 bg-neutral-100 px-3 py-1 rounded-full">
+                  First Cycle • Learning baseline
+                </span>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(true)}
+                className="btn-press px-3.5 py-1.5 rounded-xl bg-neutral-100 hover:bg-neutral-200/80 text-neutral-700 text-xs font-medium transition-colors cursor-pointer"
+              >
+                Mark Finished
+              </button>
+            </div>
           </div>
 
-          {/* Thin Progress Track */}
-          <div className="h-[3px] w-full bg-neutral-100 rounded-full overflow-hidden">
-            {activeUsageData.progress !== null ? (
-              <div
-                className={`h-full rounded-full transition-all duration-300 ${
-                  activeUsageData.isOverdue
-                    ? 'bg-rose-500 w-full'
-                    : activeUsageData.predictedRemaining !== null && activeUsageData.predictedRemaining < 14
-                    ? 'bg-amber-500'
-                    : 'bg-[#2D6A4F]'
-                }`}
-                style={{ width: `${activeUsageData.progress}%` }}
-              />
-            ) : (
-              <div className="h-full w-full bg-neutral-200/40 rounded-full" />
-            )}
+          {/* Progress Bar & Status */}
+          <div className="space-y-2 pt-2 border-t border-neutral-100">
+            <div className="flex justify-between items-center text-xs text-neutral-600">
+              <span>
+                Day <strong className="font-semibold text-neutral-900">{activeUsageData.daysUsed}</strong> in use
+              </span>
+              {activeUsageData.avgDuration !== null ? (
+                <span className="font-medium text-neutral-700">
+                  Target: ~{activeUsageData.avgDuration} days
+                </span>
+              ) : (
+                <span className="italic text-neutral-400 text-[11px]">Collecting first cycle duration</span>
+              )}
+            </div>
+            <div className="h-2 w-full bg-neutral-100 rounded-full overflow-hidden">
+              {activeUsageData.progress !== null ? (
+                <div
+                  className={`h-full rounded-full transition-all duration-300 ${
+                    activeUsageData.isOverdue
+                      ? 'bg-rose-500 w-full'
+                      : activeUsageData.predictedRemaining !== null && activeUsageData.predictedRemaining < 14
+                      ? 'bg-amber-500'
+                      : 'bg-[#2D6A4F]'
+                  }`}
+                  style={{ width: `${activeUsageData.progress}%` }}
+                />
+              ) : (
+                <div className="h-full w-full bg-neutral-200/50 rounded-full" />
+              )}
+            </div>
           </div>
         </div>
       ) : (
         /* No Active Bottle State */
-        <div className="bg-white border border-[#E8ECE9] rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+        <div className="bg-[#EBF4F0]/50 border border-[#2D6A4F]/20 rounded-2xl p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500">No active bottle</h3>
+            <h3 className="text-sm font-bold text-neutral-900">No bottle is currently in use</h3>
             <p className="text-xs text-neutral-500 mt-0.5">
-              Open a new bottle or record a repeat purchase to start tracking this cycle.
+              Open a new bottle or log a repeat purchase to continue tracking this essential.
             </p>
           </div>
           <button
             type="button"
             onClick={handleLogNewBottle}
-            className="btn-press px-3.5 py-1.5 rounded-lg bg-[#2D6A4F] hover:bg-[#24563F] text-white text-xs font-semibold transition-all shadow-xs self-start sm:self-auto cursor-pointer"
+            className="btn-press px-4 py-2.5 rounded-xl bg-[#2D6A4F] hover:bg-[#24563F] text-white text-xs font-semibold transition-all shadow-xs self-start sm:self-auto cursor-pointer"
           >
             + Start New Bottle
           </button>
         </div>
       )}
 
-      {/* 3. KEY METRICS (High-density strip with clear typographic weight) */}
-      <div className="bg-white border border-[#E8ECE9] rounded-xl p-4 sm:p-5 shadow-xs grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-[#F0F2F1]">
-        {/* Metric 1: Average Lifespan */}
-        <div className="px-0 sm:px-4 first:pl-0 pb-3 sm:pb-0 flex flex-col justify-between">
-          <span className="text-[10px] uppercase font-semibold tracking-wider text-neutral-400 block mb-1">
+      {/* Summary Statistics Cards (Editorial Grid) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {/* 1. Average Duration */}
+        <div className="bg-white border border-neutral-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
             Average Lifespan
           </span>
           {summaryStats?.averageDuration !== null ? (
-            <div className="flex items-baseline gap-1">
+            <div className="mt-1">
               <span className="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight">
                 {summaryStats?.averageDuration}
               </span>
-              <span className="text-xs text-neutral-500 font-normal">days</span>
+              <span className="text-xs text-neutral-500 ml-1">days</span>
             </div>
           ) : (
-            <span className="text-xs font-medium text-neutral-400 italic">Not enough data</span>
+            <div className="text-xs font-semibold italic text-neutral-400 mt-2">
+              Not enough data
+            </div>
           )}
-          <span className="text-[10px] text-neutral-400 mt-1">
-            {history.finished_periods.length} cycle{history.finished_periods.length === 1 ? '' : 's'}
+          <span className="text-[11px] text-neutral-400 mt-2 block">
+            {history.finished_periods.length} finished cycle{history.finished_periods.length === 1 ? '' : 's'}
           </span>
         </div>
 
-        {/* Metric 2: Cost Per Day */}
-        <div className="px-0 sm:px-4 pt-3 sm:pt-0 pb-3 sm:pb-0 flex flex-col justify-between">
-          <span className="text-[10px] uppercase font-semibold tracking-wider text-neutral-400 block mb-1">
-            Cost / Day
+        {/* 2. Weighted Average Cost Per Day */}
+        <div className="bg-white border border-neutral-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
+            Cost Per Day
           </span>
           {summaryStats?.weightedCostPerDay !== null ? (
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight">
+            <div className="mt-1">
+              <span className="text-2xl sm:text-3xl font-bold text-[#2D6A4F] tracking-tight">
                 ৳{summaryStats?.weightedCostPerDay}
               </span>
-              <span className="text-xs text-neutral-500 font-normal">/day</span>
+              <span className="text-xs text-neutral-500 ml-1">/ day</span>
             </div>
           ) : (
-            <span className="text-xs font-medium text-neutral-400 italic">Not enough data</span>
+            <div className="text-xs font-semibold italic text-neutral-400 mt-2">
+              Not enough data
+            </div>
           )}
-          <span className="text-[10px] text-neutral-400 mt-1">Weighted average</span>
+          <span className="text-[11px] text-neutral-400 mt-2 block">
+            Weighted across completed cycles
+          </span>
         </div>
 
-        {/* Metric 3: Total Spent */}
-        <div className="px-0 sm:px-4 pt-3 sm:pt-0 pb-3 sm:pb-0 flex flex-col justify-between">
-          <span className="text-[10px] uppercase font-semibold tracking-wider text-neutral-400 block mb-1">
+        {/* 3. Total Spent */}
+        <div className="bg-white border border-neutral-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
             Total Spent
           </span>
-          <div className="flex items-baseline gap-1">
+          <div className="mt-1">
             <span className="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight">
               ৳{summaryStats?.totalSpent.toLocaleString()}
             </span>
           </div>
-          <span className="text-[10px] text-neutral-400 mt-1">All recorded purchases</span>
+          <span className="text-[11px] text-neutral-400 mt-2 block">
+            {summaryStats?.purchaseCount} purchase{summaryStats?.purchaseCount === 1 ? '' : 's'} recorded
+          </span>
         </div>
 
-        {/* Metric 4: Purchases */}
-        <div className="px-0 sm:px-4 last:pr-0 pt-3 sm:pt-0 flex flex-col justify-between">
-          <span className="text-[10px] uppercase font-semibold tracking-wider text-neutral-400 block mb-1">
-            Purchases
+        {/* 4. Unit Rate */}
+        <div className="bg-white border border-neutral-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
+            Unit Rate
           </span>
-          <div className="flex items-baseline gap-1">
-            <span className="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight">
-              {summaryStats?.purchaseCount}
-            </span>
-            <span className="text-xs text-neutral-500 font-normal">bottles</span>
-          </div>
-          <span className="text-[10px] text-neutral-400 mt-1">
-            {summaryStats?.unitRate && product.size_unit
-              ? `৳${summaryStats.unitRate}/${product.size_unit}`
-              : 'Purchase history'}
+          {summaryStats?.unitRate !== null && product.size_unit ? (
+            <div className="mt-1">
+              <span className="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight">
+                ৳{summaryStats?.unitRate}
+              </span>
+              <span className="text-xs text-neutral-500 ml-1">/ {product.size_unit}</span>
+            </div>
+          ) : (
+            <div className="text-xs font-semibold italic text-neutral-400 mt-2">
+              —
+            </div>
+          )}
+          <span className="text-[11px] text-neutral-400 mt-2 block">
+            Purchase price ÷ size
           </span>
         </div>
       </div>
 
-      {/* 4. LIFESPAN TREND (Recharts) */}
-      <div className="bg-white border border-[#E8ECE9] rounded-xl p-5 shadow-xs space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-500">Lifespan Trend</h2>
-            <p className="text-xs text-neutral-400 mt-0.5">Historical cycle duration (days)</p>
-          </div>
+      {/* Duration Trend Chart (Recharts) */}
+      <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-xs space-y-4">
+        <div>
+          <h2 className="text-base font-bold text-neutral-900">Duration Trends</h2>
+          <p className="text-xs text-neutral-500 mt-0.5">
+            Historical lifespan across completed cycles (days).
+          </p>
         </div>
 
         {chartData.length === 0 ? (
-          <div className="py-8 bg-neutral-50/60 border border-dashed border-[#E8ECE9] rounded-lg text-center">
-            <p className="text-xs font-semibold text-neutral-600">
+          <div className="h-44 w-full bg-neutral-50/80 border border-dashed border-neutral-200 rounded-xl flex flex-col items-center justify-center p-6 text-center">
+            <span className="text-2xl mb-1.5">📊</span>
+            <p className="text-xs font-semibold text-neutral-700">
               Complete a cycle to view duration trends
             </p>
             <p className="text-[11px] text-neutral-400 mt-0.5">
-              Historical trends will appear automatically after marking your first bottle as finished.
+              Historical trends appear automatically after marking a bottle as finished.
             </p>
           </div>
         ) : (
-          <div className="h-48 w-full pt-1">
+          <div className="h-56 w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={chartData}
-                margin={{ top: 8, right: 8, left: -24, bottom: 0 }}
+                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
               >
-                <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="#F0F2F1" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F0F2F1" />
                 <XAxis
                   dataKey="cycle"
-                  tick={{ fontSize: 10, fill: '#888888' }}
+                  tick={{ fontSize: 11, fill: '#6B7280' }}
                   tickLine={false}
-                  axisLine={{ stroke: '#E8ECE9' }}
+                  axisLine={{ stroke: '#E5E7EB' }}
                 />
                 <YAxis
-                  tick={{ fontSize: 10, fill: '#888888' }}
+                  tick={{ fontSize: 11, fill: '#6B7280' }}
                   tickLine={false}
-                  axisLine={{ stroke: '#E8ECE9' }}
+                  axisLine={{ stroke: '#E5E7EB' }}
                   domain={[0, (dataMax: number) => Math.max(10, Math.ceil(dataMax * 1.15))]}
                   unit="d"
                 />
                 <Tooltip
-                  formatter={(value) => [`${value ?? 0} days`, 'Duration']}
+                  formatter={(value) => [`${value ?? 0} days`, 'Lifespan Duration']}
                   labelFormatter={(label, items) => {
                     const item = items?.[0]?.payload as { finishedDate?: string } | undefined;
-                    return `${label} · Finished ${item?.finishedDate ?? ''}`;
+                    return `${label} • Finished ${item?.finishedDate ?? ''}`;
                   }}
                   contentStyle={{
                     backgroundColor: '#FFFFFF',
                     border: '1px solid #E8ECE9',
-                    borderRadius: '8px',
-                    fontSize: '11px',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                    borderRadius: '12px',
+                    fontSize: '12px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
                   }}
                 />
-                <Bar dataKey="duration" fill="#2D6A4F" radius={[4, 4, 0, 0]} maxBarSize={36} />
+                <Bar dataKey="duration" fill="#2D6A4F" radius={[6, 6, 0, 0]} maxBarSize={44} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         )}
       </div>
 
-      {/* 5. HISTORY (Clean timeline list with separators rather than chunky boxes) */}
-      <div className="bg-white border border-[#E8ECE9] rounded-xl p-5 shadow-xs space-y-3">
+      {/* Completed Lifespans Timeline */}
+      <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-xs space-y-4">
         <div>
-          <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-500">Completed Lifespans</h2>
-          <p className="text-xs text-neutral-400 mt-0.5">Chronological log of completed usage cycles</p>
+          <h2 className="text-base font-bold text-neutral-900">Completed Lifespans Timeline</h2>
+          <p className="text-xs text-neutral-500 mt-0.5">
+            Chronological log of completed bottles and daily cost efficiency.
+          </p>
         </div>
 
         {timelineData.length === 0 ? (
-          <p className="text-xs text-neutral-400 italic py-4 text-center">
+          <p className="text-xs text-neutral-400 italic py-6 text-center">
             No completed lifespans recorded yet.
           </p>
         ) : (
-          <div className="divide-y divide-[#F0F2F1] border-t border-[#F0F2F1]">
+          <div className="divide-y divide-neutral-100 border border-neutral-100 rounded-xl overflow-hidden">
             {timelineData.map((cycle) => (
               <div
                 key={cycle.id}
-                className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs hover:bg-neutral-50/40 transition-colors"
+                className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:bg-neutral-50/60 transition-colors"
               >
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-neutral-900">Cycle #{cycle.cycleNumber}</span>
-                    <span className="text-neutral-300">·</span>
-                    <span className="text-neutral-600">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="font-bold text-neutral-900">Cycle #{cycle.cycleNumber}</span>
+                    <span className="text-neutral-300">•</span>
+                    <span className="text-neutral-600 font-medium">
                       {cycle.openedDate} → {cycle.finishedDate}
                     </span>
                   </div>
-                  <p className="text-neutral-400 text-[11px] mt-0.5">
+                  <p className="text-neutral-400 text-[11px]">
                     Purchased on {cycle.purchaseDate}
                     {cycle.price !== null ? ` for ৳${cycle.price}` : ''}
                   </p>
                 </div>
 
-                <div className="flex items-center gap-5 sm:text-right">
+                <div className="flex items-center gap-6 sm:text-right">
                   <div>
-                    <span className="text-[10px] uppercase font-semibold text-neutral-400 block">Duration</span>
-                    <span className="font-semibold text-neutral-900 text-xs">
+                    <span className="text-neutral-400 block text-[10px] uppercase font-semibold tracking-wider">Duration</span>
+                    <span className="font-bold text-neutral-900 text-sm">
                       {cycle.duration} days
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-semibold text-neutral-400 block">Cost / Day</span>
+                    <span className="text-neutral-400 block text-[10px] uppercase font-semibold tracking-wider">Cycle Cost/Day</span>
                     {cycle.cycleCostPerDay !== null ? (
-                      <span className="font-semibold text-[#2D6A4F] text-xs">
+                      <span className="font-bold text-[#2D6A4F] text-sm">
                         ৳{cycle.cycleCostPerDay}/day
                       </span>
                     ) : (

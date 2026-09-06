@@ -1,7 +1,6 @@
 // ==============================================================================
 // Nittoo Consumption Analytics Page
-// Linear-inspired Insight-driven Consumption Workspace
-// Predictable Header, Upcoming Depletions, Consumption Run Rate, Efficiency & Comparison
+// Cross-product consumption insights, run rates, and upcoming depletion alerts
 // ==============================================================================
 
 import React, { useEffect, useState } from 'react';
@@ -93,17 +92,18 @@ export const AnalyticsPage: React.FC = () => {
   // Loading Skeleton State
   if (loading) {
     return (
-      <div className="space-y-6 animate-pulse">
+      <div className="space-y-8 max-w-5xl mx-auto animate-pulse">
         <div className="space-y-2">
-          <div className="h-3 w-28 bg-neutral-100 rounded" />
-          <div className="h-7 w-48 bg-neutral-200/70 rounded-lg" />
-          <div className="h-3 w-80 bg-neutral-100 rounded" />
+          <div className="h-8 bg-neutral-200/60 rounded-xl w-64" />
+          <div className="h-4 bg-neutral-100 rounded-lg w-96" />
         </div>
-        <div className="space-y-4 pt-4">
-          <div className="h-28 bg-white border border-[#E8ECE9] rounded-xl p-4" />
-          <div className="h-24 bg-white border border-[#E8ECE9] rounded-xl p-4" />
-          <div className="h-44 bg-white border border-[#E8ECE9] rounded-xl p-4" />
+        <div className="h-48 bg-white border border-neutral-200/80 rounded-2xl p-6" />
+        <div className="h-32 bg-white border border-neutral-200/80 rounded-2xl p-6" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 h-48" />
+          <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 h-48" />
         </div>
+        <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 h-64" />
       </div>
     );
   }
@@ -111,15 +111,15 @@ export const AnalyticsPage: React.FC = () => {
   // Error State
   if (error) {
     return (
-      <div className="max-w-md mx-auto text-center py-16 space-y-3">
-        <div className="w-10 h-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center mx-auto text-base font-bold">
+      <div className="max-w-md mx-auto text-center py-16 space-y-4">
+        <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto text-xl font-bold">
           !
         </div>
-        <h2 className="text-base font-bold text-neutral-900">Error Loading Analytics</h2>
+        <h2 className="text-xl font-bold text-neutral-900">Error Loading Analytics</h2>
         <p className="text-xs text-neutral-500">{error}</p>
         <button
           onClick={() => window.location.reload()}
-          className="btn-press px-4 py-2 text-xs font-semibold rounded-lg bg-[#2D6A4F] text-white hover:bg-[#24543F] transition-colors shadow-xs cursor-pointer"
+          className="btn-press min-h-[42px] px-6 py-2.5 text-xs font-semibold rounded-xl bg-[#2D6A4F] text-white hover:bg-[#24543F] transition-colors shadow-xs cursor-pointer"
         >
           Try Again
         </button>
@@ -127,250 +127,325 @@ export const AnalyticsPage: React.FC = () => {
     );
   }
 
-  // Empty Account State (Section 18)
+  // Empty Account State
   if (!hasProducts) {
     return (
-      <div className="bg-white border border-[#E8ECE9] rounded-xl p-8 sm:p-12 text-center max-w-md mx-auto space-y-4 shadow-xs my-8">
-        <div className="w-11 h-11 rounded-lg bg-[#EBF4F0] text-[#2D6A4F] flex items-center justify-center mx-auto text-lg shadow-xs">
+      <div className="max-w-xl mx-auto text-center py-12 sm:py-16 bg-white border border-neutral-200/80 rounded-3xl p-8 sm:p-12 shadow-xs my-8 space-y-5">
+        <div className="w-16 h-16 rounded-2xl bg-[#EBF4F0] text-[#2D6A4F] flex items-center justify-center mx-auto text-2xl shadow-xs">
           📊
         </div>
-        <div className="space-y-1.5">
-          <h2 className="text-base font-bold text-neutral-900 tracking-tight">
+        <div className="space-y-2">
+          <h2 className="text-xl font-bold text-neutral-900 tracking-tight">
             Nothing to analyze yet
           </h2>
-          <p className="text-xs text-neutral-500 max-w-sm mx-auto leading-relaxed">
-            Complete a usage cycle and Nittoo will start learning your consumption patterns.
+          <p className="text-xs sm:text-sm text-neutral-500 leading-relaxed max-w-md mx-auto">
+            Complete your first product usage cycles and Nittoo will start computing your true daily costs, restock forecasts, and consumption patterns.
           </p>
         </div>
-        <div className="pt-1">
+        <div className="pt-2">
           <Link
             to="/add-product"
-            className="btn-press inline-flex items-center justify-center px-4 py-2 text-xs font-semibold rounded-lg bg-[#2D6A4F] text-white hover:bg-[#24543F] transition-all shadow-xs cursor-pointer"
+            className="btn-press inline-flex items-center justify-center min-h-[42px] px-6 py-2.5 text-xs sm:text-sm font-semibold rounded-xl bg-[#2D6A4F] text-white hover:bg-[#24543F] transition-all shadow-xs cursor-pointer"
           >
-            + Add Product
+            + Add Your First Essential
           </Link>
         </div>
       </div>
     );
   }
 
+  const eligibleCount = costRankings.mostEfficient.length;
+
   return (
-    <div className="space-y-8 animate-page-in">
-      {/* Header System (Section 5) */}
-      <div className="pb-4 border-b border-[#F0F2F1]">
-        <span className="text-[10px] uppercase font-semibold tracking-wider text-[#2D6A4F] block mb-1">
+    <div className="space-y-8 max-w-5xl mx-auto animate-page-in">
+      {/* Page Header */}
+      <div>
+        <span className="text-[11px] font-bold uppercase tracking-wider text-[#2D6A4F] block mb-1">
           Consumption Intelligence
         </span>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900">
-          Analytics
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900">
+          Analytics & Forecasting
         </h1>
-        <p className="text-xs text-neutral-500 mt-0.5 max-w-xl">
-          Understand your consumption patterns and what you'll likely need next.
+        <p className="text-xs sm:text-sm text-neutral-500 mt-1">
+          Daily cost-of-ownership, baseline monthly run rate, and smart re-order timelines.
         </p>
       </div>
 
-      {/* SECTION 1: UPCOMING (Section 10) */}
-      <section className="space-y-2.5">
-        <div className="flex items-center justify-between pb-1 border-b border-[#E8ECE9]">
-          <h2 className="text-[10px] uppercase font-bold tracking-wider text-neutral-400">
-            Upcoming
-          </h2>
+      {/* Priority 1: UPCOMING PURCHASES */}
+      <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 sm:p-7 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h2 className="text-base font-bold text-neutral-900">Upcoming Depletions (Next 30 Days)</h2>
+            <p className="text-xs text-neutral-500 mt-0.5">
+              Products predicted to run out soon based on completed historical lifespans.
+            </p>
+          </div>
           {upcomingPurchases.length > 0 ? (
-            <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200/60">
-              {upcomingPurchases.length} attention needed
+            <span className="self-start sm:self-auto text-xs font-semibold px-3 py-1 bg-amber-50 text-amber-800 rounded-full border border-amber-200">
+              {upcomingPurchases.length} Needs Attention
             </span>
           ) : (
-            <span className="text-[10px] font-medium text-neutral-400">
-              Supply healthy
+            <span className="self-start sm:self-auto text-xs font-medium px-3 py-1 bg-[#EBF4F0] text-[#2D6A4F] rounded-full border border-[#2D6A4F]/20">
+              Supply Healthy
             </span>
           )}
         </div>
 
         {upcomingPurchases.length > 0 ? (
-          <div className="divide-y divide-[#F0F2F1] bg-white border border-[#E8ECE9] rounded-xl px-4 py-1 shadow-xs">
+          <div className="border border-neutral-100 rounded-xl divide-y divide-neutral-100 overflow-hidden">
             {upcomingPurchases.map((item) => (
               <div
                 key={item.product.id}
-                className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+                className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:bg-neutral-50/70 transition-colors"
               >
-                <div>
+                <div className="space-y-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <Link
                       to={`/product/${item.product.id}`}
-                      className="font-semibold text-neutral-900 hover:text-[#2D6A4F] transition-colors"
+                      className="font-bold text-neutral-900 hover:text-[#2D6A4F] text-sm transition-colors"
                     >
                       {item.product.brand && !item.product.name.toLowerCase().startsWith(item.product.brand.toLowerCase())
                         ? `${item.product.brand} `
                         : ''}
                       {item.product.name}
                     </Link>
-                    <span className="text-[10px] uppercase text-neutral-400 font-medium">
-                      · {item.product.category}
+                    <span className="text-[11px] px-2 py-0.5 rounded-md bg-neutral-100 text-neutral-600 font-medium">
+                      {item.product.category}
                     </span>
                     {item.isOverdue ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200/60">
+                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
-                        Overdue by {Math.abs(item.predictedRemainingDays)} days
+                        <span>Overdue by {Math.abs(item.predictedRemainingDays)} day{Math.abs(item.predictedRemainingDays) === 1 ? '' : 's'}</span>
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-neutral-800 bg-neutral-100 px-2 py-0.5 rounded-full">
+                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                        {item.predictedRemainingDays} days left
+                        <span>{item.predictedRemainingDays} day{item.predictedRemainingDays === 1 ? '' : 's'} left</span>
                       </span>
                     )}
                   </div>
-                  <p className="text-[11px] text-neutral-400 mt-0.5">
-                    Finish expected around {formatDisplayDate(item.predictedFinishDate)}
+                  <p className="text-neutral-400 text-[11px]">
+                    {item.isOverdue ? (
+                      <>Predicted finish was <span className="font-semibold text-neutral-700">{formatDisplayDate(item.predictedFinishDate)}</span></>
+                    ) : (
+                      <>Predicted finish date: <span className="font-semibold text-neutral-700">{formatDisplayDate(item.predictedFinishDate)}</span></>
+                    )}
                   </p>
                 </div>
 
-                <div className="text-left sm:text-right shrink-0">
-                  <span className="text-sm font-bold text-neutral-900">
-                    ৳{Math.round(item.estimatedNextPrice).toLocaleString()} est.
-                  </span>
-                  <span className="text-[10px] text-neutral-400 block">based on purchase history</span>
+                <div className="text-left sm:text-right shrink-0 pt-1 sm:pt-0">
+                  <span className="text-[10px] uppercase font-semibold text-neutral-400 block tracking-wider">Estimated next rebuy</span>
+                  <div className="font-bold text-neutral-900 text-base">
+                    ৳{Math.round(item.estimatedNextPrice).toLocaleString()}
+                  </div>
+                  <span className="text-[10px] text-neutral-400 block">(from purchase history)</span>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="p-4 bg-white border border-[#E8ECE9] rounded-xl text-xs text-neutral-400 shadow-xs">
-            No products are predicted to run out within the next 30 days.
+          <div className="text-center py-8 bg-neutral-50/70 border border-dashed border-neutral-200/80 rounded-xl">
+            <p className="text-xs text-neutral-700 font-semibold">
+              No products are expected to run out within the next 30 days.
+            </p>
+            <p className="text-[11px] text-neutral-400 mt-1 max-w-sm mx-auto">
+              All active essentials have sufficient supply or are building their baseline lifespan.
+            </p>
           </div>
         )}
-      </section>
+      </div>
 
-      {/* SECTION 2: CONSUMPTION (Section 10) */}
-      <section className="space-y-2.5">
-        <div className="pb-1 border-b border-[#E8ECE9]">
-          <h2 className="text-[10px] uppercase font-bold tracking-wider text-neutral-400">
-            Consumption
+      {/* Priority 2: PRIMARY METRIC: ESTIMATED MONTHLY CONSUMPTION COST */}
+      <div className="bg-[#EBF4F0]/60 border border-[#2D6A4F]/25 rounded-2xl p-6 sm:p-8 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+        <div className="space-y-1.5">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-[#2D6A4F] block">
+            Baseline Run Rate
+          </span>
+          <h2 className="text-xl sm:text-2xl font-bold text-neutral-900 tracking-tight">
+            Estimated Monthly Consumption
           </h2>
+          <p className="text-xs text-neutral-600 max-w-xl leading-relaxed">
+            Standardizes your essential consumption into a steady 30-day run rate based on completed bottle lifespans. Reflects ongoing daily usage rather than lump-sum shopping totals.
+          </p>
+          {monthlyConsumption !== null && (
+            <p className="text-[11px] text-[#2D6A4F] font-semibold pt-1">
+              ✓ Calculated across {eligibleCount} product{eligibleCount === 1 ? '' : 's'} with completed lifespans.
+            </p>
+          )}
         </div>
 
-        <div className="bg-white border border-[#E8ECE9] rounded-xl p-5 shadow-xs flex flex-col sm:flex-row sm:items-baseline justify-between gap-3">
+        <div className="text-left sm:text-right shrink-0">
+          {monthlyConsumption !== null ? (
+            <>
+              <div className="text-3xl sm:text-4xl font-black text-[#2D6A4F] tracking-tight">
+                ৳{Math.round(monthlyConsumption).toLocaleString()}
+              </div>
+              <span className="text-xs text-neutral-500 font-medium">/ month normalized</span>
+            </>
+          ) : (
+            <>
+              <div className="text-xl font-bold text-neutral-500">Not enough data</div>
+              <span className="text-xs text-neutral-400">Complete a cycle to calculate</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Priority 3: COST EFFICIENCY RANKINGS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {/* Most Cost-Efficient */}
+        <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-xs space-y-4 flex flex-col justify-between">
           <div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl sm:text-4xl font-bold tracking-tight text-neutral-900">
-                {monthlyConsumption !== null
-                  ? `৳${Math.round(monthlyConsumption).toLocaleString()}`
-                  : 'Not enough data'}
-              </span>
-              <span className="text-xs text-neutral-500 font-normal">/ month</span>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-2 h-2 rounded-full bg-[#2D6A4F]" />
+              <h3 className="text-sm font-bold text-neutral-900">
+                Most Cost-Efficient Essentials
+              </h3>
             </div>
-            <span className="text-xs font-medium text-neutral-500 block mt-0.5">
-              estimated run rate
-            </span>
+            <p className="text-xs text-neutral-500">Lowest daily cost of ownership</p>
           </div>
 
-          <p className="text-xs text-neutral-400 max-w-sm sm:text-right">
-            Standardizes daily essential consumption into a steady 30-day run rate across products with completed lifespans.
-          </p>
-        </div>
-      </section>
-
-      {/* SECTION 3: EFFICIENCY (Section 10) */}
-      <section className="space-y-2.5">
-        <div className="pb-1 border-b border-[#E8ECE9]">
-          <h2 className="text-[10px] uppercase font-bold tracking-wider text-neutral-400">
-            Efficiency
-          </h2>
-        </div>
-
-        {costRankings.mostEfficient.length > 0 ? (
-          <div className="bg-white border border-[#E8ECE9] rounded-xl px-4 py-1 shadow-xs divide-y divide-[#F0F2F1]">
-            {costRankings.mostEfficient.map((item) => (
-              <div
-                key={item.product.id}
-                className="py-2.5 flex items-center justify-between text-xs"
-              >
-                <div className="flex items-center gap-2">
-                  <Link
-                    to={`/product/${item.product.id}`}
-                    className="font-medium text-neutral-900 hover:text-[#2D6A4F] transition-colors"
-                  >
-                    {item.product.brand && !item.product.name.toLowerCase().startsWith(item.product.brand.toLowerCase())
-                      ? `${item.product.brand} `
-                      : ''}
-                    {item.product.name}
-                  </Link>
-                  <span className="text-[10px] text-neutral-400">
-                    ({Math.round(item.averageLifespan)}d avg)
-                  </span>
-                </div>
-
-                <div className="text-right">
-                  <span className="font-bold text-neutral-900">
+          {costRankings.mostEfficient.length > 0 ? (
+            <div className="space-y-2 divide-y divide-neutral-100">
+              {costRankings.mostEfficient.map((item) => (
+                <div
+                  key={item.product.id}
+                  className="flex items-center justify-between text-xs py-2.5 first:pt-0"
+                >
+                  <div className="pr-2">
+                    <Link
+                      to={`/product/${item.product.id}`}
+                      className="font-semibold text-neutral-900 hover:text-[#2D6A4F] transition-colors block"
+                    >
+                      {item.product.brand && !item.product.name.toLowerCase().startsWith(item.product.brand.toLowerCase())
+                        ? `${item.product.brand} `
+                        : ''}
+                      {item.product.name}
+                    </Link>
+                    <span className="text-[11px] text-neutral-400">
+                      Avg: {Math.round(item.averageLifespan)}d · ~৳{Math.round(item.monthlyCost)}/mo
+                    </span>
+                  </div>
+                  <span className="font-bold text-[#2D6A4F] shrink-0 text-sm">
                     ৳{item.costPerDay.toFixed(2)}/day
                   </span>
                 </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="p-4 bg-white border border-[#E8ECE9] rounded-xl text-xs text-neutral-400 shadow-xs">
-            Complete usage cycles to view cost efficiency rankings.
-          </div>
-        )}
-      </section>
-
-      {/* SECTION 4: COST / DAY CHART (Section 10) */}
-      <section className="space-y-2.5">
-        <div className="pb-1 border-b border-[#E8ECE9]">
-          <h2 className="text-[10px] uppercase font-bold tracking-wider text-neutral-400">
-            Cost / Day
-          </h2>
-        </div>
-
-        <div className="bg-white border border-[#E8ECE9] rounded-xl p-5 shadow-xs">
-          {chartData.length > 0 ? (
-            <div className="w-full pt-1">
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart
-                  data={chartData}
-                  margin={{ top: 8, right: 8, left: -20, bottom: 10 }}
-                >
-                  <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="#F0F2F1" />
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fontSize: 10, fill: '#888888' }}
-                    interval={0}
-                    tickLine={false}
-                    axisLine={{ stroke: '#E8ECE9' }}
-                  />
-                  <YAxis
-                    domain={[0, 'auto']}
-                    tick={{ fontSize: 10, fill: '#888888' }}
-                    tickLine={false}
-                    axisLine={{ stroke: '#E8ECE9' }}
-                    tickFormatter={(val) => `৳${val}`}
-                  />
-                  <Tooltip
-                    formatter={(value) => [`৳${Number(value || 0).toFixed(2)} / day`, 'Cost Per Day']}
-                    contentStyle={{
-                      backgroundColor: '#FFFFFF',
-                      borderRadius: '8px',
-                      border: '1px solid #E8ECE9',
-                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
-                      fontSize: '11px',
-                    }}
-                  />
-                  <Bar
-                    dataKey="costPerDay"
-                    fill="#2D6A4F"
-                    radius={[4, 4, 0, 0]}
-                    maxBarSize={36}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+              ))}
             </div>
           ) : (
-            <div className="py-8 text-center text-xs text-neutral-400">
-              Complete a usage cycle on your products to view the cost comparison chart.
+            <div className="text-center py-6 bg-neutral-50/70 border border-dashed border-neutral-200 rounded-xl">
+              <p className="text-xs text-neutral-400">
+                Complete usage cycles to view cost efficiency rankings.
+              </p>
             </div>
           )}
         </div>
-      </section>
+
+        {/* Least Cost-Efficient */}
+        <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-xs space-y-4 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              <h3 className="text-sm font-bold text-neutral-900">
+                Highest Daily Cost Essentials
+              </h3>
+            </div>
+            <p className="text-xs text-neutral-500">Highest daily cost of ownership</p>
+          </div>
+
+          {costRankings.leastEfficient.length > 0 ? (
+            <div className="space-y-2 divide-y divide-neutral-100">
+              {costRankings.leastEfficient.map((item) => (
+                <div
+                  key={item.product.id}
+                  className="flex items-center justify-between text-xs py-2.5 first:pt-0"
+                >
+                  <div className="pr-2">
+                    <Link
+                      to={`/product/${item.product.id}`}
+                      className="font-semibold text-neutral-900 hover:text-[#2D6A4F] transition-colors block"
+                    >
+                      {item.product.brand && !item.product.name.toLowerCase().startsWith(item.product.brand.toLowerCase())
+                        ? `${item.product.brand} `
+                        : ''}
+                      {item.product.name}
+                    </Link>
+                    <span className="text-[11px] text-neutral-400">
+                      Avg: {Math.round(item.averageLifespan)}d · ~৳{Math.round(item.monthlyCost)}/mo
+                    </span>
+                  </div>
+                  <span className="font-bold text-amber-800 shrink-0 text-sm">
+                    ৳{item.costPerDay.toFixed(2)}/day
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-6 bg-neutral-50/70 border border-dashed border-neutral-200 rounded-xl">
+              <p className="text-xs text-neutral-400">
+                Complete usage cycles to view cost efficiency rankings.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Priority 4: COST PER DAY COMPARISON CHART */}
+      <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 sm:p-7 shadow-xs space-y-4">
+        <div>
+          <h3 className="text-sm font-bold text-neutral-900">Cost Per Day Comparison</h3>
+          <p className="text-xs text-neutral-500 mt-0.5">
+            Normalized cost per day across essentials with completed lifespans (৳/day).
+          </p>
+        </div>
+
+        {chartData.length > 0 ? (
+          <div className="w-full pt-2">
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart
+                data={chartData}
+                margin={{ top: 10, right: 10, left: 0, bottom: 20 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F0F2F1" />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 11, fill: '#6B7280' }}
+                  interval={0}
+                  tickLine={false}
+                  axisLine={{ stroke: '#E5E7EB' }}
+                />
+                <YAxis
+                  domain={[0, 'auto']}
+                  tick={{ fontSize: 11, fill: '#6B7280' }}
+                  tickLine={false}
+                  axisLine={{ stroke: '#E5E7EB' }}
+                  tickFormatter={(val) => `৳${val}`}
+                />
+                <Tooltip
+                  formatter={(value) => [`৳${Number(value || 0).toFixed(2)} / day`, 'Cost Per Day']}
+                  contentStyle={{
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: '12px',
+                    border: '1px solid #E8ECE9',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.06)',
+                    fontSize: '12px',
+                  }}
+                />
+                <Bar
+                  dataKey="costPerDay"
+                  fill="#2D6A4F"
+                  radius={[6, 6, 0, 0]}
+                  maxBarSize={44}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div className="h-48 w-full bg-neutral-50/80 border border-dashed border-neutral-200 rounded-xl flex items-center justify-center text-xs text-neutral-400 text-center px-4">
+            Complete a usage cycle on your products to view the cost comparison chart.
+          </div>
+        )}
+      </div>
     </div>
   );
 };
