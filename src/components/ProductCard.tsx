@@ -87,6 +87,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 <span>৳{latestPurchase.price}</span>
               </>
             )}
+            {Boolean(product.unopened_count && product.unopened_count > 0) && (
+              <>
+                <span className="text-neutral-300">•</span>
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 font-medium text-[10px]">
+                  {product.unopened_count} backup{product.unopened_count! > 1 ? 's' : ''}
+                </span>
+              </>
+            )}
           </p>
         </div>
 

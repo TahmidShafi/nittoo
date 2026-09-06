@@ -41,13 +41,13 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       ),
     },
     {
-      to: '/add-product',
-      label: 'Add Product',
+      to: '/inventory',
+      label: 'Inventory',
       icon: (
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="9" />
-          <path d="M12 8v8" />
-          <path d="M8 12h8" />
+          <rect width="20" height="5" x="2" y="3" rx="1" />
+          <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
+          <path d="M10 12h4" />
         </svg>
       ),
     },
@@ -73,6 +73,13 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     },
   ];
 
+  const checkIsActive = (linkTo: string) => {
+    if (location.pathname === linkTo) return true;
+    if (linkTo === '/dashboard' && location.pathname.startsWith('/product/')) return true;
+    if (linkTo === '/inventory' && location.pathname === '/add-inventory') return true;
+    return false;
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-[#FBFBFB] text-[#111827]">
       {/* Desktop & Mobile Top Header */}
@@ -85,9 +92,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             {/* Desktop Navigation Links */}
             <nav className="hidden md:flex items-center gap-1.5" aria-label="Desktop primary">
               {navLinks.map((link) => {
-                const isActive =
-                  location.pathname === link.to ||
-                  (link.to === '/dashboard' && location.pathname.startsWith('/product/'));
+                const isActive = checkIsActive(link.to);
                 return (
                   <Link
                     key={link.to}
@@ -132,8 +137,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-9 animate-page-in pb-24 md:pb-12">
+      {/* Main Content Viewport */}
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 mb-20 md:mb-8">
         {children}
       </main>
 
@@ -143,9 +148,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         aria-label="Mobile primary bottom navigation"
       >
         {navLinks.map((link) => {
-          const isActive =
-            location.pathname === link.to ||
-            (link.to === '/dashboard' && location.pathname.startsWith('/product/'));
+          const isActive = checkIsActive(link.to);
           return (
             <Link
               key={link.to}

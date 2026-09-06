@@ -90,13 +90,40 @@ Nittoo replaces guesswork with data-driven personal consumption intelligence.
 
 ---
 
-## 🔄 Product Lifecycle & User Flow
+## 🔄 Product Lifecycle & Domain Model
+
+Nittoo strictly distinguishes between product definitions, physical acquisitions, ongoing consumption, and historical analytics:
+
+```text
+ESSENTIALS          INVENTORY               USAGE                HISTORY
+(What you track)    (What you own)          (What you consume)   (What you finished)
+
+Product ───┬───────► Active Bottle ────────► Usage Period ─────► Finished Cycle
+           │         (Purchase #1)           (status: active)     (status: finished)
+           │
+           ├───────► Unopened Backup #1 ───► [Waiting in Inventory]
+           │         (Purchase #2)
+           │
+           └───────► Unopened Backup #2 ───► [Waiting in Inventory]
+                     (Purchase #3)
+```
+
+### Core Concepts & Domain Definitions
+
+| Concept | Definition | Underlying Data Model |
+| :--- | :--- | :--- |
+| **Essential** | A product the user tracks (e.g., CeraVe Cleanser, Olaplex Shampoo). | `products` table |
+| **Inventory** | Physical purchases the user currently owns (active + unopened). | `purchases` without finished usage |
+| **Active** | The single bottle or container currently being consumed. | `usage_periods` with `status = 'active'` (max 1 per product) |
+| **Unopened** | Physical purchases owned but not yet started (stored backups). | `purchases` with no linked `usage_periods` |
+| **History** | Completed consumption cycles used for lifespans and unit economics. | `usage_periods` with `status = 'finished'` |
+| **Prediction** | Data-driven runout forecasts derived strictly from finished history. | Pure math pipeline (`calculatePredictedRemainingDays`) |
 
 ```text
 [ Buy Essential ]
         │
         ▼
-[ Add to Nittoo ] ──► (Optionally start using immediately or keep sealed)
+[ Add to Nittoo ] ──► (Optionally start using immediately or keep unopened)
         │
         ▼
 [ Start Using ] ────► Opens an active usage period (one active bottle at a time)
@@ -108,7 +135,7 @@ Nittoo replaces guesswork with data-driven personal consumption intelligence.
 [ Finish Bottle ] ──► Records finished date • Closes cycle • Computes cycle lifespan
         │
         ▼
-[ Repeat / Rebuy ] ─► Open next bottle from existing repeat purchases or log new buy
+[ Activate Backup ] ─► Start using waiting unopened backup from /inventory
         │
         ▼
 [ Analyze & Forecast ] ──► Updates average lifespan, cost/day, and portfolio run rate
@@ -347,6 +374,9 @@ Run any verification script with `npm run`:
 | `npm run verify:analytics` | Consumption Intelligence | 30-day run rate, upcoming rebuys sort order, efficiency rankings |
 | `npm run verify:walkthrough` | End-to-End Simulation | Complete user journey from signup to multiple bottle lifecycles |
 | `npm run verify:supabase` | Cloud Integration | Live database connectivity, table schema verification, client detection |
+| `npm run verify:unopened` | Unopened Lifecycle | Storage, backup purchases, separate purchase/usage, and activation |
+| `npm run verify:edit-inventory` | Edit Current Inventory | In-place metadata, purchase, and opened date editing without duplication |
+| `npm run verify:inventory` | Inventory Management UX | Derived inventory query, Active vs Unopened sections, Add Inventory flow |
 | `npm run verify:rls` | Security & RLS | **Two-account live RLS audit**: verifies Account B cannot read, write, update, or delete Account A's data |
 | `npm run verify:audit` | 9-Domain Full Audit | 100% comprehensive production audit across all 9 architectural domains |
 

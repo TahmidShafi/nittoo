@@ -16,7 +16,10 @@
     "verify:walkthrough": "tsx scripts/verify-full-walkthrough.ts",
     "verify:supabase": "tsx scripts/verify-supabase-live.ts",
     "verify:rls": "tsx scripts/verify-supabase-rls.ts",
-    "verify:audit": "tsx scripts/verify-live-audit.ts"
+    "verify:audit": "tsx scripts/verify-live-audit.ts",
+    "verify:unopened": "tsx scripts/verify-unopened-lifecycle.ts",
+    "verify:edit-inventory": "tsx scripts/verify-edit-inventory.ts",
+    "verify:inventory": "tsx scripts/verify-inventory.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",

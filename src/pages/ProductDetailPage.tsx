@@ -25,7 +25,8 @@ import {
   calculateProgressPercent,
 } from '../lib/prediction';
 import { FinishUsageModal } from '../components/FinishUsageModal';
-import type { ProductWithHistory, ProductWithDetails } from '../types';
+import { EditInventoryModal } from '../components/EditInventoryModal';
+import type { ProductWithHistory, ProductWithDetails, Purchase, UsagePeriod } from '../types';
 
 export const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -36,8 +37,19 @@ export const ProductDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Unopened Purchase Action State
+  const [activatingId, setActivatingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+
   // Modal State for Finishing the Active Bottle
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Modal State for Editing Current Inventory
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editMode, setEditMode] = useState<'active_bottle' | 'unopened'>('active_bottle');
+  const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
+  const [editingUsagePeriod, setEditingUsagePeriod] = useState<UsagePeriod | null>(null);
 
   const loadData = useCallback(async () => {
     if (!user || !id) return;
@@ -201,12 +213,75 @@ export const ProductDetailPage: React.FC = () => {
       });
   }, [history]);
 
-  // Action: Navigate to Add Product with preselected context
-  const handleLogNewBottle = () => {
+  // Action: Navigate to Add Inventory with preselected context
+  const handleAddInventory = () => {
     if (!history) return;
-    navigate('/add-product', {
+    navigate(`/add-inventory?productId=${history.product.id}`, {
       state: { preselectedProductId: history.product.id },
     });
+  };
+
+  // Action: Start using an unopened purchase
+  const handleStartUsing = async (purchase: Purchase) => {
+    if (!user || !history) return;
+    setActionError(null);
+    setActionSuccess(null);
+
+    // If active usage already exists, explain that current bottle is still active
+    if (history.active_usage) {
+      setActionError(
+        'A bottle is currently in use for this product. You must finish your active bottle before starting an unopened purchase.'
+      );
+      return;
+    }
+
+    setActivatingId(purchase.id);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      await db.startUsagePeriod(user.id, {
+        product_id: history.product.id,
+        purchase_id: purchase.id,
+        opened_date: today,
+      });
+
+      setActionSuccess(`Started using bottle purchased on ${formatDisplayDate(purchase.purchase_date)}.`);
+      await loadData();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to start using purchase';
+      setActionError(msg);
+    } finally {
+      setActivatingId(null);
+    }
+  };
+
+  // Active Purchase linked to current in-use bottle
+  const activePurchase = useMemo(() => {
+    if (!history || !activeUsageData?.active) return null;
+    return (
+      history.purchases.find((p) => p.id === activeUsageData.active.purchase_id) || null
+    );
+  }, [history, activeUsageData]);
+
+  // Edit Handlers
+  const handleOpenEditActive = () => {
+    if (!history || !activeUsageData?.active || !activePurchase) return;
+    setEditingPurchase(activePurchase);
+    setEditingUsagePeriod(activeUsageData.active);
+    setEditMode('active_bottle');
+    setIsEditModalOpen(true);
+  };
+
+  const handleOpenEditUnopened = (purchase: Purchase) => {
+    if (!history) return;
+    setEditingPurchase(purchase);
+    setEditingUsagePeriod(null);
+    setEditMode('unopened');
+    setIsEditModalOpen(true);
+  };
+
+  const handleInventorySaved = async () => {
+    setActionSuccess('Inventory updated.');
+    await loadData();
   };
 
   // Adapter for FinishUsageModal
@@ -305,11 +380,11 @@ export const ProductDetailPage: React.FC = () => {
         <div className="flex items-center gap-2.5 w-full sm:w-auto shrink-0">
           <button
             type="button"
-            onClick={handleLogNewBottle}
+            onClick={handleAddInventory}
             className="btn-press w-full sm:w-auto inline-flex items-center justify-center gap-1.5 min-h-[42px] px-4 py-2.5 rounded-xl bg-[#2D6A4F] hover:bg-[#24563F] text-white text-xs sm:text-sm font-semibold transition-all shadow-xs cursor-pointer"
           >
             <span className="text-base leading-none font-bold">+</span>
-            <span>Log Repeat Purchase</span>
+            <span>Add Inventory</span>
           </button>
         </div>
       </div>
@@ -324,11 +399,21 @@ export const ProductDetailPage: React.FC = () => {
                 <h2 className="text-base font-bold text-neutral-900">Current In-Use Bottle</h2>
               </div>
               <p className="text-xs text-neutral-500 mt-0.5">
-                Opened on {formatDisplayDate(activeUsageData.active.opened_date)}
+                Opened {formatDisplayDate(activeUsageData.active.opened_date)}
+                {activePurchase && (
+                  <>
+                    <span className="text-neutral-300 mx-1.5">•</span>
+                    <span>Purchased {formatDisplayDate(activePurchase.purchase_date)}</span>
+                    <span className="text-neutral-300 mx-1.5">•</span>
+                    <span>
+                      ৳{activePurchase.price.toLocaleString()} {activePurchase.currency || 'BDT'}
+                    </span>
+                  </>
+                )}
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
               {activeUsageData.urgencyState === 'overdue' ? (
                 <span className="text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-3 py-1 rounded-full flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
@@ -345,6 +430,13 @@ export const ProductDetailPage: React.FC = () => {
                 </span>
               )}
 
+              <button
+                type="button"
+                onClick={handleOpenEditActive}
+                className="btn-press px-3.5 py-1.5 rounded-xl bg-neutral-100 hover:bg-neutral-200/80 text-neutral-700 text-xs font-medium transition-colors cursor-pointer"
+              >
+                Edit
+              </button>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(true)}
@@ -393,16 +485,117 @@ export const ProductDetailPage: React.FC = () => {
           <div>
             <h3 className="text-sm font-bold text-neutral-900">No bottle is currently in use</h3>
             <p className="text-xs text-neutral-500 mt-0.5">
-              Open a new bottle or log a repeat purchase to continue tracking this essential.
+              {history.unopened_purchases && history.unopened_purchases.length > 0
+                ? 'You have unopened backup purchases available below, or you can record a new purchase.'
+                : 'Open a new bottle or log a repeat purchase to continue tracking this essential.'}
             </p>
           </div>
           <button
             type="button"
-            onClick={handleLogNewBottle}
+            onClick={handleAddInventory}
             className="btn-press px-4 py-2.5 rounded-xl bg-[#2D6A4F] hover:bg-[#24563F] text-white text-xs font-semibold transition-all shadow-xs self-start sm:self-auto cursor-pointer"
           >
-            + Start New Bottle
+            + Record Purchase
           </button>
+        </div>
+      )}
+
+      {/* Action Notification Alert Messages */}
+      {actionError && (
+        <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium flex items-start justify-between animate-page-in shadow-xs">
+          <div className="flex items-center gap-2">
+            <span className="text-base leading-none">⚠️</span>
+            <span className="leading-relaxed">{actionError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActionError(null)}
+            className="text-amber-600 hover:text-amber-900 font-bold ml-3 text-sm cursor-pointer"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {actionSuccess && (
+        <div className="p-4 rounded-xl bg-[#EBF4F0] border border-[#2D6A4F]/20 text-[#2D6A4F] text-xs font-medium flex items-start justify-between animate-page-in shadow-xs">
+          <div className="flex items-center gap-2">
+            <span className="text-base leading-none">✓</span>
+            <span className="leading-relaxed font-semibold">{actionSuccess}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActionSuccess(null)}
+            className="text-[#2D6A4F] hover:text-[#24563F] font-bold ml-3 text-sm cursor-pointer"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {/* UNOPENED PURCHASES SECTION */}
+      {history.unopened_purchases && history.unopened_purchases.length > 0 && (
+        <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 sm:p-7 shadow-xs space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
+            <div>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block mb-0.5">
+                Unopened Purchases
+              </span>
+              <p className="text-xs text-neutral-500">
+                {history.unopened_purchases.length} backup bottle{history.unopened_purchases.length === 1 ? '' : 's'} stored and waiting to be opened
+              </p>
+            </div>
+          </div>
+
+          <div className="divide-y divide-neutral-100 border border-neutral-100 rounded-xl overflow-hidden">
+            {history.unopened_purchases.map((purchase) => (
+              <div
+                key={purchase.id}
+                className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:bg-neutral-50/60 transition-colors"
+              >
+                <div>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="font-bold text-neutral-900">
+                      {formatDisplayDate(purchase.purchase_date)}
+                    </span>
+                    <span className="text-neutral-300">•</span>
+                    <span className="font-bold text-neutral-900">
+                      ৳{purchase.price.toLocaleString()} {purchase.currency || 'BDT'}
+                    </span>
+                    <span className="text-neutral-300">•</span>
+                    <span className="text-[10px] font-semibold text-neutral-600 bg-neutral-100 px-2.5 py-0.5 rounded-full border border-neutral-200/60">
+                      Unopened
+                    </span>
+                  </div>
+                  <p className="text-neutral-400 text-[11px]">
+                    {product.name}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEditUnopened(purchase)}
+                    className="btn-press min-h-[36px] px-3.5 py-2 rounded-xl bg-neutral-100 hover:bg-neutral-200/80 text-neutral-700 text-xs font-medium transition-colors cursor-pointer"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleStartUsing(purchase)}
+                    disabled={activatingId === purchase.id}
+                    className="btn-press min-h-[36px] px-4 py-2 rounded-xl bg-[#2D6A4F] hover:bg-[#24563F] text-white text-xs font-semibold transition-all shadow-xs disabled:opacity-60 flex items-center gap-1.5 cursor-pointer"
+                  >
+                    {activatingId === purchase.id ? (
+                      <span>Activating...</span>
+                    ) : (
+                      <span>Start Using</span>
+                    )}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -615,6 +808,21 @@ export const ProductDetailPage: React.FC = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onFinished={loadData}
+      />
+
+      {/* Reusable Edit Current Inventory Modal */}
+      <EditInventoryModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingPurchase(null);
+          setEditingUsagePeriod(null);
+        }}
+        onSaved={handleInventorySaved}
+        product={history.product}
+        purchase={editingPurchase}
+        usagePeriod={editingUsagePeriod}
+        mode={editMode}
       />
     </div>
   );

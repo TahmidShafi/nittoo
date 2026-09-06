@@ -18,6 +18,8 @@ import { DashboardPage } from './pages/DashboardPage';
 import { ProductDetailPage } from './pages/ProductDetailPage';
 import { AddProductPage } from './pages/AddProductPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
+import { InventoryPage } from './pages/InventoryPage';
+import { AddInventoryPage } from './pages/AddInventoryPage';
 
 export const App: React.FC = () => {
   return (
@@ -79,6 +81,26 @@ export const App: React.FC = () => {
             <ProtectedRoute>
               <Layout>
                 <AddProductPage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/inventory"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <InventoryPage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/add-inventory"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <AddInventoryPage />
               </Layout>
             </ProtectedRoute>
           }

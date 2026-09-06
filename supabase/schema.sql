@@ -1,6 +1,17 @@
 -- ==============================================================================
 -- Nittoo Supabase Database Schema
 -- Personal Essentials Tracker: Products, Purchases, Usage Periods & RLS Policies
+--
+-- LIFECYCLE ARCHITECTURE:
+-- 1. Acquisition: A record is inserted into `purchases`.
+--    If kept unopened / stored as backup, NO `usage_periods` record is created.
+-- 2. Activation: When the user starts using the product, a row is inserted into
+--    `usage_periods` linking `purchase_id`, with `opened_date` set to start date
+--    and `status = 'active'`.
+-- 3. Consumption: `idx_usage_periods_single_active` guarantees at most 1 active
+--    usage period per product.
+-- 4. Completion: When finished, `status` is set to 'finished' with `finished_date`.
+--    Only completed usage periods contribute to historical lifespan predictions.
 -- ==============================================================================
 
 -- 1. PRODUCTS TABLE

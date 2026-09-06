@@ -30,6 +30,7 @@ export const AddProductPage: React.FC = () => {
   const [price, setPrice] = useState('');
   const [purchaseDate, setPurchaseDate] = useState(today);
   const [openedDate, setOpenedDate] = useState(today);
+  const [usageOption, setUsageOption] = useState<'start_today' | 'keep_unopened'>('start_today');
 
   // Duplicate / Existing Product Suggestion State
   const [existingProducts, setExistingProducts] = useState<Product[]>([]);
@@ -143,12 +144,14 @@ export const AddProductPage: React.FC = () => {
       return 'Purchase date is required';
     }
 
-    if (!openedDate) {
-      return 'Opened date is required';
-    }
+    if (usageOption === 'start_today') {
+      if (!openedDate) {
+        return 'Opened date is required';
+      }
 
-    if (openedDate < purchaseDate) {
-      return 'Opened date cannot be earlier than purchase date';
+      if (openedDate < purchaseDate) {
+        return 'Opened date cannot be earlier than purchase date';
+      }
     }
 
     return null;
@@ -206,6 +209,27 @@ export const AddProductPage: React.FC = () => {
         return;
       }
 
+      // If user chose "Keep unopened"
+      if (usageOption === 'keep_unopened') {
+        navigate('/dashboard', {
+          replace: true,
+          state: {
+            infoNotice: 'Purchase saved as unopened.',
+          },
+        });
+        return;
+      }
+
+      // If user chose "Start using today": check if active bottle already exists
+      const existingHistory = await db.getProductHistory(targetProductId, user.id);
+      if (existingHistory?.active_usage) {
+        setError(
+          'This product already has an active bottle in use. Only one bottle can be active at a time. Select "Keep unopened" to record this purchase as a backup.'
+        );
+        setSubmitting(false);
+        return;
+      }
+
       // 3. Start active usage period
       try {
         await db.startUsagePeriod(user.id, {
@@ -217,18 +241,6 @@ export const AddProductPage: React.FC = () => {
         navigate('/dashboard', { replace: true });
       } catch (usageErr: unknown) {
         const msg = usageErr instanceof Error ? usageErr.message : 'Failed to start usage';
-
-        if (msg.includes('already has an active usage period')) {
-          navigate('/dashboard', {
-            replace: true,
-            state: {
-              infoNotice:
-                "Purchase recorded. Your current bottle is still in use, so Nittoo didn't start the new usage period yet. Mark the current bottle as finished when you switch to the new one.",
-            },
-          });
-          return;
-        }
-
         setError(`Purchase recorded, but failed to start usage: ${msg}`);
         setSubmitting(false);
       }
@@ -283,10 +295,13 @@ export const AddProductPage: React.FC = () => {
         {/* Repeat Purchase Badge */}
         {selectedProduct && (
           <div className="mb-6 p-3.5 rounded-xl bg-[#EBF4F0] border border-[#2D6A4F]/20 flex items-center justify-between gap-3 text-xs animate-page-in">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="w-2 h-2 rounded-full bg-[#2D6A4F]" />
               <span className="font-semibold text-[#2D6A4F]">
-                Repeat Purchase Mode (Existing essential)
+                Existing Essential
+              </span>
+              <span className="text-neutral-500 hidden sm:inline">
+                • You're adding another purchase of an existing essential.
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -506,8 +521,8 @@ export const AddProductPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Dates */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Purchase Date & Usage Option */}
+            <div className="space-y-4">
               <div>
                 <label
                   className="block text-xs font-semibold text-neutral-700 mb-1.5"
@@ -526,23 +541,81 @@ export const AddProductPage: React.FC = () => {
                 />
               </div>
 
+              {/* "When will you start using it?" Options */}
               <div>
-                <label
-                  className="block text-xs font-semibold text-neutral-700 mb-1.5"
-                  htmlFor="opened-date"
-                >
-                  Opened / Start Using *
+                <label className="block text-xs font-semibold text-neutral-700 mb-2">
+                  When will you start using it?
                 </label>
-                <input
-                  id="opened-date"
-                  type="date"
-                  required
-                  value={openedDate}
-                  onChange={(e) => setOpenedDate(e.target.value)}
-                  disabled={submitting}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#2D6A4F]/10 transition-all bg-white disabled:opacity-60 text-neutral-900"
-                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setUsageOption('start_today')}
+                    className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      usageOption === 'start_today'
+                        ? 'border-[#2D6A4F] bg-[#EBF4F0]/60 ring-2 ring-[#2D6A4F]/20'
+                        : 'border-neutral-200 hover:border-neutral-300 bg-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`w-3 h-3 rounded-full flex items-center justify-center ${usageOption === 'start_today' ? 'bg-[#2D6A4F]' : 'border border-neutral-300'}`}>
+                        {usageOption === 'start_today' && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </span>
+                      <span className="text-xs font-semibold text-neutral-900">Start using today</span>
+                    </div>
+                    <p className="text-[11px] text-neutral-500 pl-5 leading-relaxed">
+                      Opens this bottle immediately and starts tracking its daily lifespan.
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setUsageOption('keep_unopened')}
+                    className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      usageOption === 'keep_unopened'
+                        ? 'border-[#2D6A4F] bg-[#EBF4F0]/60 ring-2 ring-[#2D6A4F]/20'
+                        : 'border-neutral-200 hover:border-neutral-300 bg-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`w-3 h-3 rounded-full flex items-center justify-center ${usageOption === 'keep_unopened' ? 'bg-[#2D6A4F]' : 'border border-neutral-300'}`}>
+                        {usageOption === 'keep_unopened' && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </span>
+                      <span className="text-xs font-semibold text-neutral-900">Keep unopened</span>
+                    </div>
+                    <p className="text-[11px] text-neutral-500 pl-5 leading-relaxed">
+                      Stores as backup inventory without activating a usage period.
+                    </p>
+                  </button>
+                </div>
               </div>
+
+              {/* Conditional Opened Date Input vs Unopened Notice */}
+              {usageOption === 'start_today' ? (
+                <div>
+                  <label
+                    className="block text-xs font-semibold text-neutral-700 mb-1.5"
+                    htmlFor="opened-date"
+                  >
+                    Opened / Start Using *
+                  </label>
+                  <input
+                    id="opened-date"
+                    type="date"
+                    required
+                    value={openedDate}
+                    onChange={(e) => setOpenedDate(e.target.value)}
+                    disabled={submitting}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#2D6A4F]/10 transition-all bg-white disabled:opacity-60 text-neutral-900"
+                  />
+                </div>
+              ) : (
+                <div className="p-3.5 rounded-xl bg-neutral-50 border border-neutral-200/80 text-xs text-neutral-600 flex items-start gap-2.5">
+                  <span className="text-base leading-none">📦</span>
+                  <span className="leading-relaxed">
+                    This purchase will be saved as unopened. You can activate it anytime from the Product Detail page when you are ready to open it.
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -558,6 +631,8 @@ export const AddProductPage: React.FC = () => {
                   <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   <span>Saving Essential...</span>
                 </span>
+              ) : usageOption === 'keep_unopened' ? (
+                <span>Save Unopened Purchase</span>
               ) : selectedProduct ? (
                 <span>Log Repeat Purchase</span>
               ) : (

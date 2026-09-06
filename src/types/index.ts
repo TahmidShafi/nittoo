@@ -74,6 +74,24 @@ export interface FinishUsagePeriodInput {
   finished_date: string; // YYYY-MM-DD
 }
 
+export interface UpdateProductInput {
+  name: string;
+  category: ProductCategory;
+  brand?: string | null;
+  size_value?: number | null;
+  size_unit?: SizeUnit | null;
+}
+
+export interface UpdatePurchaseInput {
+  purchase_date: string; // YYYY-MM-DD
+  price: number;
+  currency?: string;
+}
+
+export interface UpdateUsagePeriodInput {
+  opened_date: string; // YYYY-MM-DD
+}
+
 // ------------------------------------------------------------------------------
 // Relational & Aggregated Application Types
 // ------------------------------------------------------------------------------
@@ -81,8 +99,10 @@ export interface FinishUsagePeriodInput {
 export interface ProductWithDetails extends Product {
   active_usage?: UsagePeriod | null;
   latest_purchase?: Purchase | null;
+  active_purchase?: Purchase | null;
   finished_count?: number;
   finished_periods?: UsagePeriod[];
+  unopened_count?: number;
 }
 
 export interface HistoricalUsageEntry {
@@ -98,6 +118,7 @@ export interface ProductWithHistory {
   usage_periods: UsagePeriod[];
   active_usage: UsagePeriod | null;
   finished_periods: UsagePeriod[];
+  unopened_purchases: Purchase[];
 }
 
 export interface ActiveProductCardData {
@@ -119,6 +140,16 @@ export interface ActiveProductCardData {
   price_per_unit: number | null;
   progress_percent: number | null;
   has_enough_data: boolean;
+}
+
+export interface UnopenedInventoryItem {
+  purchase: Purchase;
+  product: Product;
+}
+
+export interface UserInventory {
+  active: ProductWithDetails[];
+  unopened: UnopenedInventoryItem[];
 }
 
 // ------------------------------------------------------------------------------
@@ -148,6 +179,24 @@ export interface IDataSource {
     finishedDate: string
   ): Promise<UsagePeriod>;
 
+  updateProduct(
+    userId: string,
+    productId: string,
+    input: UpdateProductInput
+  ): Promise<Product>;
+
+  updatePurchase(
+    userId: string,
+    purchaseId: string,
+    input: UpdatePurchaseInput
+  ): Promise<Purchase>;
+
+  updateUsagePeriod(
+    userId: string,
+    usagePeriodId: string,
+    input: UpdateUsagePeriodInput
+  ): Promise<UsagePeriod>;
+
   getActiveProducts(
     userId: string
   ): Promise<ProductWithDetails[]>;
@@ -160,6 +209,10 @@ export interface IDataSource {
   getAllUserProducts(
     userId: string
   ): Promise<Product[]>;
+
+  getUserInventory(
+    userId: string
+  ): Promise<UserInventory>;
 
   resetUserData(
     userId: string

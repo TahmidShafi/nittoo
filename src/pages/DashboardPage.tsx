@@ -231,13 +231,21 @@ export const DashboardPage: React.FC = () => {
             <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
               Active Essentials
             </span>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-3xl font-bold text-neutral-900 tracking-tight">
-                {summaryMetrics.activeCount}
-              </span>
-              <span className="text-xs text-neutral-500 font-medium">
-                in daily use
-              </span>
+            <div className="mt-2 flex items-baseline justify-between">
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-bold text-neutral-900 tracking-tight">
+                  {summaryMetrics.activeCount}
+                </span>
+                <span className="text-xs text-neutral-500 font-medium">
+                  in daily use
+                </span>
+              </div>
+              <Link
+                to="/inventory"
+                className="text-xs text-[#2D6A4F] hover:underline font-medium"
+              >
+                View inventory →
+              </Link>
             </div>
           </div>
 

@@ -3,6 +3,7 @@
 // LocalStorage Persistence, Multi-User Isolation, and Storage Abstraction
 // ==============================================================================
 
+import { getTodayUTC } from './dateUtils';
 import type {
   IDataSource,
   Product,
@@ -11,11 +12,17 @@ import type {
   CreateProductInput,
   CreatePurchaseInput,
   StartUsagePeriodInput,
+  UpdateProductInput,
+  UpdatePurchaseInput,
+  UpdateUsagePeriodInput,
   ProductWithDetails,
   ProductWithHistory,
+  UserInventory,
+  UnopenedInventoryItem,
 } from '../types';
 
 export const DEFAULT_MOCK_USER_ID = 'default-mock-user';
+export const UNOPENED_MOCK_USER_ID = 'unopened-mock-user';
 
 // ------------------------------------------------------------------------------
 // Storage Abstraction (Browser LocalStorage vs In-Memory Map)
@@ -271,10 +278,92 @@ export class MockDatabase implements IDataSource {
       },
     ];
 
+    // 4. Deterministic Unopened Seed Data for Lifecycle Verification
+    const unopenedProductOnly: Product = {
+      id: 'prod-unopened-only',
+      user_id: UNOPENED_MOCK_USER_ID,
+      name: 'Laneige Lip Sleeping Mask',
+      category: 'Skincare',
+      brand: 'Laneige',
+      size_value: 20,
+      size_unit: 'g',
+      created_at: seedTime,
+    };
+
+    const unopenedProductOnlyPurchases: Purchase[] = [
+      {
+        id: 'pur-unopened-only-1',
+        product_id: unopenedProductOnly.id,
+        purchase_date: '2026-08-20',
+        price: 1800,
+        currency: 'BDT',
+        created_at: seedTime,
+      },
+    ];
+
+    const unopenedProductBackup: Product = {
+      id: 'prod-unopened-backup',
+      user_id: UNOPENED_MOCK_USER_ID,
+      name: 'Bioderma Sensibio H2O Micellar Water',
+      category: 'Skincare',
+      brand: 'Bioderma',
+      size_value: 500,
+      size_unit: 'ml',
+      created_at: seedTime,
+    };
+
+    const unopenedProductBackupPurchases: Purchase[] = [
+      {
+        id: 'pur-unopened-backup-1',
+        product_id: unopenedProductBackup.id,
+        purchase_date: '2026-08-01',
+        price: 1650,
+        currency: 'BDT',
+        created_at: seedTime,
+      },
+      {
+        id: 'pur-unopened-backup-2',
+        product_id: unopenedProductBackup.id,
+        purchase_date: '2026-08-25',
+        price: 1700,
+        currency: 'BDT',
+        created_at: seedTime,
+      },
+    ];
+
+    const unopenedProductBackupUsage: UsagePeriod[] = [
+      {
+        id: 'use-unopened-backup-1',
+        product_id: unopenedProductBackup.id,
+        purchase_id: 'pur-unopened-backup-1',
+        opened_date: '2026-08-01',
+        finished_date: null,
+        status: 'active',
+        created_at: seedTime,
+      },
+    ];
+
     const initialData: StoredData = {
-      products: [ceraveProduct, olaplexProduct, sensodyneProduct],
-      purchases: [...ceravePurchases, ...olaplexPurchases, ...sensodynePurchases],
-      usage_periods: [...ceraveUsage, ...olaplexUsage, ...sensodyneUsage],
+      products: [
+        ceraveProduct,
+        olaplexProduct,
+        sensodyneProduct,
+        unopenedProductOnly,
+        unopenedProductBackup,
+      ],
+      purchases: [
+        ...ceravePurchases,
+        ...olaplexPurchases,
+        ...sensodynePurchases,
+        ...unopenedProductOnlyPurchases,
+        ...unopenedProductBackupPurchases,
+      ],
+      usage_periods: [
+        ...ceraveUsage,
+        ...olaplexUsage,
+        ...sensodyneUsage,
+        ...unopenedProductBackupUsage,
+      ],
     };
 
     this.saveData(initialData);
@@ -358,6 +447,12 @@ export class MockDatabase implements IDataSource {
       throw new Error('Product already has an active usage period');
     }
 
+    // Constraint: purchase cannot already be opened/used
+    const alreadyUsed = data.usage_periods.some((u) => u.purchase_id === input.purchase_id);
+    if (alreadyUsed) {
+      throw new Error('This purchase has already been opened or used');
+    }
+
     const newPeriod: UsagePeriod = {
       id: `use-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       product_id: input.product_id,
@@ -407,6 +502,142 @@ export class MockDatabase implements IDataSource {
     return updatedPeriod;
   }
 
+  async updateProduct(
+    userId: string,
+    productId: string,
+    input: UpdateProductInput
+  ): Promise<Product> {
+    if (!userId) throw new Error('User ID is required');
+    if (!input.name || !input.name.trim()) throw new Error('Product name is required');
+    if (!input.category) throw new Error('Product category is required');
+    if (input.size_value !== undefined && input.size_value !== null && input.size_value <= 0) {
+      throw new Error('Size value must be greater than zero');
+    }
+
+    const data = this.getData();
+    const productIndex = data.products.findIndex((p) => p.id === productId);
+    if (productIndex === -1) {
+      throw new Error('Product not found');
+    }
+
+    const product = data.products[productIndex];
+    if (product.user_id !== userId) {
+      throw new Error('Unauthorized: You do not own this product');
+    }
+
+    const updatedProduct: Product = {
+      ...product,
+      name: input.name.trim(),
+      category: input.category,
+      brand: input.brand?.trim() || null,
+      size_value: input.size_value ?? null,
+      size_unit: input.size_unit ?? null,
+    };
+
+    data.products[productIndex] = updatedProduct;
+    this.saveData(data);
+    return updatedProduct;
+  }
+
+  async updatePurchase(
+    userId: string,
+    purchaseId: string,
+    input: UpdatePurchaseInput
+  ): Promise<Purchase> {
+    if (!userId) throw new Error('User ID is required');
+    if (!input.purchase_date || !input.purchase_date.trim()) {
+      throw new Error('Purchase date is required');
+    }
+    if (
+      input.price === undefined ||
+      input.price === null ||
+      isNaN(input.price) ||
+      input.price < 0
+    ) {
+      throw new Error('Purchase price cannot be negative');
+    }
+    if (!input.currency || !input.currency.trim()) {
+      throw new Error('Currency is required');
+    }
+
+    const data = this.getData();
+    const purchaseIndex = data.purchases.findIndex((pu) => pu.id === purchaseId);
+    if (purchaseIndex === -1) {
+      throw new Error('Purchase not found');
+    }
+
+    const purchase = data.purchases[purchaseIndex];
+    const product = data.products.find((p) => p.id === purchase.product_id);
+    if (!product || product.user_id !== userId) {
+      throw new Error('Unauthorized: You do not own this purchase');
+    }
+
+    // Check if an active usage period is linked to this purchase
+    const linkedUsage = data.usage_periods.find(
+      (u) => u.purchase_id === purchaseId && u.status === 'active'
+    );
+    if (linkedUsage && linkedUsage.opened_date < input.purchase_date) {
+      throw new Error('Opened date cannot be earlier than purchase date');
+    }
+
+    const updatedPurchase: Purchase = {
+      ...purchase,
+      purchase_date: input.purchase_date,
+      price: input.price,
+      currency: input.currency.trim() || 'BDT',
+    };
+
+    data.purchases[purchaseIndex] = updatedPurchase;
+    this.saveData(data);
+    return updatedPurchase;
+  }
+
+  async updateUsagePeriod(
+    userId: string,
+    usagePeriodId: string,
+    input: UpdateUsagePeriodInput
+  ): Promise<UsagePeriod> {
+    if (!userId) throw new Error('User ID is required');
+    if (!input.opened_date || !input.opened_date.trim()) {
+      throw new Error('Opened date is required');
+    }
+
+    const today = getTodayUTC();
+    if (input.opened_date > today) {
+      throw new Error('Opened date cannot be in the future');
+    }
+
+    const data = this.getData();
+    const periodIndex = data.usage_periods.findIndex((u) => u.id === usagePeriodId);
+    if (periodIndex === -1) {
+      throw new Error('Usage period not found');
+    }
+
+    const period = data.usage_periods[periodIndex];
+    const product = data.products.find((p) => p.id === period.product_id);
+    if (!product || product.user_id !== userId) {
+      throw new Error('Unauthorized: You do not own this product');
+    }
+
+    if (period.status !== 'active') {
+      throw new Error('Only active bottles can be edited');
+    }
+
+    const purchase = data.purchases.find((pu) => pu.id === period.purchase_id);
+    if (purchase && input.opened_date < purchase.purchase_date) {
+      throw new Error('Opened date cannot be earlier than purchase date');
+    }
+
+    const updatedPeriod: UsagePeriod = {
+      ...period,
+      opened_date: input.opened_date,
+    };
+
+    data.usage_periods[periodIndex] = updatedPeriod;
+    this.saveData(data);
+    return updatedPeriod;
+  }
+
   async getActiveProducts(userId: string): Promise<ProductWithDetails[]> {
     if (!userId) return [];
 
@@ -432,12 +663,22 @@ export class MockDatabase implements IDataSource {
           (u) => u.product_id === product.id && u.status === 'finished'
         );
 
+        const usedPurchaseIds = new Set(data.usage_periods.map((u) => u.purchase_id));
+        const unopenedCount = data.purchases.filter(
+          (pu) => pu.product_id === product.id && !usedPurchaseIds.has(pu.id)
+        ).length;
+
+        const activePurchase =
+          data.purchases.find((pu) => pu.id === activeUsage.purchase_id) || latestPurchase || null;
+
         results.push({
           ...product,
           active_usage: activeUsage,
           latest_purchase: latestPurchase,
+          active_purchase: activePurchase,
           finished_count: finishedPeriods.length,
           finished_periods: finishedPeriods,
+          unopened_count: unopenedCount,
         });
       }
     }
@@ -469,12 +710,16 @@ export class MockDatabase implements IDataSource {
     const activeUsage = usagePeriods.find((u) => u.status === 'active') || null;
     const finishedPeriods = usagePeriods.filter((u) => u.status === 'finished');
 
+    const usedPurchaseIds = new Set(usagePeriods.map((u) => u.purchase_id));
+    const unopenedPurchases = purchases.filter((pu) => !usedPurchaseIds.has(pu.id));
+
     return {
       product,
       purchases,
       usage_periods: usagePeriods,
       active_usage: activeUsage,
       finished_periods: finishedPeriods,
+      unopened_purchases: unopenedPurchases,
     };
   }
 
@@ -484,6 +729,38 @@ export class MockDatabase implements IDataSource {
     return data.products
       .filter((p) => p.user_id === userId)
       .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async getUserInventory(userId: string): Promise<UserInventory> {
+    if (!userId) return { active: [], unopened: [] };
+
+    const data = this.getData();
+    const userProducts = data.products.filter((p) => p.user_id === userId);
+    const userProductMap = new Map<string, Product>();
+    userProducts.forEach((p) => userProductMap.set(p.id, p));
+
+    const usedPurchaseIds = new Set(data.usage_periods.map((u) => u.purchase_id));
+    const unopenedItems: UnopenedInventoryItem[] = [];
+
+    const userPurchases = data.purchases
+      .filter((pu) => userProductMap.has(pu.product_id) && !usedPurchaseIds.has(pu.id))
+      .sort((a, b) => b.purchase_date.localeCompare(a.purchase_date));
+
+    for (const pu of userPurchases) {
+      const prod = userProductMap.get(pu.product_id);
+      if (prod) {
+        unopenedItems.push({
+          purchase: pu,
+          product: prod,
+        });
+      }
+    }
+
+    const activeList = await this.getActiveProducts(userId);
+    return {
+      active: activeList,
+      unopened: unopenedItems,
+    };
   }
 
   async resetUserData(userId: string): Promise<void> {
