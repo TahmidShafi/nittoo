@@ -24,6 +24,7 @@ import {
   calculatePricePerUnit,
   calculateProgressPercent,
 } from '../lib/prediction';
+import { calculateConfidence, getConfidenceBadgeStyles } from '../lib/confidence';
 import { FinishUsageModal } from '../components/FinishUsageModal';
 import { EditInventoryModal } from '../components/EditInventoryModal';
 import type { ProductWithHistory, ProductWithDetails, Purchase, UsagePeriod } from '../types';
@@ -127,6 +128,11 @@ export const ProductDetailPage: React.FC = () => {
       latestPurchase,
     };
   }, [history]);
+
+  // Evidence Confidence Calculation strictly from finished periods
+  const completedCycles = history ? history.finished_periods.length : 0;
+  const confidence = useMemo(() => calculateConfidence(completedCycles), [completedCycles]);
+  const confidenceBadgeStyles = useMemo(() => getConfidenceBadgeStyles(confidence.state), [confidence.state]);
 
   // Active Usage Card Calculations
   const activeUsageData = useMemo(() => {
@@ -461,17 +467,19 @@ export const ProductDetailPage: React.FC = () => {
 
           {/* Progress Bar & Status */}
           <div className="space-y-2 pt-2 border-t border-neutral-100">
-            <div className="flex justify-between items-center text-xs text-neutral-600">
+            <div className="flex justify-between items-center text-xs text-neutral-600 flex-wrap gap-1">
               <span>
                 Day <strong className="font-semibold text-neutral-900">{activeUsageData.daysUsed}</strong> in use
               </span>
-              {activeUsageData.avgDuration !== null ? (
-                <span className="font-medium text-neutral-700">
-                  Target: ~{activeUsageData.avgDuration} days
+              {activeUsageData.urgencyState === 'overdue' ? (
+                <span className="text-xs font-semibold text-rose-700 flex items-center gap-1">
+                  <span>Overdue by {activeUsageData.overdueDays}d</span>
                 </span>
-              ) : (
-                <span className="italic text-neutral-400 text-[11px]">Collecting first cycle duration</span>
-              )}
+              ) : activeUsageData.predictedRemaining !== null ? (
+                <span className="text-xs font-semibold text-[#2D6A4F]">
+                  {activeUsageData.predictedRemaining}d left
+                </span>
+              ) : null}
             </div>
             <div className="h-2 w-full bg-neutral-100 rounded-full overflow-hidden">
               {activeUsageData.progress !== null ? (
@@ -489,26 +497,104 @@ export const ProductDetailPage: React.FC = () => {
                 <div className="h-full w-full bg-neutral-200/50 rounded-full" />
               )}
             </div>
+
+            {/* EXPECTED LIFESPAN PREDICTION */}
+            <div className="pt-3 border-t border-neutral-100/80">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">
+                EXPECTED LIFESPAN
+              </span>
+              {activeUsageData.avgDuration !== null ? (
+                <div className="space-y-1">
+                  <div className="flex items-baseline gap-2.5">
+                    <span className="text-xl sm:text-2xl font-bold text-neutral-900 tracking-tight">
+                      ~{activeUsageData.avgDuration} days
+                    </span>
+                    <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${confidenceBadgeStyles.badgeClass}`}>
+                      {confidence.label}
+                    </span>
+                  </div>
+                  <p className="text-xs text-neutral-500 flex items-center gap-1.5 flex-wrap">
+                    <span>{confidence.supportingText}</span>
+                    <span className="text-neutral-300">•</span>
+                    <span className="text-neutral-400 italic">{confidence.semanticMeaning}</span>
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <div className="flex items-baseline gap-2.5">
+                    <span className="text-base sm:text-lg font-bold text-neutral-500">
+                      Not enough data
+                    </span>
+                    <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${confidenceBadgeStyles.badgeClass}`}>
+                      {confidence.label}
+                    </span>
+                  </div>
+                  <p className="text-xs text-neutral-400 italic">
+                    Complete a cycle to start learning.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       ) : (
         /* No Active Bottle State */
-        <div className="bg-[#EBF4F0]/50 border border-[#2D6A4F]/20 rounded-2xl p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h3 className="text-sm font-bold text-neutral-900">No bottle is currently in use</h3>
-            <p className="text-xs text-neutral-500 mt-0.5">
-              {history.unopened_purchases && history.unopened_purchases.length > 0
-                ? 'You have unopened backup purchases available below, or you can record a new purchase.'
-                : 'Open a new bottle or log a repeat purchase to continue tracking this essential.'}
-            </p>
+        <div className="bg-[#EBF4F0]/50 border border-[#2D6A4F]/20 rounded-2xl p-6 sm:p-7 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-bold text-neutral-900">No bottle is currently in use</h3>
+              <p className="text-xs text-neutral-500 mt-0.5">
+                {history.unopened_purchases && history.unopened_purchases.length > 0
+                  ? 'You have unopened backup purchases available below, or you can record a new purchase.'
+                  : 'Open a new bottle or log a repeat purchase to continue tracking this essential.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleAddInventory}
+              className="btn-press px-4 py-2.5 rounded-xl bg-[#2D6A4F] hover:bg-[#24563F] text-white text-xs font-semibold transition-all shadow-xs self-start sm:self-auto cursor-pointer"
+            >
+              + Record Purchase
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={handleAddInventory}
-            className="btn-press px-4 py-2.5 rounded-xl bg-[#2D6A4F] hover:bg-[#24563F] text-white text-xs font-semibold transition-all shadow-xs self-start sm:self-auto cursor-pointer"
-          >
-            + Record Purchase
-          </button>
+
+          {/* Expected Lifespan Section when no bottle is in use */}
+          <div className="pt-3 border-t border-[#2D6A4F]/15">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block mb-1">
+              EXPECTED LIFESPAN
+            </span>
+            {summaryStats?.averageDuration !== null ? (
+              <div className="space-y-1">
+                <div className="flex items-baseline gap-2.5">
+                  <span className="text-xl sm:text-2xl font-bold text-neutral-900 tracking-tight">
+                    ~{summaryStats?.averageDuration} days
+                  </span>
+                  <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${confidenceBadgeStyles.badgeClass}`}>
+                    {confidence.label}
+                  </span>
+                </div>
+                <p className="text-xs text-neutral-600 flex items-center gap-1.5 flex-wrap">
+                  <span>{confidence.supportingText}</span>
+                  <span className="text-neutral-300">•</span>
+                  <span className="text-neutral-500 italic">{confidence.semanticMeaning}</span>
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <div className="flex items-baseline gap-2.5">
+                  <span className="text-base sm:text-lg font-bold text-neutral-500">
+                    Not enough data
+                  </span>
+                  <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${confidenceBadgeStyles.badgeClass}`}>
+                    {confidence.label}
+                  </span>
+                </div>
+                <p className="text-xs text-neutral-500 italic">
+                  Complete a cycle to start learning.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -613,11 +699,13 @@ export const ProductDetailPage: React.FC = () => {
 
       {/* Summary Statistics Cards (Editorial Grid) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {/* 1. Average Duration */}
+        {/* 1. Average Duration (Observed Historical Metric) */}
         <div className="bg-white border border-neutral-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
-            Average Lifespan
-          </span>
+          <div className="flex items-start justify-between gap-1 mb-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block">
+              Average Lifespan
+            </span>
+          </div>
           {summaryStats?.averageDuration !== null ? (
             <div className="mt-1">
               <span className="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight">
@@ -631,7 +719,9 @@ export const ProductDetailPage: React.FC = () => {
             </div>
           )}
           <span className="text-[11px] text-neutral-400 mt-2 block">
-            {history.finished_periods.length} finished cycle{history.finished_periods.length === 1 ? '' : 's'}
+            {completedCycles > 0
+              ? `Based on ${completedCycles} completed ${completedCycles === 1 ? 'cycle' : 'cycles'}`
+              : 'No completed cycles yet'}
           </span>
         </div>
 

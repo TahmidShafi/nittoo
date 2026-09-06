@@ -277,8 +277,8 @@ async function runComparisonVerification() {
   // Test 14 & 15: One completed cycle vs Multiple completed cycles labeling
   // ----------------------------------------------------------------------------
   console.log('\n--- 14 & 15. Single vs multiple cycle confidence labeling ---');
-  assert(metricsA.confidenceState === 'early_data', '1 cycle labeled as early_data');
-  assert(metricsA.confidenceLabel.includes('1 completed cycle'), 'Confidence label notes 1 completed cycle');
+  assert(metricsA.confidenceState === 'early', '1 cycle labeled as early');
+  assert(metricsA.confidenceLabel === 'Early data', 'Confidence label notes Early data');
   assert(fullReport.isEarlyData === true, 'Comparison report with 1-cycle product flagged isEarlyData === true');
   assert(
     fullReport.confidenceNotice !== null && fullReport.confidenceNotice.includes('Early data'),
@@ -308,7 +308,7 @@ async function runComparisonVerification() {
   const histA_2Cycles = await db.getProductHistory(prodA.id, TEST_USER);
   const metricsA_2Cycles = deriveProductObservedMetrics(histA_2Cycles!);
   assert(metricsA_2Cycles.completedCycles === 2, 'Product A now has 2 completed cycles');
-  assert(metricsA_2Cycles.confidenceState === 'historical', '2 cycles labeled as historical');
+  assert(metricsA_2Cycles.confidenceState === 'developing', '2 cycles labeled as developing');
   assert(metricsA_2Cycles.observedAverageLifespan === 95, 'Weighted average lifespan is 95 days ((90 + 100) / 2)');
   // Total price = 1000 + 1100 = 2100. Total days = 90 + 100 = 190. Cost/day = 2100 / 190 = 11.05
   assert(metricsA_2Cycles.observedCostPerDay === 11.05, 'Weighted cost/day across 2 cycles is ৳11.05');

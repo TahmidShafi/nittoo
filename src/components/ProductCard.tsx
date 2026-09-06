@@ -7,6 +7,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { usePrediction } from '../hooks/usePrediction';
+import { calculateConfidence } from '../lib/confidence';
 import type { ProductWithDetails } from '../types';
 
 interface ProductCardProps {
@@ -31,6 +32,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   } = usePrediction(product);
 
   const latestPurchase = product.latest_purchase;
+  const completedCycles = (product.finished_periods || []).length;
+  const confidence = calculateConfidence(completedCycles);
 
   return (
     <div className="bg-white border border-neutral-200/80 rounded-2xl p-5 shadow-xs card-interactive hover:border-[#2D6A4F]/40 flex flex-col justify-between group">
@@ -105,8 +108,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               Day <strong className="font-semibold text-neutral-800">{daysUsed}</strong> in use
             </span>
             {averageLifespan !== null ? (
-              <span className="text-neutral-600 font-medium">
-                Avg: {averageLifespan}d
+              <span
+                className="text-neutral-600 font-medium text-xs cursor-help"
+                title={`${confidence.label} • ${confidence.supportingText}`}
+              >
+                {averageLifespan}-day avg · {completedCycles} {completedCycles === 1 ? 'cycle' : 'cycles'}
               </span>
             ) : (
               <span className="text-neutral-400 italic text-[11px]">No history yet</span>

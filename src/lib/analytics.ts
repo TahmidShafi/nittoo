@@ -19,6 +19,7 @@ export interface UpcomingPurchaseItem {
   isOverdue: boolean;
   estimatedNextPrice: number;
   activeUsage: UsagePeriod;
+  completedCycles: number;
 }
 
 export interface ProductCostEfficiency {
@@ -90,6 +91,7 @@ export function getUpcomingPurchases(
         isOverdue,
         estimatedNextPrice,
         activeUsage,
+        completedCycles: item.finished_periods.length,
       });
     }
   }

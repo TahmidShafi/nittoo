@@ -9,6 +9,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { db } from '../lib/dataSource';
 import { buildComparisonReport, type ComparisonReport } from '../lib/comparison';
+import { getConfidenceBadgeStyles } from '../lib/confidence';
 import type { Product, ProductWithHistory } from '../types';
 
 export const ProductComparisonPage: React.FC = () => {
@@ -545,13 +546,21 @@ export const ProductComparisonPage: React.FC = () => {
               <div className="w-full sm:w-2/3 grid grid-cols-3 items-center gap-2">
                 <div>
                   {report.productA.observedAverageLifespan !== null ? (
-                    <span className="text-sm sm:text-base font-bold text-neutral-900">
-                      {report.productA.observedAverageLifespan} days
-                    </span>
+                    <div>
+                      <span className="text-sm sm:text-base font-bold text-neutral-900 block">
+                        {report.productA.observedAverageLifespan} days
+                      </span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded font-medium inline-block mt-0.5 ${getConfidenceBadgeStyles(report.productA.confidenceState).badgeClass}`}
+                        title={report.productA.confidenceSupporting}
+                      >
+                        {report.productA.confidenceLabel}
+                      </span>
+                    </div>
                   ) : (
                     <span className="text-xs text-neutral-400 italic">Learning</span>
                   )}
-                  <span className="text-[10px] text-neutral-400 block">Reference</span>
+                  <span className="text-[10px] text-neutral-400 block mt-0.5">Reference</span>
                 </div>
 
                 <div className="text-center">
@@ -566,13 +575,21 @@ export const ProductComparisonPage: React.FC = () => {
 
                 <div className="text-right">
                   {report.productB.observedAverageLifespan !== null ? (
-                    <span className="text-sm sm:text-base font-bold text-neutral-900">
-                      {report.productB.observedAverageLifespan} days
-                    </span>
+                    <div>
+                      <span className="text-sm sm:text-base font-bold text-neutral-900 block">
+                        {report.productB.observedAverageLifespan} days
+                      </span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded font-medium inline-block mt-0.5 ${getConfidenceBadgeStyles(report.productB.confidenceState).badgeClass}`}
+                        title={report.productB.confidenceSupporting}
+                      >
+                        {report.productB.confidenceLabel}
+                      </span>
+                    </div>
                   ) : (
                     <span className="text-xs text-neutral-400 italic">Learning</span>
                   )}
-                  <span className="text-[10px] text-neutral-400 block">Comparison</span>
+                  <span className="text-[10px] text-neutral-400 block mt-0.5">Comparison</span>
                 </div>
               </div>
             </div>

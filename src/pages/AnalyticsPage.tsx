@@ -26,6 +26,7 @@ import {
   type ProductCostEfficiency,
   type CostComparisonChartPoint,
 } from '../lib/analytics';
+import { calculateConfidence, getConfidenceBadgeStyles } from '../lib/confidence';
 import type { ProductWithHistory } from '../types';
 
 export const AnalyticsPage: React.FC = () => {
@@ -224,13 +225,33 @@ export const AnalyticsPage: React.FC = () => {
                       </span>
                     )}
                   </div>
-                  <p className="text-neutral-400 text-[11px]">
-                    {item.isOverdue ? (
-                      <>Predicted finish was <span className="font-semibold text-neutral-700">{formatDisplayDate(item.predictedFinishDate)}</span></>
-                    ) : (
-                      <>Predicted finish date: <span className="font-semibold text-neutral-700">{formatDisplayDate(item.predictedFinishDate)}</span></>
-                    )}
-                  </p>
+                  <div className="text-neutral-500 text-[11px] flex items-center gap-1.5 flex-wrap">
+                    <span>
+                      {item.isOverdue ? (
+                        <>Predicted finish was <strong className="font-semibold text-neutral-800">{formatDisplayDate(item.predictedFinishDate)}</strong></>
+                      ) : (
+                        <>Predicted finish: <strong className="font-semibold text-neutral-800">{formatDisplayDate(item.predictedFinishDate)}</strong></>
+                      )}
+                    </span>
+                    {(() => {
+                      const conf = calculateConfidence(item.completedCycles);
+                      const badgeStyles = getConfidenceBadgeStyles(conf.state);
+                      return (
+                        <>
+                          <span className="text-neutral-300">•</span>
+                          <span
+                            className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${badgeStyles.badgeClass}`}
+                            title={conf.semanticMeaning}
+                          >
+                            {conf.label}
+                          </span>
+                          <span className="text-neutral-400 text-[10px]">
+                            ({conf.supportingText})
+                          </span>
+                        </>
+                      );
+                    })()}
+                  </div>
                 </div>
 
                 <div className="text-left sm:text-right shrink-0 pt-1 sm:pt-0">

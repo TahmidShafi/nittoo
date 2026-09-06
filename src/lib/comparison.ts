@@ -11,8 +11,12 @@ import {
   calculatePredictedRemainingDays,
 } from './prediction';
 import { getDaysUsed, addDays } from './dateUtils';
+import {
+  calculateConfidence,
+  type ConfidenceState,
+} from './confidence';
 
-export type ComparisonConfidence = 'no_data' | 'early_data' | 'historical';
+export type ComparisonConfidence = ConfidenceState;
 
 export interface ProductActiveUsageContext {
   openedDate: string;
@@ -24,8 +28,9 @@ export interface ProductActiveUsageContext {
 export interface ProductObservedMetrics {
   product: Product;
   completedCycles: number;
-  confidenceState: ComparisonConfidence;
+  confidenceState: ConfidenceState;
   confidenceLabel: string;
+  confidenceSupporting: string;
   observedAverageLifespan: number | null;
   observedCostPerDay: number | null;
   observedMonthlyConsumption: number | null;
@@ -198,16 +203,10 @@ export function deriveProductObservedMetrics(
   const { product, purchases, finished_periods, active_usage } = history;
   const completedCycles = finished_periods.length;
 
-  let confidenceState: ComparisonConfidence = 'no_data';
-  let confidenceLabel = 'Not enough data';
-
-  if (completedCycles === 1) {
-    confidenceState = 'early_data';
-    confidenceLabel = 'Early data (1 completed cycle)';
-  } else if (completedCycles >= 2) {
-    confidenceState = 'historical';
-    confidenceLabel = `Based on your history (${completedCycles} completed cycles)`;
-  }
+  const confidence = calculateConfidence(completedCycles);
+  const confidenceState = confidence.state;
+  const confidenceLabel = confidence.label;
+  const confidenceSupporting = confidence.supportingText;
 
   // 1. Observed Average Lifespan (strictly finished cycles)
   const observedAverageLifespan =
@@ -272,6 +271,7 @@ export function deriveProductObservedMetrics(
     completedCycles,
     confidenceState,
     confidenceLabel,
+    confidenceSupporting,
     observedAverageLifespan,
     observedCostPerDay,
     observedMonthlyConsumption,

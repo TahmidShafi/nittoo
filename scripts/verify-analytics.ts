@@ -168,6 +168,7 @@ async function runAnalyticsVerification() {
       finished_periods: [
         { id: 'f1', product_id: 'p1', purchase_id: 'pu1', opened_date: '2026-07-01', finished_date: '2026-07-21', status: 'finished', created_at: '' }, // 20d
       ],
+      unopened_purchases: [],
     },
     {
       product: { id: 'p2', user_id: 'u1', name: 'Very Overdue', category: 'Oral Care', created_at: '' },
@@ -177,6 +178,7 @@ async function runAnalyticsVerification() {
       finished_periods: [
         { id: 'f2', product_id: 'p2', purchase_id: 'pu2', opened_date: '2026-05-01', finished_date: '2026-05-31', status: 'finished', created_at: '' }, // 30d
       ],
+      unopened_purchases: [],
     },
   ];
 

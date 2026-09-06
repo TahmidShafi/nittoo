@@ -90,6 +90,12 @@ Nittoo replaces guesswork with data-driven personal consumption intelligence.
 - **Package Size & Unit Price Economics**: Calculates price per unit (`৳/ml`, `৳/g`) and validates unit compatibility to prevent false comparisons across mismatched units.
 - **Deterministic Value Insight Engine**: Produces objective, evidence-based conclusions without subjective marketing claims (no "better" or "superior"). Early or limited data is prominently flagged.
 
+### 🎯 Prediction Confidence & Evidence Maturity
+- **Deterministic Confidence States**: Categorizes every prediction into 5 evidence maturity states (`Not enough data`, `Early data`, `Developing`, `Reliable`, `Strong history`) based strictly on completed usage cycles.
+- **Zero Fabricated Certainty**: Strictly avoids arbitrary percentage scores (e.g. "92% confidence") or machine learning guesswork.
+- **Non-Invasive Architecture**: Confidence describes evidence maturity without modifying prediction math, observed lifespans, or daily costs.
+- **Cross-App Communication**: Integrated subtly across Dashboard cards, Product Detail hero views, Analytics upcoming rebuys, and Product Comparison.
+
 ### 🛡️ Multi-Tenant Security & Dual Storage Engine
 - **Cloud Mode**: Backed by live Supabase PostgreSQL with strict Row Level Security (RLS). Each user's data is strictly isolated at the database engine level.
 - **Development Mock Mode**: Built-in, zero-dependency offline mock database in `localStorage` with deterministic user isolation for offline development and testing.
@@ -384,6 +390,7 @@ Run any verification script with `npm run`:
 | `npm run verify:edit-inventory` | Edit Current Inventory | In-place metadata, purchase, and opened date editing without duplication |
 | `npm run verify:inventory` | Inventory Management UX | Derived inventory query, Active vs Unopened sections, Add Inventory flow |
 | `npm run verify:comparison` | Product Comparison & Value Intelligence | 1-on-1 personal comparison, unit economics, observed vs predicted isolation, deterministic insights |
+| `npm run verify:confidence` | Prediction Confidence & Evidence | 5 deterministic evidence states, cycle-count maturity, non-invasive calculation isolation |
 | `npm run verify:rls` | Security & RLS | **Two-account live RLS audit**: verifies Account B cannot read, write, update, or delete Account A's data |
 | `npm run verify:audit` | 9-Domain Full Audit | 100% comprehensive production audit across all 9 architectural domains |
 
