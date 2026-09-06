@@ -8,12 +8,13 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { db } from '../lib/dataSource';
 import { getTodayUTC } from '../lib/dateUtils';
-import type {
-  Product,
-  Purchase,
-  UsagePeriod,
-  ProductCategory,
-  SizeUnit,
+import {
+  PRODUCT_CATEGORIES,
+  type Product,
+  type Purchase,
+  type UsagePeriod,
+  type ProductCategory,
+  type SizeUnit,
 } from '../types';
 
 export interface EditInventoryModalProps {
@@ -26,13 +27,7 @@ export interface EditInventoryModalProps {
   mode: 'active_bottle' | 'unopened';
 }
 
-const CATEGORIES: ProductCategory[] = [
-  'Skincare',
-  'Haircare',
-  'Oral Care',
-  'Household',
-  'Other',
-];
+const CATEGORIES = PRODUCT_CATEGORIES;
 
 const SIZE_UNITS: SizeUnit[] = ['ml', 'g', 'count'];
 

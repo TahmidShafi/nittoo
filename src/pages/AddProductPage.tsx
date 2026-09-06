@@ -9,7 +9,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { db } from '../lib/dataSource';
 import { getTodayUTC } from '../lib/dateUtils';
-import type { Product, ProductCategory, SizeUnit } from '../types';
+import { PRODUCT_CATEGORIES, type Product, type ProductCategory, type SizeUnit } from '../types';
 
 export const AddProductPage: React.FC = () => {
   const { user } = useAuth();
@@ -411,11 +411,11 @@ export const AddProductPage: React.FC = () => {
                   disabled={submitting}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#2D6A4F]/10 transition-all bg-white disabled:opacity-60 text-neutral-900"
                 >
-                  <option value="Skincare">Skincare</option>
-                  <option value="Haircare">Haircare</option>
-                  <option value="Oral Care">Oral Care</option>
-                  <option value="Household">Household</option>
-                  <option value="Other">Other</option>
+                  {PRODUCT_CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
                 </select>
               </div>
 

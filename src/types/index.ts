@@ -5,12 +5,25 @@
 
 export type UsageStatus = 'active' | 'finished';
 
-export type ProductCategory =
-  | 'Skincare'
-  | 'Haircare'
-  | 'Oral Care'
-  | 'Household'
-  | 'Other';
+export const PRODUCT_CATEGORIES = [
+  'Skincare',
+  'Haircare',
+  'Body Care',
+  'Oral Care',
+  'Supplements',
+  'Personal Hygiene',
+  'Shaving & Grooming',
+  'Household Cleaning',
+  'Laundry',
+  'Home Essentials',
+  'Food & Beverage',
+  'Fitness',
+  'Pet Care',
+  'Baby Care',
+  'Other',
+] as const;
+
+export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
 
 export type SizeUnit = 'ml' | 'g' | 'count';
 
