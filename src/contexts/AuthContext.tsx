@@ -132,49 +132,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Sign In
   // ----------------------------------------------------------------------------
   const signIn = useCallback(async (email: string, password?: string) => {
-    setLoading(true);
-    try {
-      const trimmedEmail = email.trim();
-      if (!trimmedEmail || !trimmedEmail.includes('@')) {
-        throw new Error('Please enter a valid email address');
-      }
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !trimmedEmail.includes('@')) {
+      throw new Error('Please enter a valid email address');
+    }
 
-      if (isSupabaseConfigured && supabase) {
-        if (!password) throw new Error('Password is required');
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: trimmedEmail,
-          password,
+    if (isSupabaseConfigured && supabase) {
+      if (!password) throw new Error('Password is required');
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: trimmedEmail,
+        password,
+      });
+      if (error) throw error;
+      if (data.user) {
+        setUser({
+          id: data.user.id,
+          email: data.user.email ?? trimmedEmail,
+          created_at: data.user.created_at,
         });
-        if (error) throw error;
-        if (data.user) {
-          setUser({
-            id: data.user.id,
-            email: data.user.email ?? trimmedEmail,
-            created_at: data.user.created_at,
-          });
-        }
-      } else {
-        // Mock Sign In: any valid email + password allowed
-        if (!password || password.length < 4) {
-          throw new Error('Password must be at least 4 characters');
-        }
-        const mockId = generateDeterministicMockUserId(trimmedEmail);
-        const mockUser: AuthUser = {
-          id: mockId,
-          email: trimmedEmail.toLowerCase(),
-          created_at: new Date().toISOString(),
-        };
-
-        if (typeof window !== 'undefined' && window.localStorage) {
-          window.localStorage.setItem(
-            MOCK_SESSION_KEY,
-            JSON.stringify({ user: mockUser })
-          );
-        }
-        setUser(mockUser);
       }
-    } finally {
-      setLoading(false);
+    } else {
+      // Mock Sign In: any valid email + password allowed
+      if (!password || password.length < 4) {
+        throw new Error('Password must be at least 4 characters');
+      }
+      const mockId = generateDeterministicMockUserId(trimmedEmail);
+      const mockUser: AuthUser = {
+        id: mockId,
+        email: trimmedEmail.toLowerCase(),
+        created_at: new Date().toISOString(),
+      };
+
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(
+          MOCK_SESSION_KEY,
+          JSON.stringify({ user: mockUser })
+        );
+      }
+      setUser(mockUser);
     }
   }, []);
 
@@ -182,52 +177,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Sign Up
   // ----------------------------------------------------------------------------
   const signUp = useCallback(async (email: string, password?: string): Promise<SignUpResult> => {
-    setLoading(true);
-    try {
-      const trimmedEmail = email.trim();
-      if (!trimmedEmail || !trimmedEmail.includes('@')) {
-        throw new Error('Please enter a valid email address');
-      }
-      if (!password || password.length < 6) {
-        throw new Error('Password must be at least 6 characters');
-      }
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !trimmedEmail.includes('@')) {
+      throw new Error('Please enter a valid email address');
+    }
+    if (!password || password.length < 6) {
+      throw new Error('Password must be at least 6 characters');
+    }
 
-      if (isSupabaseConfigured && supabase) {
-        const { data, error } = await supabase.auth.signUp({
-          email: trimmedEmail,
-          password,
+    if (isSupabaseConfigured && supabase) {
+      const { data, error } = await supabase.auth.signUp({
+        email: trimmedEmail,
+        password,
+      });
+      if (error) throw error;
+      if (data.session && data.user) {
+        setUser({
+          id: data.user.id,
+          email: data.user.email ?? trimmedEmail,
+          created_at: data.user.created_at,
         });
-        if (error) throw error;
-        if (data.session && data.user) {
-          setUser({
-            id: data.user.id,
-            email: data.user.email ?? trimmedEmail,
-            created_at: data.user.created_at,
-          });
-          return { requiresEmailConfirmation: false };
-        }
-        // When email confirmation is required, Supabase returns data.user with session === null
-        return { requiresEmailConfirmation: true };
-      } else {
-        // Mock Sign Up: automatically creates and persists user
-        const mockId = generateDeterministicMockUserId(trimmedEmail);
-        const mockUser: AuthUser = {
-          id: mockId,
-          email: trimmedEmail.toLowerCase(),
-          created_at: new Date().toISOString(),
-        };
-
-        if (typeof window !== 'undefined' && window.localStorage) {
-          window.localStorage.setItem(
-            MOCK_SESSION_KEY,
-            JSON.stringify({ user: mockUser })
-          );
-        }
-        setUser(mockUser);
         return { requiresEmailConfirmation: false };
       }
-    } finally {
-      setLoading(false);
+      // When email confirmation is required, Supabase returns data.user with session === null
+      return { requiresEmailConfirmation: true };
+    } else {
+      // Mock Sign Up: automatically creates and persists user
+      const mockId = generateDeterministicMockUserId(trimmedEmail);
+      const mockUser: AuthUser = {
+        id: mockId,
+        email: trimmedEmail.toLowerCase(),
+        created_at: new Date().toISOString(),
+      };
+
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(
+          MOCK_SESSION_KEY,
+          JSON.stringify({ user: mockUser })
+        );
+      }
+      setUser(mockUser);
+      return { requiresEmailConfirmation: false };
     }
   }, []);
 
@@ -235,48 +225,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Sign Out
   // ----------------------------------------------------------------------------
   const signOut = useCallback(async () => {
-    setLoading(true);
-    try {
-      if (isSupabaseConfigured && supabase) {
-        const { error } = await supabase.auth.signOut();
-        if (error) throw error;
-      } else {
-        // Mock Sign Out: clears session token only, leaves user product data untouched
-        if (typeof window !== 'undefined' && window.localStorage) {
-          window.localStorage.removeItem(MOCK_SESSION_KEY);
-        }
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    } else {
+      // Mock Sign Out: clears session token only, leaves user product data untouched
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.removeItem(MOCK_SESSION_KEY);
       }
-      setUser(null);
-    } finally {
-      setLoading(false);
     }
+    setUser(null);
   }, []);
 
   // ----------------------------------------------------------------------------
   // Magic Link
   // ----------------------------------------------------------------------------
   const sendMagicLink = useCallback(async (email: string) => {
-    setLoading(true);
-    try {
-      const trimmedEmail = email.trim();
-      if (!trimmedEmail || !trimmedEmail.includes('@')) {
-        throw new Error('Please enter a valid email address');
-      }
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !trimmedEmail.includes('@')) {
+      throw new Error('Please enter a valid email address');
+    }
 
-      if (isSupabaseConfigured && supabase) {
-        const { error } = await supabase.auth.signInWithOtp({
-          email: trimmedEmail,
-          options: {
-            emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/dashboard` : undefined,
-          },
-        });
-        if (error) throw error;
-      } else {
-        // Mock mode: simulate success
-        await new Promise((resolve) => setTimeout(resolve, 300));
-      }
-    } finally {
-      setLoading(false);
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: trimmedEmail,
+        options: {
+          emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/dashboard` : undefined,
+        },
+      });
+      if (error) throw error;
+    } else {
+      // Mock mode: simulate success
+      await new Promise((resolve) => setTimeout(resolve, 300));
     }
   }, []);
 
@@ -284,24 +264,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Request Password Reset
   // ----------------------------------------------------------------------------
   const requestPasswordReset = useCallback(async (email: string) => {
-    setLoading(true);
-    try {
-      const trimmedEmail = email.trim();
-      if (!trimmedEmail || !trimmedEmail.includes('@')) {
-        throw new Error('Please enter a valid email address');
-      }
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !trimmedEmail.includes('@')) {
+      throw new Error('Please enter a valid email address');
+    }
 
-      if (isSupabaseConfigured && supabase) {
-        const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
-          redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined,
-        });
-        if (error) throw error;
-      } else {
-        // Mock mode: simulate dispatch
-        await new Promise((resolve) => setTimeout(resolve, 300));
-      }
-    } finally {
-      setLoading(false);
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
+        redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined,
+      });
+      if (error) throw error;
+    } else {
+      // Mock mode: simulate dispatch
+      await new Promise((resolve) => setTimeout(resolve, 300));
     }
   }, []);
 
@@ -309,23 +284,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Reset Password
   // ----------------------------------------------------------------------------
   const resetPassword = useCallback(async (newPassword: string) => {
-    setLoading(true);
-    try {
-      if (!newPassword || newPassword.length < 6) {
-        throw new Error('New password must be at least 6 characters');
-      }
+    if (!newPassword || newPassword.length < 6) {
+      throw new Error('New password must be at least 6 characters');
+    }
 
-      if (isSupabaseConfigured && supabase) {
-        const { error } = await supabase.auth.updateUser({
-          password: newPassword,
-        });
-        if (error) throw error;
-      } else {
-        // Mock mode: simulate success
-        await new Promise((resolve) => setTimeout(resolve, 300));
-      }
-    } finally {
-      setLoading(false);
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+      if (error) throw error;
+    } else {
+      // Mock mode: simulate success
+      await new Promise((resolve) => setTimeout(resolve, 300));
     }
   }, []);
 

@@ -6,18 +6,14 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const getEnvVar = (key: 'VITE_SUPABASE_URL' | 'VITE_SUPABASE_ANON_KEY'): string => {
-  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
-    return import.meta.env[key] as string;
-  }
-  if (typeof process !== 'undefined' && process.env && process.env[key]) {
-    return process.env[key] as string;
-  }
-  return '';
-};
+const viteUrl = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_SUPABASE_URL : undefined;
+const viteKey = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_SUPABASE_ANON_KEY : undefined;
 
-const rawUrl = getEnvVar('VITE_SUPABASE_URL').trim();
-const rawKey = getEnvVar('VITE_SUPABASE_ANON_KEY').trim();
+const nodeUrl = typeof process !== 'undefined' && process.env ? process.env.VITE_SUPABASE_URL : undefined;
+const nodeKey = typeof process !== 'undefined' && process.env ? process.env.VITE_SUPABASE_ANON_KEY : undefined;
+
+const rawUrl = (viteUrl || nodeUrl || '').trim();
+const rawKey = (viteKey || nodeKey || '').trim();
 
 /**
  * Returns true only if valid non-placeholder Supabase credentials exist.
