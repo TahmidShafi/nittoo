@@ -203,24 +203,31 @@ export const AccountPage: React.FC = () => {
                   Keep a copy of your Nittoo data and restore it when needed.
                 </p>
                 <span className="text-[11px] text-neutral-400 font-medium block mt-1.5">
-                  Authoritative format: JSON Backup (.json)
+                  Restore format: JSON Backup (.json)
                 </span>
               </div>
-              <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 flex-wrap">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 self-stretch sm:self-auto shrink-0">
                 <button
                   type="button"
                   onClick={handleDownloadBackup}
                   disabled={isDownloadingBackup}
-                  className="btn-press min-h-[44px] px-3.5 py-2 rounded-xl border border-neutral-200/80 hover:bg-neutral-50 text-neutral-700 text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5"
+                  className="btn-press min-h-[44px] px-4 py-2 rounded-xl bg-white border border-[#E8ECE9] hover:bg-neutral-50 text-neutral-700 text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20"
                 >
-                  {isDownloadingBackup ? 'Preparing...' : 'Download Backup'}
+                  <svg className="w-3.5 h-3.5 text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  <span>{isDownloadingBackup ? 'Preparing...' : 'Download Backup'}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsRestoreModalOpen(true)}
-                  className="btn-press min-h-[44px] px-3.5 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                  className="btn-press min-h-[44px] px-4 py-2 rounded-xl bg-[#2D6A4F] hover:bg-[#24563F] text-white text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/40"
+                  aria-label="Restore Backup"
                 >
-                  Restore Backup
+                  <svg className="w-3.5 h-3.5 text-white/90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  <span>Restore Backup</span>
                 </button>
               </div>
             </div>

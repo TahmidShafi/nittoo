@@ -181,7 +181,7 @@ export const RestoreDataModal: React.FC<RestoreDataModalProps> = ({
         {/* Modal Header */}
         <div className="p-5 sm:p-6 border-b border-neutral-100 flex items-start justify-between gap-4">
           <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-primary-600 block">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#2D6A4F] block">
               RESTORE NITTOO DATA
             </span>
             <h2 id="restore-dialog-title" className="text-lg font-bold text-neutral-900 mt-0.5">
@@ -247,11 +247,11 @@ export const RestoreDataModal: React.FC<RestoreDataModalProps> = ({
                 onClick={() => fileInputRef.current?.click()}
                 className={`border-2 border-dashed rounded-xl p-7 text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-3 ${
                   isDragging
-                    ? 'border-primary-500 bg-primary-50/40'
+                    ? 'border-[#2D6A4F] bg-[#EBF4F0]/40'
                     : 'border-neutral-200 hover:border-neutral-300 bg-neutral-50/50 hover:bg-neutral-50'
                 }`}
               >
-                <div className="w-11 h-11 rounded-full bg-white border border-neutral-200 flex items-center justify-center text-primary-600 shadow-2xs">
+                <div className="w-11 h-11 rounded-full bg-white border border-neutral-200 flex items-center justify-center text-[#2D6A4F] shadow-2xs">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                   </svg>
@@ -440,7 +440,7 @@ export const RestoreDataModal: React.FC<RestoreDataModalProps> = ({
           {/* STEP 3: CONFIRMATION */}
           {step === 'confirm' && importPlan && (
             <div className="space-y-4 py-2">
-              <div className="w-12 h-12 rounded-full bg-primary-50 border border-primary-100 flex items-center justify-center text-primary-600 mx-auto">
+              <div className="w-12 h-12 rounded-full bg-[#EBF4F0] border border-[#2D6A4F]/20 flex items-center justify-center text-[#2D6A4F] mx-auto">
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                 </svg>
@@ -479,7 +479,7 @@ export const RestoreDataModal: React.FC<RestoreDataModalProps> = ({
           {/* STEP 4: RESTORING IN PROGRESS */}
           {step === 'restoring' && (
             <div className="py-8 flex flex-col items-center justify-center gap-3 text-center">
-              <div className="w-10 h-10 border-3 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+              <div className="w-10 h-10 border-3 border-[#EBF4F0] border-t-[#2D6A4F] rounded-full animate-spin" />
               <div>
                 <span className="text-sm font-bold text-neutral-900 block">
                   Restoring Nittoo Data...
@@ -553,7 +553,7 @@ export const RestoreDataModal: React.FC<RestoreDataModalProps> = ({
               <button
                 type="button"
                 onClick={() => setStep('confirm')}
-                className="btn-press min-h-[44px] px-5 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs font-semibold shadow-2xs cursor-pointer"
+                className="btn-press min-h-[44px] px-5 py-2 bg-[#2D6A4F] hover:bg-[#24563F] text-white rounded-xl text-xs font-semibold shadow-2xs cursor-pointer"
               >
                 Review Restore
               </button>
@@ -572,7 +572,7 @@ export const RestoreDataModal: React.FC<RestoreDataModalProps> = ({
               <button
                 type="button"
                 onClick={handleConfirmRestore}
-                className="btn-press min-h-[44px] px-5 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs font-semibold shadow-2xs cursor-pointer flex items-center gap-1.5"
+                className="btn-press min-h-[44px] px-5 py-2 bg-[#2D6A4F] hover:bg-[#24563F] text-white rounded-xl text-xs font-semibold shadow-2xs cursor-pointer flex items-center gap-1.5"
               >
                 Restore Data
               </button>
@@ -583,7 +583,7 @@ export const RestoreDataModal: React.FC<RestoreDataModalProps> = ({
             <button
               type="button"
               onClick={handleDone}
-              className="btn-press min-h-[44px] px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs font-semibold shadow-2xs cursor-pointer"
+              className="btn-press min-h-[44px] px-6 py-2 bg-[#2D6A4F] hover:bg-[#24563F] text-white rounded-xl text-xs font-semibold shadow-2xs cursor-pointer"
             >
               Done
             </button>

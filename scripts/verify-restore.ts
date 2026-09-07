@@ -114,8 +114,10 @@ async function runRestoreVerification() {
   assert(
     accountPageSrc.includes('BACKUP & RESTORE') &&
       accountPageSrc.includes('Restore Backup') &&
-      accountPageSrc.includes('RestoreDataModal'),
-    'Test 1: Restore entry & Backup & Restore section exist in AccountPage'
+      accountPageSrc.includes('RestoreDataModal') &&
+      accountPageSrc.includes('bg-[#2D6A4F]') &&
+      accountPageSrc.includes('min-h-[44px]'),
+    'Test 1: Restore entry & visible Backup & Restore buttons exist in AccountPage'
   );
 
   // 2. File picker accepts JSON
