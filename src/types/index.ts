@@ -181,6 +181,52 @@ export interface UserDataExport {
   usage_periods: UsagePeriod[];
 }
 
+export interface ImportProductItemInput {
+  id: string;
+  name: string;
+  brand?: string | null;
+  category: string;
+  size?: number | null;
+  unit?: string | null;
+  created_at?: string;
+}
+
+export interface ImportPurchaseItemInput {
+  id: string;
+  product_id: string;
+  purchase_date: string;
+  price: number;
+  currency?: string;
+  store_vendor?: string | null;
+  created_at?: string;
+}
+
+export interface ImportUsagePeriodItemInput {
+  id: string;
+  product_id: string;
+  purchase_id: string;
+  opened_date: string;
+  finished_date?: string | null;
+  status: 'active' | 'finished';
+  created_at?: string;
+}
+
+export interface ImportUserDataInput {
+  products: ImportProductItemInput[];
+  purchases: ImportPurchaseItemInput[];
+  usage_periods: ImportUsagePeriodItemInput[];
+}
+
+export interface ImportExecutionResult {
+  success: boolean;
+  restoredProducts: number;
+  restoredPurchases: number;
+  restoredCycles: number;
+  restoredUnopened: number;
+  skippedConflicts: number;
+  error?: string;
+}
+
 // ------------------------------------------------------------------------------
 // Shared IDataSource Interface
 // Implemented by both real Supabase (db.ts) and Mock Storage (mock-db.ts)
@@ -247,8 +293,14 @@ export interface IDataSource {
     userId: string
   ): Promise<UserDataExport>;
 
+  importUserData(
+    userId: string,
+    input: ImportUserDataInput
+  ): Promise<ImportExecutionResult>;
+
   resetUserData(
     userId: string,
     isDeletingAccount?: boolean
   ): Promise<void>;
 }
+

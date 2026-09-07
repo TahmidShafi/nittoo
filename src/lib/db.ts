@@ -21,6 +21,8 @@ import type {
   UserInventory,
   UnopenedInventoryItem,
   UserDataExport,
+  ImportUserDataInput,
+  ImportExecutionResult,
 } from '../types';
 
 export class SupabaseDatabase implements IDataSource {
@@ -689,6 +691,251 @@ export class SupabaseDatabase implements IDataSource {
       products,
       purchases,
       usage_periods: usagePeriods,
+    };
+  }
+
+  async importUserData(
+    userId: string,
+    input: ImportUserDataInput
+  ): Promise<ImportExecutionResult> {
+    const client = this.getClient();
+    if (!userId) throw new Error('User ID is required for import');
+
+    let restoredProducts = 0;
+    let restoredPurchases = 0;
+    let restoredCycles = 0;
+    let skippedConflicts = 0;
+
+    const isUuid = (val: string) =>
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
+    // 1. Existing user products (Strict RLS isolation)
+    const { data: existingProducts, error: prodErr } = await client
+      .from('products')
+      .select('*')
+      .eq('user_id', userId);
+
+    if (prodErr) throw new Error(`Failed to query user products for import: ${prodErr.message}`);
+
+    const existingProductIdSet = new Set((existingProducts || []).map((p) => p.id));
+    const productIdMap = new Map<string, string>(); // backupProductId -> effectiveProductId
+
+    for (const p of input.products) {
+      if (existingProductIdSet.has(p.id)) {
+        productIdMap.set(p.id, p.id);
+      } else {
+        const insertPayload: any = {
+          user_id: userId,
+          name: p.name.trim(),
+          category: p.category,
+          brand: p.brand?.trim() || null,
+          size_value: p.size ?? null,
+          size_unit: p.unit ?? null,
+        };
+        if (p.created_at) insertPayload.created_at = p.created_at;
+
+        // If backup ID is valid UUID, try inserting with ID; fallback to generated UUID on conflict
+        let insertedId: string | null = null;
+        if (isUuid(p.id)) {
+          const { data: inserted, error: insErr } = await client
+            .from('products')
+            .insert({ ...insertPayload, id: p.id })
+            .select('id')
+            .single();
+
+          if (!insErr && inserted) {
+            insertedId = inserted.id;
+          }
+        }
+
+        if (!insertedId) {
+          const { data: inserted, error: insErr2 } = await client
+            .from('products')
+            .insert(insertPayload)
+            .select('id')
+            .single();
+
+          if (insErr2 || !inserted) {
+            throw new Error(`Failed to restore product ${p.name}: ${insErr2?.message || 'Unknown error'}`);
+          }
+          insertedId = inserted.id;
+        }
+
+        productIdMap.set(p.id, insertedId!);
+        restoredProducts++;
+      }
+    }
+
+    // 2. Existing purchases for effective products
+    const allUserProductIds = Array.from(new Set([...Array.from(productIdMap.values()), ...Array.from(existingProductIdSet)]));
+    let existingPurchases: Purchase[] = [];
+    if (allUserProductIds.length > 0) {
+      const { data: purData, error: purErr } = await client
+        .from('purchases')
+        .select('*')
+        .in('product_id', allUserProductIds);
+
+      if (purErr) throw new Error(`Failed to query user purchases: ${purErr.message}`);
+      existingPurchases = (purData || []) as Purchase[];
+    }
+
+    const existingPurchaseIdSet = new Set(existingPurchases.map((pu) => pu.id));
+    const purchaseIdMap = new Map<string, string>();
+    const newlyCreatedPurchaseIds = new Set<string>();
+
+    for (const pu of input.purchases) {
+      let targetProductId = productIdMap.get(pu.product_id);
+      if (!targetProductId && existingProductIdSet.has(pu.product_id)) {
+        targetProductId = pu.product_id;
+      }
+      if (!targetProductId) continue;
+
+      if (existingPurchaseIdSet.has(pu.id)) {
+        purchaseIdMap.set(pu.id, pu.id);
+      } else {
+        const insertPayload: any = {
+          product_id: targetProductId,
+          purchase_date: pu.purchase_date,
+          price: Number(pu.price),
+          currency: pu.currency || 'BDT',
+        };
+        if (pu.created_at) insertPayload.created_at = pu.created_at;
+
+        let insertedId: string | null = null;
+        if (isUuid(pu.id)) {
+          const { data: inserted, error: insErr } = await client
+            .from('purchases')
+            .insert({ ...insertPayload, id: pu.id })
+            .select('id')
+            .single();
+
+          if (!insErr && inserted) {
+            insertedId = inserted.id;
+          }
+        }
+
+        if (!insertedId) {
+          const { data: inserted, error: insErr2 } = await client
+            .from('purchases')
+            .insert(insertPayload)
+            .select('id')
+            .single();
+
+          if (insErr2 || !inserted) {
+            throw new Error(`Failed to restore purchase: ${insErr2?.message || 'Unknown error'}`);
+          }
+          insertedId = inserted.id;
+        }
+
+        purchaseIdMap.set(pu.id, insertedId!);
+        newlyCreatedPurchaseIds.add(insertedId!);
+        restoredPurchases++;
+      }
+    }
+
+    // 3. Existing usage periods
+    let existingPeriods: UsagePeriod[] = [];
+    if (allUserProductIds.length > 0) {
+      const { data: usageData, error: uErr } = await client
+        .from('usage_periods')
+        .select('*')
+        .in('product_id', allUserProductIds);
+
+      if (uErr) throw new Error(`Failed to query user usage periods: ${uErr.message}`);
+      existingPeriods = (usageData || []) as UsagePeriod[];
+    }
+
+    const existingUsageIdSet = new Set(existingPeriods.map((u) => u.id));
+    const activeProductIds = new Set(
+      existingPeriods.filter((u) => u.status === 'active').map((u) => u.product_id)
+    );
+    const usedPurchaseIds = new Set<string>(existingPeriods.map((u) => u.purchase_id));
+
+    for (const u of input.usage_periods) {
+      let targetProductId = productIdMap.get(u.product_id);
+      if (!targetProductId && existingProductIdSet.has(u.product_id)) {
+        targetProductId = u.product_id;
+      }
+      let targetPurchaseId = purchaseIdMap.get(u.purchase_id);
+      if (!targetPurchaseId && existingPurchaseIdSet.has(u.purchase_id)) {
+        targetPurchaseId = u.purchase_id;
+      }
+      if (!targetProductId || !targetPurchaseId) continue;
+
+      if (existingUsageIdSet.has(u.id)) {
+        usedPurchaseIds.add(targetPurchaseId);
+        continue; // Idempotent skip
+      }
+
+      if (u.status === 'active') {
+        if (activeProductIds.has(targetProductId)) {
+          // Active bottle conflict! Keep current active bottle, backup active record remains unopened
+          skippedConflicts++;
+        } else {
+          const insertPayload: any = {
+            product_id: targetProductId,
+            purchase_id: targetPurchaseId,
+            opened_date: u.opened_date,
+            status: 'active',
+          };
+          if (u.created_at) insertPayload.created_at = u.created_at;
+
+          let inserted = false;
+          if (isUuid(u.id)) {
+            const { error: insErr } = await client
+              .from('usage_periods')
+              .insert({ ...insertPayload, id: u.id });
+            if (!insErr) inserted = true;
+          }
+          if (!inserted) {
+            const { error: insErr2 } = await client
+              .from('usage_periods')
+              .insert(insertPayload);
+            if (insErr2) throw new Error(`Failed to restore active usage: ${insErr2.message}`);
+          }
+          activeProductIds.add(targetProductId);
+          usedPurchaseIds.add(targetPurchaseId);
+        }
+      } else {
+        // Historical finished cycle
+        const insertPayload: any = {
+          product_id: targetProductId,
+          purchase_id: targetPurchaseId,
+          opened_date: u.opened_date,
+          finished_date: u.finished_date || u.opened_date,
+          status: 'finished',
+        };
+        if (u.created_at) insertPayload.created_at = u.created_at;
+
+        let inserted = false;
+        if (isUuid(u.id)) {
+          const { error: insErr } = await client
+            .from('usage_periods')
+            .insert({ ...insertPayload, id: u.id });
+          if (!insErr) inserted = true;
+        }
+        if (!inserted) {
+          const { error: insErr2 } = await client
+            .from('usage_periods')
+            .insert(insertPayload);
+          if (insErr2) throw new Error(`Failed to restore usage cycle: ${insErr2.message}`);
+        }
+        restoredCycles++;
+        usedPurchaseIds.add(targetPurchaseId);
+      }
+    }
+
+    const restoredUnopened = Array.from(newlyCreatedPurchaseIds).filter(
+      (pid) => !usedPurchaseIds.has(pid)
+    ).length;
+
+    return {
+      success: true,
+      restoredProducts,
+      restoredPurchases,
+      restoredCycles,
+      restoredUnopened,
+      skippedConflicts,
     };
   }
 

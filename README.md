@@ -392,6 +392,8 @@ Run any verification script with `npm run`:
 | `npm run verify:comparison` | Product Comparison & Value Intelligence | 1-on-1 personal comparison, unit economics, observed vs predicted isolation, deterministic insights |
 | `npm run verify:confidence` | Prediction Confidence & Evidence | 5 deterministic evidence states, cycle-count maturity, non-invasive calculation isolation |
 | `npm run verify:account` | Account Settings UX | Quiet document layout, email change, password update, global session signout, data export, and account deletion |
+| `npm run verify:export` | Data Export System | Excel (.xlsx), CSV (.zip), PDF report, and JSON backup generation & integrity |
+| `npm run verify:restore` | Data Restore & Import | Schema validation, user ID isolation, active bottle conflicts, safe merge, and idempotency |
 | `npm run verify:rls` | Security & RLS | **Two-account live RLS audit**: verifies Account B cannot read, write, update, or delete Account A's data |
 | `npm run verify:audit` | 9-Domain Full Audit | 100% comprehensive production audit across all 9 architectural domains |
 
@@ -439,6 +441,25 @@ The included [`vercel.json`](vercel.json) handles client-side routing so deep li
   ]
 }
 ```
+
+### 📦 Professional Data Portability (Export & Restore)
+Nittoo provides complete ownership and portability of user consumption records across 4 specialized formats, backed by a secure, idempotent restore engine:
+
+#### Export Formats & Intent
+- **Excel (.xlsx)**: *Recommended for deep analysis*. Multi-sheet workbook (`Summary`, `Products`, `Purchases`, `Usage History`, `Inventory`, `Analytics`) formatted with freeze panes, column widths, and bold headers.
+- **CSV Archive (.zip)**: *Universal tabular data*. RFC 4180-compliant comma-separated tables with UTF-8 BOM (`\uFEFF`) for broad spreadsheet compatibility.
+- **PDF Report (.pdf)**: *Human-readable personal report*. Editorial layout with consumption cards, category breakdowns, observed metrics, and upcoming restock horizons.
+- **JSON Backup (.json)**: *Authoritative Nittoo restore format*. Machine-readable schema (Version `1.0.0`) capturing complete relational history.
+
+#### Restore & Import Guarantees
+- **Authoritative Format**: JSON is the sole restore format. Excel, CSV, and PDF are for analysis and reporting only.
+- **Supported Version**: Version `1.0.0`.
+- **Additive / Safe Merge**: Restore adds missing data and **never** deletes existing account data or resets the database.
+- **Security & Multi-Tenant Isolation**: Never trust backup user IDs. All imported records are strictly assigned to the currently authenticated user (`auth.uid()`).
+- **Zero Secrets**: Rejects any backups containing passwords, access tokens, or sensitive credentials.
+- **Idempotency**: Safe to run repeatedly; restoring the same backup twice produces 0 duplicate records.
+- **Active Container Conflict Resolution**: Enforces the single-active-bottle constraint (`idx_usage_periods_single_active`). If the account already has an active bottle for an item, current active status is kept, and the backup container is preserved as unopened inventory.
+- **Relational Integrity**: Foreign key links between products, purchases, and usage periods are strictly maintained; orphan records are prevented.
 
 ---
 

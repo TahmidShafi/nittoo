@@ -11,6 +11,9 @@ import { ChangePasswordModal } from '../components/ChangePasswordModal';
 import { SignOutAllSessionsModal } from '../components/SignOutAllSessionsModal';
 import { DeleteAccountModal } from '../components/DeleteAccountModal';
 import { ExportDataModal } from '../components/ExportDataModal';
+import { RestoreDataModal } from '../components/RestoreDataModal';
+import { exportUserDataAs } from '../lib/export';
+import { db } from '../lib/dataSource';
 
 export const AccountPage: React.FC = () => {
   const { user } = useAuth();
@@ -20,9 +23,27 @@ export const AccountPage: React.FC = () => {
   const [isSessionsModalOpen, setIsSessionsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
+  const [isDownloadingBackup, setIsDownloadingBackup] = useState(false);
 
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleDownloadBackup = async () => {
+    if (!user) return;
+    setIsDownloadingBackup(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    try {
+      const { filename } = await exportUserDataAs('json', user.id, user.email, db);
+      setSuccessMessage(`Backup ready. Downloaded ${filename}`);
+    } catch (err: any) {
+      console.error('Backup download failed:', err);
+      setErrorMessage("Couldn't generate the JSON backup. Please try again.");
+    } finally {
+      setIsDownloadingBackup(false);
+    }
+  };
 
   return (
     <div className="w-full max-w-[700px] mx-auto py-4 sm:py-6 space-y-6 animate-page-in">
@@ -146,27 +167,63 @@ export const AccountPage: React.FC = () => {
         </div>
 
         {/* 6. DATA SECTION */}
-        <div className="p-6 sm:p-7 space-y-3">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block">
-            DATA
-          </span>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
-            <div>
-              <h3 className="text-sm font-bold text-neutral-900">Export your Nittoo data</h3>
-              <p className="text-xs text-neutral-500 mt-0.5 max-w-md leading-relaxed">
-                Download your Nittoo data as a spreadsheet, report, or backup.
-              </p>
-              <span className="text-[11px] text-neutral-400 font-medium block mt-1.5">
-                Available formats: Excel · CSV · PDF · JSON
-              </span>
+        <div className="p-6 sm:p-7 space-y-6">
+          <div className="space-y-3">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block">
+              DATA
+            </span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
+              <div>
+                <h3 className="text-sm font-bold text-neutral-900">Export your Nittoo data</h3>
+                <p className="text-xs text-neutral-500 mt-0.5 max-w-md leading-relaxed">
+                  Download your Nittoo data as a spreadsheet, report, or backup.
+                </p>
+                <span className="text-[11px] text-neutral-400 font-medium block mt-1.5">
+                  Available formats: Excel · CSV · PDF · JSON
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsExportModalOpen(true)}
+                className="btn-press min-h-[44px] px-4 py-2 rounded-xl border border-neutral-200/80 hover:bg-neutral-50 text-neutral-700 text-xs font-semibold transition-all self-start sm:self-auto cursor-pointer flex items-center gap-1.5 shrink-0"
+              >
+                Export data
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsExportModalOpen(true)}
-              className="btn-press min-h-[44px] px-4 py-2 rounded-xl border border-neutral-200/80 hover:bg-neutral-50 text-neutral-700 text-xs font-semibold transition-all self-start sm:self-auto cursor-pointer flex items-center gap-1.5 shrink-0"
-            >
-              Export data
-            </button>
+          </div>
+
+          <div className="pt-5 border-t border-neutral-150 space-y-3">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block">
+              BACKUP & RESTORE
+            </span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
+              <div>
+                <h3 className="text-sm font-bold text-neutral-900">Backup & Restore</h3>
+                <p className="text-xs text-neutral-500 mt-0.5 max-w-md leading-relaxed">
+                  Keep a copy of your Nittoo data and restore it when needed.
+                </p>
+                <span className="text-[11px] text-neutral-400 font-medium block mt-1.5">
+                  Authoritative format: JSON Backup (.json)
+                </span>
+              </div>
+              <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleDownloadBackup}
+                  disabled={isDownloadingBackup}
+                  className="btn-press min-h-[44px] px-3.5 py-2 rounded-xl border border-neutral-200/80 hover:bg-neutral-50 text-neutral-700 text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  {isDownloadingBackup ? 'Preparing...' : 'Download Backup'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsRestoreModalOpen(true)}
+                  className="btn-press min-h-[44px] px-3.5 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                >
+                  Restore Backup
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -197,6 +254,12 @@ export const AccountPage: React.FC = () => {
       <ExportDataModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
+      />
+
+      <RestoreDataModal
+        isOpen={isRestoreModalOpen}
+        onClose={() => setIsRestoreModalOpen(false)}
+        onSuccess={() => setSuccessMessage('Backup restored successfully.')}
       />
 
       <ChangeEmailModal

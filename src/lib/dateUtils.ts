@@ -75,3 +75,11 @@ export function formatDisplayDate(dateStr: string): string {
     year: 'numeric',
   });
 }
+
+/**
+ * Formats an ISO string or YYYY-MM-DD date for display
+ */
+export function formatDate(dateStr: string): string {
+  if (!dateStr) return '';
+  return formatDisplayDate(dateStr.slice(0, 10));
+}

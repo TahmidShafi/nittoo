@@ -20,6 +20,8 @@ import type {
   UserInventory,
   UnopenedInventoryItem,
   UserDataExport,
+  ImportUserDataInput,
+  ImportExecutionResult,
 } from '../types';
 
 export const DEFAULT_MOCK_USER_ID = 'default-mock-user';
@@ -796,6 +798,187 @@ export class MockDatabase implements IDataSource {
       products: userProducts,
       purchases: userPurchases,
       usage_periods: userUsagePeriods,
+    };
+  }
+
+  async importUserData(
+    userId: string,
+    input: ImportUserDataInput
+  ): Promise<ImportExecutionResult> {
+    if (!userId) throw new Error('User ID is required for import');
+
+    const data = this.getData();
+    let restoredProducts = 0;
+    let restoredPurchases = 0;
+    let restoredCycles = 0;
+    let skippedConflicts = 0;
+
+    // 1. Existing user records for isolation & duplicate detection
+    const existingUserProducts = data.products.filter((p) => p.user_id === userId);
+    const existingProductIdSet = new Set(existingUserProducts.map((p) => p.id));
+    const allProductIdsGlobal = new Set(data.products.map((p) => p.id));
+
+    const productIdMap = new Map<string, string>(); // backupProductId -> effectiveProductId
+
+    for (const p of input.products) {
+      if (existingProductIdSet.has(p.id)) {
+        // Record already exists for this user - reuse stable identity
+        productIdMap.set(p.id, p.id);
+      } else {
+        // Check if ID is taken by another user globally; if so generate deterministic user-scoped ID
+        let targetId = p.id;
+        if (allProductIdsGlobal.has(targetId)) {
+          targetId = `${userId}_${p.id}`;
+        }
+        allProductIdsGlobal.add(targetId);
+        productIdMap.set(p.id, targetId);
+
+        const newProd: Product = {
+          id: targetId,
+          user_id: userId,
+          name: p.name.trim(),
+          category: p.category as any,
+          brand: p.brand?.trim() || null,
+          size_value: p.size ?? null,
+          size_unit: (p.unit as any) ?? null,
+          created_at: p.created_at || new Date().toISOString(),
+        };
+        data.products.push(newProd);
+        restoredProducts++;
+      }
+    }
+
+    // 2. Existing purchases for current user
+    const currentEffectiveProductIds = new Set(
+      data.products.filter((p) => p.user_id === userId).map((p) => p.id)
+    );
+    const existingUserPurchases = data.purchases.filter((pu) =>
+      currentEffectiveProductIds.has(pu.product_id)
+    );
+    const existingPurchaseIdSet = new Set(existingUserPurchases.map((pu) => pu.id));
+    const allPurchaseIdsGlobal = new Set(data.purchases.map((pu) => pu.id));
+
+    const purchaseIdMap = new Map<string, string>(); // backupPurchaseId -> effectivePurchaseId
+    const newlyCreatedPurchaseIds = new Set<string>();
+
+    for (const pu of input.purchases) {
+      let targetProductId = productIdMap.get(pu.product_id);
+      if (!targetProductId && existingProductIdSet.has(pu.product_id)) {
+        targetProductId = pu.product_id;
+      }
+      if (!targetProductId) continue; // Never orphan purchase
+
+      if (existingPurchaseIdSet.has(pu.id)) {
+        purchaseIdMap.set(pu.id, pu.id);
+      } else {
+        let targetId = pu.id;
+        if (allPurchaseIdsGlobal.has(targetId)) {
+          targetId = `${userId}_${pu.id}`;
+        }
+        allPurchaseIdsGlobal.add(targetId);
+        purchaseIdMap.set(pu.id, targetId);
+
+        const newPurchase: Purchase = {
+          id: targetId,
+          product_id: targetProductId,
+          purchase_date: pu.purchase_date,
+          price: Number(pu.price),
+          currency: pu.currency || 'BDT',
+          created_at: pu.created_at || new Date().toISOString(),
+        };
+        data.purchases.push(newPurchase);
+        newlyCreatedPurchaseIds.add(targetId);
+        restoredPurchases++;
+      }
+    }
+
+    // 3. Existing usage periods & active bottle constraints
+    const existingUserUsage = data.usage_periods.filter((u) =>
+      currentEffectiveProductIds.has(u.product_id)
+    );
+    const existingUsageIdSet = new Set(existingUserUsage.map((u) => u.id));
+    const allUsageIdsGlobal = new Set(data.usage_periods.map((u) => u.id));
+
+    const activeProductIds = new Set(
+      existingUserUsage.filter((u) => u.status === 'active').map((u) => u.product_id)
+    );
+    const usedPurchaseIds = new Set<string>(existingUserUsage.map((u) => u.purchase_id));
+
+    for (const u of input.usage_periods) {
+      let targetProductId = productIdMap.get(u.product_id);
+      if (!targetProductId && existingProductIdSet.has(u.product_id)) {
+        targetProductId = u.product_id;
+      }
+      let targetPurchaseId = purchaseIdMap.get(u.purchase_id);
+      if (!targetPurchaseId && existingPurchaseIdSet.has(u.purchase_id)) {
+        targetPurchaseId = u.purchase_id;
+      }
+      if (!targetProductId || !targetPurchaseId) continue;
+
+      if (existingUsageIdSet.has(u.id)) {
+        usedPurchaseIds.add(targetPurchaseId);
+        continue; // Idempotent skip
+      }
+
+      if (u.status === 'active') {
+        if (activeProductIds.has(targetProductId)) {
+          // Active bottle conflict! Keep current active bottle, backup active record remains unopened
+          skippedConflicts++;
+        } else {
+          let targetId = u.id;
+          if (allUsageIdsGlobal.has(targetId)) {
+            targetId = `${userId}_${u.id}`;
+          }
+          allUsageIdsGlobal.add(targetId);
+
+          data.usage_periods.push({
+            id: targetId,
+            product_id: targetProductId,
+            purchase_id: targetPurchaseId,
+            opened_date: u.opened_date,
+            finished_date: null,
+            status: 'active',
+            created_at: u.created_at || new Date().toISOString(),
+          });
+          activeProductIds.add(targetProductId);
+          usedPurchaseIds.add(targetPurchaseId);
+        }
+      } else {
+        // Historical finished cycle
+        let targetId = u.id;
+        if (allUsageIdsGlobal.has(targetId)) {
+          targetId = `${userId}_${u.id}`;
+        }
+        allUsageIdsGlobal.add(targetId);
+
+        data.usage_periods.push({
+          id: targetId,
+          product_id: targetProductId,
+          purchase_id: targetPurchaseId,
+          opened_date: u.opened_date,
+          finished_date: u.finished_date || u.opened_date,
+          status: 'finished',
+          created_at: u.created_at || new Date().toISOString(),
+        });
+        restoredCycles++;
+        usedPurchaseIds.add(targetPurchaseId);
+      }
+    }
+
+    // Calculate unopened purchases restored in this operation
+    const restoredUnopened = Array.from(newlyCreatedPurchaseIds).filter(
+      (pid) => !usedPurchaseIds.has(pid)
+    ).length;
+
+    this.saveData(data);
+
+    return {
+      success: true,
+      restoredProducts,
+      restoredPurchases,
+      restoredCycles,
+      restoredUnopened,
+      skippedConflicts,
     };
   }
 
