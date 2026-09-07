@@ -6,11 +6,11 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { db } from '../lib/dataSource';
 import { ChangeEmailModal } from '../components/ChangeEmailModal';
 import { ChangePasswordModal } from '../components/ChangePasswordModal';
 import { SignOutAllSessionsModal } from '../components/SignOutAllSessionsModal';
 import { DeleteAccountModal } from '../components/DeleteAccountModal';
+import { ExportDataModal } from '../components/ExportDataModal';
 
 export const AccountPage: React.FC = () => {
   const { user } = useAuth();
@@ -19,41 +19,10 @@ export const AccountPage: React.FC = () => {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isSessionsModalOpen, setIsSessionsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
-  const [exporting, setExporting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const handleExportData = async () => {
-    if (!user) return;
-    setExporting(true);
-    setErrorMessage(null);
-    setSuccessMessage(null);
-
-    try {
-      const data = await db.exportUserData(user.id);
-      data.user.email = user.email;
-
-      const jsonStr = JSON.stringify(data, null, 2);
-      const blob = new Blob([jsonStr], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      const today = new Date().toISOString().split('T')[0];
-      link.href = url;
-      link.download = `nittoo-data-export-${today}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      setSuccessMessage('Data export ready. Your download has started.');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Couldn't export data.";
-      setErrorMessage(msg);
-    } finally {
-      setExporting(false);
-    }
-  };
 
   return (
     <div className="w-full max-w-[700px] mx-auto py-4 sm:py-6 space-y-6 animate-page-in">
@@ -185,16 +154,18 @@ export const AccountPage: React.FC = () => {
             <div>
               <h3 className="text-sm font-bold text-neutral-900">Export your Nittoo data</h3>
               <p className="text-xs text-neutral-500 mt-0.5 max-w-md leading-relaxed">
-                Download a copy of your products, purchases, usage history, and related personal data.
+                Download your Nittoo data as a spreadsheet, report, or backup.
               </p>
+              <span className="text-[11px] text-neutral-400 font-medium block mt-1.5">
+                Available formats: Excel · CSV · PDF · JSON
+              </span>
             </div>
             <button
               type="button"
-              onClick={handleExportData}
-              disabled={exporting}
-              className="btn-press min-h-[44px] px-4 py-2 rounded-xl border border-neutral-200/80 hover:bg-neutral-50 text-neutral-700 text-xs font-semibold transition-all self-start sm:self-auto disabled:opacity-60 cursor-pointer flex items-center gap-1.5 shrink-0"
+              onClick={() => setIsExportModalOpen(true)}
+              className="btn-press min-h-[44px] px-4 py-2 rounded-xl border border-neutral-200/80 hover:bg-neutral-50 text-neutral-700 text-xs font-semibold transition-all self-start sm:self-auto cursor-pointer flex items-center gap-1.5 shrink-0"
             >
-              {exporting ? 'Exporting...' : 'Export data'}
+              Export data
             </button>
           </div>
         </div>
@@ -223,6 +194,11 @@ export const AccountPage: React.FC = () => {
       </div>
 
       {/* Dialog Modals */}
+      <ExportDataModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+      />
+
       <ChangeEmailModal
         isOpen={isEmailModalOpen}
         onClose={() => setIsEmailModalOpen(false)}
