@@ -4,7 +4,7 @@
 // Follows Linear-inspired personal consumption architecture
 // ==============================================================================
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { db } from '../lib/dataSource';
@@ -27,30 +27,64 @@ export const InventoryPage: React.FC = () => {
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [activatingId, setActivatingId] = useState<string | null>(null);
 
+  // Stale-while-revalidate refs
+  const isInitialLoad = useRef(true);
+  const lastRefetchTimeRef = useRef(Date.now());
+
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [editPurchase, setEditPurchase] = useState<Purchase | null>(null);
   const [editMode, setEditMode] = useState<'active_bottle' | 'unopened'>('unopened');
 
-  const loadInventory = async () => {
-    if (!user) return;
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await db.getUserInventory(user.id);
-      setInventory(data);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to load inventory';
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loadInventory = useCallback(
+    async (isSilent = false) => {
+      if (!user?.id) return;
+      if (isInitialLoad.current && !isSilent) {
+        setLoading(true);
+      }
+      try {
+        const data = await db.getUserInventory(user.id);
+        setInventory(data);
+        setError(null);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Failed to load inventory';
+        console.error('Failed to load inventory:', err);
+        if (isInitialLoad.current) {
+          setError(msg);
+        }
+      } finally {
+        isInitialLoad.current = false;
+        setLoading(false);
+      }
+    },
+    [user?.id]
+  );
 
   useEffect(() => {
     loadInventory();
-  }, [user]);
+  }, [loadInventory]);
+
+  // Silent background revalidation on window focus / tab return
+  useEffect(() => {
+    const handleFocusOrVisibility = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        const now = Date.now();
+        if (now - lastRefetchTimeRef.current >= 3000) {
+          lastRefetchTimeRef.current = now;
+          loadInventory(true);
+        }
+      }
+    };
+
+    window.addEventListener('focus', handleFocusOrVisibility);
+    document.addEventListener('visibilitychange', handleFocusOrVisibility);
+
+    return () => {
+      window.removeEventListener('focus', handleFocusOrVisibility);
+      document.removeEventListener('visibilitychange', handleFocusOrVisibility);
+    };
+  }, [loadInventory]);
 
   // Handle Edit Active Bottle
   const handleEditActive = (product: ProductWithDetails) => {

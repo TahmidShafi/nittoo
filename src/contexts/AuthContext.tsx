@@ -80,10 +80,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (error) throw error;
 
           if (mounted && session?.user) {
-            setUser({
-              id: session.user.id,
-              email: session.user.email ?? '',
-              created_at: session.user.created_at,
+            setUser((prev) => {
+              if (
+                prev &&
+                prev.id === session.user.id &&
+                prev.email === (session.user.email ?? '') &&
+                prev.created_at === session.user.created_at
+              ) {
+                return prev;
+              }
+              return {
+                id: session.user.id,
+                email: session.user.email ?? '',
+                created_at: session.user.created_at,
+              };
             });
           }
         } catch (err) {
@@ -97,10 +107,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           (_event, session) => {
             if (!mounted) return;
             if (session?.user) {
-              setUser({
-                id: session.user.id,
-                email: session.user.email ?? '',
-                created_at: session.user.created_at,
+              setUser((prev) => {
+                if (
+                  prev &&
+                  prev.id === session.user.id &&
+                  prev.email === (session.user.email ?? '') &&
+                  prev.created_at === session.user.created_at
+                ) {
+                  return prev;
+                }
+                return {
+                  id: session.user.id,
+                  email: session.user.email ?? '',
+                  created_at: session.user.created_at,
+                };
               });
             } else {
               setUser(null);
@@ -118,7 +138,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (rawSession) {
               const parsed = JSON.parse(rawSession);
               if (parsed?.user?.id && parsed?.user?.email) {
-                if (mounted) setUser(parsed.user);
+                if (mounted) {
+                  setUser((prev) => {
+                    if (
+                      prev &&
+                      prev.id === parsed.user.id &&
+                      prev.email === parsed.user.email &&
+                      prev.created_at === parsed.user.created_at
+                    ) {
+                      return prev;
+                    }
+                    return parsed.user;
+                  });
+                }
               }
             }
           }

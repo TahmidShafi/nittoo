@@ -4,7 +4,7 @@
 // Strictly separates observed completed-cycle data from active estimates
 // ==============================================================================
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { db } from '../lib/dataSource';
@@ -26,12 +26,16 @@ export const ProductComparisonPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Stale-while-revalidate refs
+  const isInitialLoad = useRef(true);
+  const lastRefetchTimeRef = useRef(Date.now());
+
   // Search filter for comparison product selector
   const [searchQuery, setSearchQuery] = useState('');
 
   // 1. Load User Tracked Products
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
     let mounted = true;
 
     async function loadProducts() {
@@ -47,44 +51,69 @@ export const ProductComparisonPage: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, [user]);
+  }, [user?.id]);
 
-  // 2. Load Histories for Base and Target Products (Batched)
-  useEffect(() => {
-    if (!user) return;
-    let mounted = true;
+  // 2. Load Histories for Base and Target Products (Batched & Stale-while-revalidate)
+  const loadHistories = useCallback(
+    async (isSilent = false) => {
+      if (!user?.id) return;
 
-    async function loadHistories() {
-      try {
+      const needsSkeleton = isInitialLoad.current || (!historyA && !historyB && (baseId || targetId));
+      if (needsSkeleton && !isSilent) {
         setLoading(true);
-        setError(null);
+      }
 
+      try {
         const promises: [
           Promise<ProductWithHistory | null>,
           Promise<ProductWithHistory | null>
         ] = [
-          baseId ? db.getProductHistory(baseId, user!.id) : Promise.resolve(null),
-          targetId ? db.getProductHistory(targetId, user!.id) : Promise.resolve(null),
+          baseId ? db.getProductHistory(baseId, user.id) : Promise.resolve(null),
+          targetId ? db.getProductHistory(targetId, user.id) : Promise.resolve(null),
         ];
 
         const [resA, resB] = await Promise.all(promises);
-
-        if (!mounted) return;
         setHistoryA(resA);
         setHistoryB(resB);
+        setError(null);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Failed to load comparison data';
-        if (mounted) setError(msg);
+        console.error('Failed to load comparison data:', err);
+        if (isInitialLoad.current) {
+          setError(msg);
+        }
       } finally {
-        if (mounted) setLoading(false);
+        isInitialLoad.current = false;
+        setLoading(false);
       }
-    }
+    },
+    [user?.id, baseId, targetId]
+  );
 
+  useEffect(() => {
     loadHistories();
-    return () => {
-      mounted = false;
+  }, [loadHistories]);
+
+  // Silent background revalidation on window focus / tab return
+  useEffect(() => {
+    const handleFocusOrVisibility = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        const now = Date.now();
+        if (now - lastRefetchTimeRef.current >= 3000) {
+          lastRefetchTimeRef.current = now;
+          loadHistories(true);
+        }
+      }
     };
-  }, [user, baseId, targetId]);
+
+    window.addEventListener('focus', handleFocusOrVisibility);
+    document.addEventListener('visibilitychange', handleFocusOrVisibility);
+
+    return () => {
+      window.removeEventListener('focus', handleFocusOrVisibility);
+      document.removeEventListener('visibilitychange', handleFocusOrVisibility);
+    };
+  }, [loadHistories]);
 
   // Build comparison report
   const report: ComparisonReport | null = useMemo(() => {

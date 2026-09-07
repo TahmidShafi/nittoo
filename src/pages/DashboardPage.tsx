@@ -3,7 +3,7 @@
 // Editorial Essentials Overview, Summary Metrics, Filter Tabs & Product Grid
 // ==============================================================================
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { db } from '../lib/dataSource';
@@ -61,6 +61,10 @@ export const DashboardPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Stale-while-revalidate refs
+  const isInitialLoad = useRef(true);
+  const lastRefetchTimeRef = useRef(Date.now());
+
   // Filter & Search State
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
@@ -74,24 +78,58 @@ export const DashboardPage: React.FC = () => {
   const [modalProduct, setModalProduct] = useState<ProductWithDetails | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const loadActiveProducts = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    setError(null);
+  const loadActiveProducts = useCallback(
+    async (isSilent = false) => {
+      if (!user?.id) return;
+      // Only show full skeleton indicator on the true initial page load
+      if (isInitialLoad.current && !isSilent) {
+        setLoading(true);
+      }
 
-    try {
-      const active = await db.getActiveProducts(user.id);
-      setProducts(active);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to load active products';
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
+      try {
+        const active = await db.getActiveProducts(user.id);
+        setProducts(active);
+        setError(null);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Failed to load active products';
+        console.error('Failed to load active products:', err);
+        // If initial load fails, display error banner. If background refresh fails, keep existing products visible.
+        if (isInitialLoad.current) {
+          setError(msg);
+        }
+      } finally {
+        isInitialLoad.current = false;
+        setLoading(false);
+      }
+    },
+    [user?.id]
+  );
 
+  // Initial load
   useEffect(() => {
     loadActiveProducts();
+  }, [loadActiveProducts]);
+
+  // Silent background revalidation when returning to tab/window
+  useEffect(() => {
+    const handleFocusOrVisibility = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        const now = Date.now();
+        // Throttle background revalidation (at most once every 3s)
+        if (now - lastRefetchTimeRef.current >= 3000) {
+          lastRefetchTimeRef.current = now;
+          loadActiveProducts(true);
+        }
+      }
+    };
+
+    window.addEventListener('focus', handleFocusOrVisibility);
+    document.addEventListener('visibilitychange', handleFocusOrVisibility);
+
+    return () => {
+      window.removeEventListener('focus', handleFocusOrVisibility);
+      document.removeEventListener('visibilitychange', handleFocusOrVisibility);
+    };
   }, [loadActiveProducts]);
 
   // Urgency-sorted product list
@@ -215,7 +253,7 @@ export const DashboardPage: React.FC = () => {
           <p className="text-xs text-rose-600">A connection issue occurred. Please try again.</p>
           <button
             type="button"
-            onClick={loadActiveProducts}
+            onClick={() => loadActiveProducts()}
             className="btn-press min-h-[40px] px-5 py-2 rounded-xl bg-[#2D6A4F] text-white text-xs font-semibold hover:bg-[#24563F] transition-colors shadow-xs"
           >
             Retry Loading
@@ -410,7 +448,7 @@ export const DashboardPage: React.FC = () => {
         product={modalProduct}
         isOpen={isModalOpen}
         onClose={handleCloseFinishModal}
-        onFinished={loadActiveProducts}
+        onFinished={() => loadActiveProducts()}
       />
     </div>
   );

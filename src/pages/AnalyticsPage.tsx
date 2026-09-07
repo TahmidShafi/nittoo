@@ -3,7 +3,7 @@
 // Cross-product consumption insights, run rates, and upcoming depletion alerts
 // ==============================================================================
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   BarChart,
@@ -35,6 +35,10 @@ export const AnalyticsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Stale-while-revalidate refs
+  const isInitialLoad = useRef(true);
+  const lastRefetchTimeRef = useRef(Date.now());
+
   const [upcomingPurchases, setUpcomingPurchases] = useState<UpcomingPurchaseItem[]>([]);
   const [monthlyConsumption, setMonthlyConsumption] = useState<number | null>(null);
   const [costRankings, setCostRankings] = useState<{
@@ -44,14 +48,15 @@ export const AnalyticsPage: React.FC = () => {
   const [chartData, setChartData] = useState<CostComparisonChartPoint[]>([]);
   const [hasProducts, setHasProducts] = useState(true);
 
-  useEffect(() => {
-    async function loadAnalyticsData() {
-      if (!user) return;
+  const loadAnalyticsData = useCallback(
+    async (isSilent = false) => {
+      if (!user?.id) return;
+
+      if (isInitialLoad.current && !isSilent) {
+        setLoading(true);
+      }
 
       try {
-        setLoading(true);
-        setError(null);
-
         const products = await db.getAllUserProducts(user.id);
         if (products.length === 0) {
           setHasProducts(false);
@@ -59,7 +64,7 @@ export const AnalyticsPage: React.FC = () => {
           setMonthlyConsumption(null);
           setCostRankings({ mostEfficient: [], leastEfficient: [] });
           setChartData([]);
-          setLoading(false);
+          setError(null);
           return;
         }
 
@@ -79,16 +84,44 @@ export const AnalyticsPage: React.FC = () => {
         setMonthlyConsumption(monthly);
         setCostRankings(rankings);
         setChartData(chartPoints);
+        setError(null);
       } catch (err: unknown) {
         console.error('Failed to load analytics data:', err);
-        setError('Unable to load analytics data. Please try again later.');
+        if (isInitialLoad.current) {
+          setError('Unable to load analytics data. Please try again later.');
+        }
       } finally {
+        isInitialLoad.current = false;
         setLoading(false);
       }
-    }
+    },
+    [user?.id]
+  );
 
+  useEffect(() => {
     loadAnalyticsData();
-  }, [user]);
+  }, [loadAnalyticsData]);
+
+  // Silent background revalidation on window focus / tab return
+  useEffect(() => {
+    const handleFocusOrVisibility = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        const now = Date.now();
+        if (now - lastRefetchTimeRef.current >= 3000) {
+          lastRefetchTimeRef.current = now;
+          loadAnalyticsData(true);
+        }
+      }
+    };
+
+    window.addEventListener('focus', handleFocusOrVisibility);
+    document.addEventListener('visibilitychange', handleFocusOrVisibility);
+
+    return () => {
+      window.removeEventListener('focus', handleFocusOrVisibility);
+      document.removeEventListener('visibilitychange', handleFocusOrVisibility);
+    };
+  }, [loadAnalyticsData]);
 
   // Loading Skeleton State
   if (loading) {

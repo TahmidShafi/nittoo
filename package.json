@@ -22,7 +22,8 @@
     "verify:inventory": "tsx scripts/verify-inventory.ts",
     "verify:comparison": "tsx scripts/verify-comparison.ts",
     "verify:confidence": "tsx scripts/verify-confidence.ts",
-    "verify:account": "tsx scripts/verify-account.ts"
+    "verify:account": "tsx scripts/verify-account.ts",
+    "verify:focus-refresh": "tsx scripts/verify-focus-refresh.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",

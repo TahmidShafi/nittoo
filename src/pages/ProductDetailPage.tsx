@@ -3,7 +3,7 @@
 // Personal Analytics Report, Weighted Cost/Day, Active Bottle, and Recharts Duration Trends
 // ==============================================================================
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   ResponsiveContainer,
@@ -38,6 +38,10 @@ export const ProductDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Stale-while-revalidate refs
+  const isInitialLoad = useRef(true);
+  const lastRefetchTimeRef = useRef(Date.now());
+
   // Unopened Purchase Action State
   const [activatingId, setActivatingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -52,28 +56,60 @@ export const ProductDetailPage: React.FC = () => {
   const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
   const [editingUsagePeriod, setEditingUsagePeriod] = useState<UsagePeriod | null>(null);
 
-  const loadData = useCallback(async () => {
-    if (!user || !id) return;
-    setLoading(true);
-    setError(null);
-
-    try {
-      const data = await db.getProductHistory(id, user.id);
-      if (!data) {
-        setError('Product not found or you do not have permission to view it.');
-      } else {
-        setHistory(data);
+  const loadData = useCallback(
+    async (isSilent = false) => {
+      if (!user?.id || !id) return;
+      if (isInitialLoad.current && !isSilent) {
+        setLoading(true);
       }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to load product history';
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
-  }, [user, id]);
+
+      try {
+        const data = await db.getProductHistory(id, user.id);
+        if (!data) {
+          if (isInitialLoad.current) {
+            setError('Product not found or you do not have permission to view it.');
+          }
+        } else {
+          setHistory(data);
+          setError(null);
+        }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Failed to load product history';
+        console.error('Failed to load product history:', err);
+        if (isInitialLoad.current) {
+          setError(msg);
+        }
+      } finally {
+        isInitialLoad.current = false;
+        setLoading(false);
+      }
+    },
+    [user?.id, id]
+  );
 
   useEffect(() => {
     loadData();
+  }, [loadData]);
+
+  // Silent background revalidation on window focus / tab return
+  useEffect(() => {
+    const handleFocusOrVisibility = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        const now = Date.now();
+        if (now - lastRefetchTimeRef.current >= 3000) {
+          lastRefetchTimeRef.current = now;
+          loadData(true);
+        }
+      }
+    };
+
+    window.addEventListener('focus', handleFocusOrVisibility);
+    document.addEventListener('visibilitychange', handleFocusOrVisibility);
+
+    return () => {
+      window.removeEventListener('focus', handleFocusOrVisibility);
+      document.removeEventListener('visibilitychange', handleFocusOrVisibility);
+    };
   }, [loadData]);
 
   // Calculations: Summary Statistics strictly using valid finished data
@@ -909,7 +945,7 @@ export const ProductDetailPage: React.FC = () => {
         product={modalProduct}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onFinished={loadData}
+        onFinished={() => loadData()}
       />
 
       {/* Reusable Edit Current Inventory Modal */}
