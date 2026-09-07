@@ -391,6 +391,7 @@ Run any verification script with `npm run`:
 | `npm run verify:inventory` | Inventory Management UX | Derived inventory query, Active vs Unopened sections, Add Inventory flow |
 | `npm run verify:comparison` | Product Comparison & Value Intelligence | 1-on-1 personal comparison, unit economics, observed vs predicted isolation, deterministic insights |
 | `npm run verify:confidence` | Prediction Confidence & Evidence | 5 deterministic evidence states, cycle-count maturity, non-invasive calculation isolation |
+| `npm run verify:account` | Account Settings UX | Quiet document layout, email change, password update, global session signout, data export, and account deletion |
 | `npm run verify:rls` | Security & RLS | **Two-account live RLS audit**: verifies Account B cannot read, write, update, or delete Account A's data |
 | `npm run verify:audit` | 9-Domain Full Audit | 100% comprehensive production audit across all 9 architectural domains |
 
@@ -465,7 +466,7 @@ Nittoo adheres to the principle of least privilege:
 - [ ] **Restock Notifications**: Web push notifications and calendar export when an essential is predicted to run out.
 - [ ] **PWA & Offline Sync**: Installable progressive web app with background sync.
 - [ ] **Multi-Currency Support**: Support for USD (`$`), EUR (`€`), GBP (`£`), INR (`₹`), BDT (`৳`), and customizable localized currencies.
-- [ ] **Export & Data Portability**: Full JSON and CSV export of lifetime consumption history.
+- [x] **Export & Data Portability**: Full JSON export of products, purchases, inventory, and usage periods.
 
 ---
 

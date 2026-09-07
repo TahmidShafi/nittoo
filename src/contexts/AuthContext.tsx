@@ -6,6 +6,7 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { DEFAULT_MOCK_USER_ID } from '../lib/mock-db';
+import { db } from '../lib/dataSource';
 
 export interface AuthUser {
   id: string;
@@ -17,6 +18,11 @@ export interface SignUpResult {
   requiresEmailConfirmation: boolean;
 }
 
+export interface UpdateEmailResult {
+  requiresConfirmation: boolean;
+  message: string;
+}
+
 export interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
@@ -26,6 +32,10 @@ export interface AuthContextType {
   sendMagicLink: (email: string) => Promise<void>;
   requestPasswordReset: (email: string) => Promise<void>;
   resetPassword: (newPassword: string) => Promise<void>;
+  updateEmail: (newEmail: string) => Promise<UpdateEmailResult>;
+  updatePassword: (newPassword: string) => Promise<void>;
+  signOutAllSessions: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
 }
 
 export const MOCK_SESSION_KEY = 'nittoo_auth_session';
@@ -299,6 +309,119 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  // ----------------------------------------------------------------------------
+  // Update Email (Stage 13 / Account Settings)
+  // ----------------------------------------------------------------------------
+  const updateEmail = useCallback(
+    async (newEmail: string): Promise<UpdateEmailResult> => {
+      const trimmed = newEmail.trim();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!trimmed || !emailRegex.test(trimmed)) {
+        throw new Error('Please enter a valid email address.');
+      }
+      if (user && trimmed.toLowerCase() === user.email.toLowerCase()) {
+        throw new Error('New email address must differ from your current email.');
+      }
+
+      if (isSupabaseConfigured && supabase) {
+        const { error } = await supabase.auth.updateUser({ email: trimmed });
+        if (error) {
+          const lowerMsg = error.message.toLowerCase();
+          if (lowerMsg.includes('already registered') || lowerMsg.includes('unique')) {
+            throw new Error('This email address is already in use by another account.');
+          }
+          throw new Error("Couldn't update your email. Please try again later.");
+        }
+        return {
+          requiresConfirmation: true,
+          message: 'Check your new email to confirm the change.',
+        };
+      } else {
+        // Mock mode: updates mock session and informs user
+        if (user) {
+          const updated: AuthUser = { ...user, email: trimmed.toLowerCase() };
+          setUser(updated);
+          if (typeof window !== 'undefined' && window.localStorage) {
+            window.localStorage.setItem(
+              MOCK_SESSION_KEY,
+              JSON.stringify({ user: updated })
+            );
+          }
+        }
+        return {
+          requiresConfirmation: true,
+          message: 'Check your new email to confirm the change.',
+        };
+      }
+    },
+    [user]
+  );
+
+  // ----------------------------------------------------------------------------
+  // Update Password (Stage 13 / Account Settings)
+  // ----------------------------------------------------------------------------
+  const updatePassword = useCallback(async (newPassword: string): Promise<void> => {
+    if (!newPassword || newPassword.length < 6) {
+      throw new Error('Password must be at least 6 characters.');
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+      if (error) {
+        const lower = error.message.toLowerCase();
+        if (lower.includes('reauthenticate') || (error as { status?: number }).status === 401) {
+          throw new Error('Please sign out and sign back in to update your password.');
+        }
+        throw new Error("Couldn't update your password. Please try again later.");
+      }
+    } else {
+      // Mock mode: simulate success
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+  }, []);
+
+  // ----------------------------------------------------------------------------
+  // Sign Out All Sessions (Stage 13 / Account Settings)
+  // ----------------------------------------------------------------------------
+  const signOutAllSessions = useCallback(async () => {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch (err) {
+        console.error('Failed to sign out all sessions globally:', err);
+      }
+    } else {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.removeItem(MOCK_SESSION_KEY);
+      }
+    }
+    setUser(null);
+  }, []);
+
+  // ----------------------------------------------------------------------------
+  // Delete Account (Stage 13 / Account Settings)
+  // ----------------------------------------------------------------------------
+  const deleteAccount = useCallback(async () => {
+    if (!user) return;
+    try {
+      // 1. Permanently delete all user data (products, purchases, usage periods)
+      await db.resetUserData(user.id, true);
+
+      // 2. Global sign-out / session clear
+      if (isSupabaseConfigured && supabase) {
+        await supabase.auth.signOut({ scope: 'global' });
+      } else {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.removeItem(MOCK_SESSION_KEY);
+        }
+      }
+    } finally {
+      setUser(null);
+    }
+  }, [user]);
+
   const value: AuthContextType = {
     user,
     loading,
@@ -308,6 +431,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sendMagicLink,
     requestPasswordReset,
     resetPassword,
+    updateEmail,
+    updatePassword,
+    signOutAllSessions,
+    deleteAccount,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

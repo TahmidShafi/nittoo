@@ -165,6 +165,22 @@ export interface UserInventory {
   unopened: UnopenedInventoryItem[];
 }
 
+export interface UserDataExport {
+  exported_at: string;
+  user: {
+    id: string;
+    email: string;
+  };
+  summary: {
+    total_products: number;
+    total_purchases: number;
+    total_usage_periods: number;
+  };
+  products: Product[];
+  purchases: Purchase[];
+  usage_periods: UsagePeriod[];
+}
+
 // ------------------------------------------------------------------------------
 // Shared IDataSource Interface
 // Implemented by both real Supabase (db.ts) and Mock Storage (mock-db.ts)
@@ -227,7 +243,12 @@ export interface IDataSource {
     userId: string
   ): Promise<UserInventory>;
 
-  resetUserData(
+  exportUserData(
     userId: string
+  ): Promise<UserDataExport>;
+
+  resetUserData(
+    userId: string,
+    isDeletingAccount?: boolean
   ): Promise<void>;
 }

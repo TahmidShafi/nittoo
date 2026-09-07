@@ -20,6 +20,7 @@ import type {
   ProductWithHistory,
   UserInventory,
   UnopenedInventoryItem,
+  UserDataExport,
 } from '../types';
 
 export class SupabaseDatabase implements IDataSource {
@@ -626,7 +627,72 @@ export class SupabaseDatabase implements IDataSource {
     };
   }
 
-  async resetUserData(userId: string): Promise<void> {
+  async exportUserData(userId: string): Promise<UserDataExport> {
+    if (!userId) {
+      return {
+        exported_at: new Date().toISOString(),
+        user: { id: '', email: '' },
+        summary: { total_products: 0, total_purchases: 0, total_usage_periods: 0 },
+        products: [],
+        purchases: [],
+        usage_periods: [],
+      };
+    }
+
+    const client = this.getClient();
+    const { data: productsData, error: prodErr } = await client
+      .from('products')
+      .select('*')
+      .eq('user_id', userId)
+      .order('name', { ascending: true });
+
+    if (prodErr) throw new Error(`Failed to export products: ${prodErr.message}`);
+
+    const products = (productsData || []) as Product[];
+    const productIds = products.map((p) => p.id);
+
+    let purchases: Purchase[] = [];
+    let usagePeriods: UsagePeriod[] = [];
+
+    if (productIds.length > 0) {
+      const [purchasesRes, usageRes] = await Promise.all([
+        client
+          .from('purchases')
+          .select('*')
+          .in('product_id', productIds)
+          .order('purchase_date', { ascending: false }),
+        client
+          .from('usage_periods')
+          .select('*')
+          .in('product_id', productIds)
+          .order('opened_date', { ascending: false }),
+      ]);
+
+      if (purchasesRes.error) throw new Error(`Failed to export purchases: ${purchasesRes.error.message}`);
+      if (usageRes.error) throw new Error(`Failed to export usage periods: ${usageRes.error.message}`);
+
+      purchases = (purchasesRes.data || []) as Purchase[];
+      usagePeriods = (usageRes.data || []) as UsagePeriod[];
+    }
+
+    return {
+      exported_at: new Date().toISOString(),
+      user: {
+        id: userId,
+        email: '',
+      },
+      summary: {
+        total_products: products.length,
+        total_purchases: purchases.length,
+        total_usage_periods: usagePeriods.length,
+      },
+      products,
+      purchases,
+      usage_periods: usagePeriods,
+    };
+  }
+
+  async resetUserData(userId: string, _isDeletingAccount?: boolean): Promise<void> {
     const client = this.getClient();
     if (!userId) return;
 

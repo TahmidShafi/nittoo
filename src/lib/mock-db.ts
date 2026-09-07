@@ -19,6 +19,7 @@ import type {
   ProductWithHistory,
   UserInventory,
   UnopenedInventoryItem,
+  UserDataExport,
 } from '../types';
 
 export const DEFAULT_MOCK_USER_ID = 'default-mock-user';
@@ -763,7 +764,42 @@ export class MockDatabase implements IDataSource {
     };
   }
 
-  async resetUserData(userId: string): Promise<void> {
+  async exportUserData(userId: string): Promise<UserDataExport> {
+    if (!userId) {
+      return {
+        exported_at: new Date().toISOString(),
+        user: { id: '', email: '' },
+        summary: { total_products: 0, total_purchases: 0, total_usage_periods: 0 },
+        products: [],
+        purchases: [],
+        usage_periods: [],
+      };
+    }
+
+    const data = this.getData();
+    const userProducts = data.products.filter((p) => p.user_id === userId);
+    const userProductIds = new Set(userProducts.map((p) => p.id));
+    const userPurchases = data.purchases.filter((pu) => userProductIds.has(pu.product_id));
+    const userUsagePeriods = data.usage_periods.filter((u) => userProductIds.has(u.product_id));
+
+    return {
+      exported_at: new Date().toISOString(),
+      user: {
+        id: userId,
+        email: '',
+      },
+      summary: {
+        total_products: userProducts.length,
+        total_purchases: userPurchases.length,
+        total_usage_periods: userUsagePeriods.length,
+      },
+      products: userProducts,
+      purchases: userPurchases,
+      usage_periods: userUsagePeriods,
+    };
+  }
+
+  async resetUserData(userId: string, isDeletingAccount?: boolean): Promise<void> {
     if (!userId) return;
     const data = this.getData();
     const userProductIds = new Set(
@@ -776,8 +812,8 @@ export class MockDatabase implements IDataSource {
 
     this.saveData(data);
 
-    // If default mock user, reseed
-    if (userId === DEFAULT_MOCK_USER_ID) {
+    // If default mock user and NOT explicitly deleting account, reseed
+    if (userId === DEFAULT_MOCK_USER_ID && !isDeletingAccount) {
       this.seedDefaultData();
     }
   }

@@ -1,107 +1,249 @@
 // ==============================================================================
-// Nittoo Account Page
-// User profile information, storage mode indicator, and data reset action
+// Nittoo Account Settings Page
+// Quiet, document-style settings for managing identity, security, data export,
+// and account deletion in a calm, trustworthy surface (640-760px).
 // ==============================================================================
 
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { db, isMockMode } from '../lib/dataSource';
+import { db } from '../lib/dataSource';
+import { ChangeEmailModal } from '../components/ChangeEmailModal';
+import { ChangePasswordModal } from '../components/ChangePasswordModal';
+import { SignOutAllSessionsModal } from '../components/SignOutAllSessionsModal';
+import { DeleteAccountModal } from '../components/DeleteAccountModal';
 
 export const AccountPage: React.FC = () => {
   const { user } = useAuth();
-  const [resetting, setResetting] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-  const handleResetData = async () => {
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [isSessionsModalOpen, setIsSessionsModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  const [exporting, setExporting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleExportData = async () => {
     if (!user) return;
+    setExporting(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
 
-    const confirmed = window.confirm(
-      'Are you sure you want to reset your data? All your tracked products, purchase logs, and usage lifespans will be removed from your current storage.'
-    );
-
-    if (!confirmed) return;
-
-    setResetting(true);
-    setStatusMessage(null);
     try {
-      await db.resetUserData(user.id);
-      setStatusMessage('Your data has been successfully reset.');
+      const data = await db.exportUserData(user.id);
+      data.user.email = user.email;
+
+      const jsonStr = JSON.stringify(data, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const today = new Date().toISOString().split('T')[0];
+      link.href = url;
+      link.download = `nittoo-data-export-${today}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setSuccessMessage('Data export ready. Your download has started.');
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to reset data';
-      setStatusMessage(`Error: ${msg}`);
+      const msg = err instanceof Error ? err.message : "Couldn't export data.";
+      setErrorMessage(msg);
     } finally {
-      setResetting(false);
+      setExporting(false);
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto py-2 space-y-6 animate-page-in">
+    <div className="w-full max-w-[700px] mx-auto py-4 sm:py-6 space-y-6 animate-page-in">
+      {/* 1. Page Header */}
       <div>
-        <span className="text-[11px] font-bold uppercase tracking-wider text-[#2D6A4F] block mb-1">
-          Preferences & Storage
+        <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">
+          ACCOUNT SETTINGS
         </span>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900">
-          Account Settings
+          Account
         </h1>
         <p className="text-xs sm:text-sm text-neutral-500 mt-1">
-          Manage your account profile, storage engine, and tracked data.
+          Manage your account, security, and Nittoo data.
         </p>
       </div>
 
-      {statusMessage && (
-        <div className="p-4 rounded-2xl bg-[#EBF4F0] border border-[#2D6A4F]/20 text-xs text-[#2D6A4F] font-semibold flex items-center justify-between shadow-xs animate-page-in">
-          <span>✓ {statusMessage}</span>
+      {/* Action Notification Alert Messages */}
+      {successMessage && (
+        <div
+          className="p-4 rounded-xl bg-[#EBF4F0] border border-[#2D6A4F]/20 text-xs text-[#2D6A4F] font-medium flex items-center justify-between shadow-xs animate-page-in"
+          role="status"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-base leading-none">✓</span>
+            <span className="leading-relaxed">{successMessage}</span>
+          </div>
           <button
             type="button"
-            onClick={() => setStatusMessage(null)}
-            className="text-neutral-400 hover:text-neutral-700 text-base font-bold ml-2 p-1"
+            onClick={() => setSuccessMessage(null)}
+            className="text-neutral-400 hover:text-neutral-700 text-sm font-bold ml-3 cursor-pointer p-1"
+            aria-label="Dismiss message"
           >
             ×
           </button>
         </div>
       )}
 
-      <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 sm:p-8 shadow-xs space-y-7">
-        <div>
-          <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-400 mb-4 pb-2 border-b border-neutral-100">
-            Profile Information
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-sm">
-            <div>
-              <span className="text-xs font-semibold text-neutral-500 block mb-1">Email Address</span>
-              <span className="font-semibold text-neutral-900">{user?.email || '—'}</span>
-            </div>
-            <div>
-              <span className="text-xs font-semibold text-neutral-500 block mb-1">Default Currency</span>
-              <span className="font-semibold text-neutral-900">BDT (৳)</span>
-            </div>
-            <div>
-              <span className="text-xs font-semibold text-neutral-500 block mb-1">Active Storage Engine</span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#EBF4F0] text-[#2D6A4F] border border-[#2D6A4F]/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#2D6A4F] animate-pulse" />
-                {isMockMode ? 'Mock LocalStorage (Offline)' : 'Supabase Cloud (PostgreSQL)'}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="pt-6 border-t border-neutral-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-bold text-neutral-900">Reset Tracker Data</p>
-            <p className="text-xs text-neutral-500 mt-0.5 max-w-sm leading-relaxed">
-              Permanently purges all your products, purchases, and usage periods in your current storage mode.
-            </p>
+      {errorMessage && (
+        <div
+          className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-medium flex items-center justify-between shadow-xs animate-page-in"
+          role="alert"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-base leading-none font-bold">!</span>
+            <span className="leading-relaxed">{errorMessage}</span>
           </div>
           <button
             type="button"
-            onClick={handleResetData}
-            disabled={resetting}
-            className="btn-press px-4 py-2.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-semibold transition-all self-start sm:self-auto disabled:opacity-60 cursor-pointer"
+            onClick={() => setErrorMessage(null)}
+            className="text-neutral-400 hover:text-neutral-700 text-sm font-bold ml-3 cursor-pointer p-1"
+            aria-label="Dismiss message"
           >
-            {resetting ? 'Resetting...' : 'Reset Tracker Data'}
+            ×
           </button>
         </div>
+      )}
+
+      {/* Main Settings Document Surface */}
+      <div className="bg-white border border-[#E8ECE9] rounded-2xl divide-y divide-[#E8ECE9] shadow-xs">
+        {/* 2. ACCOUNT IDENTITY */}
+        <div className="p-6 sm:p-7 space-y-3">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block">
+            ACCOUNT
+          </span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
+            <div className="space-y-0.5">
+              <span className="text-base sm:text-lg font-bold text-neutral-900 break-all">
+                {user?.email || '—'}
+              </span>
+              <p className="text-xs text-neutral-500">Personal Nittoo account</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsEmailModalOpen(true)}
+              className="btn-press min-h-[44px] px-4 py-2 rounded-xl border border-neutral-200/80 hover:bg-neutral-50 text-neutral-700 text-xs font-semibold transition-all self-start sm:self-auto cursor-pointer shrink-0"
+            >
+              Change email
+            </button>
+          </div>
+        </div>
+
+        {/* 4 & 5. SECURITY SECTION (Password & Active Sessions) */}
+        <div className="p-6 sm:p-7 space-y-6">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block">
+            SECURITY
+          </span>
+
+          {/* Password */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-bold text-neutral-900">Password</h3>
+              <p className="text-xs text-neutral-500 mt-0.5">
+                Keep your account secure with a strong password.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsPasswordModalOpen(true)}
+              className="btn-press min-h-[44px] px-4 py-2 rounded-xl border border-neutral-200/80 hover:bg-neutral-50 text-neutral-700 text-xs font-semibold transition-all self-start sm:self-auto cursor-pointer shrink-0"
+            >
+              Change password
+            </button>
+          </div>
+
+          {/* Active Sessions */}
+          <div className="pt-5 border-t border-neutral-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-bold text-neutral-900">Active Sessions</h3>
+              <p className="text-xs text-neutral-500 mt-0.5">
+                Manage where you're signed in.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsSessionsModalOpen(true)}
+              className="btn-press min-h-[44px] px-4 py-2 rounded-xl border border-neutral-200/80 hover:bg-neutral-50 text-neutral-700 text-xs font-semibold transition-all self-start sm:self-auto cursor-pointer shrink-0"
+            >
+              Sign out all sessions
+            </button>
+          </div>
+        </div>
+
+        {/* 6. DATA SECTION */}
+        <div className="p-6 sm:p-7 space-y-3">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block">
+            DATA
+          </span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
+            <div>
+              <h3 className="text-sm font-bold text-neutral-900">Export your Nittoo data</h3>
+              <p className="text-xs text-neutral-500 mt-0.5 max-w-md leading-relaxed">
+                Download a copy of your products, purchases, usage history, and related personal data.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleExportData}
+              disabled={exporting}
+              className="btn-press min-h-[44px] px-4 py-2 rounded-xl border border-neutral-200/80 hover:bg-neutral-50 text-neutral-700 text-xs font-semibold transition-all self-start sm:self-auto disabled:opacity-60 cursor-pointer flex items-center gap-1.5 shrink-0"
+            >
+              {exporting ? 'Exporting...' : 'Export data'}
+            </button>
+          </div>
+        </div>
+
+        {/* 7. DELETE ACCOUNT (DANGER ZONE) */}
+        <div className="p-6 sm:p-7 space-y-3 bg-rose-50/20 rounded-b-2xl">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-rose-600 block">
+            DELETE ACCOUNT
+          </span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
+            <div>
+              <h3 className="text-sm font-bold text-neutral-900">Delete Account</h3>
+              <p className="text-xs text-neutral-500 mt-0.5 max-w-md leading-relaxed">
+                Permanently remove your account and associated Nittoo data.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsDeleteModalOpen(true)}
+              className="btn-press min-h-[44px] px-4 py-2 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-600 text-xs font-semibold transition-all self-start sm:self-auto cursor-pointer shrink-0"
+            >
+              Delete Account
+            </button>
+          </div>
+        </div>
       </div>
+
+      {/* Dialog Modals */}
+      <ChangeEmailModal
+        isOpen={isEmailModalOpen}
+        onClose={() => setIsEmailModalOpen(false)}
+        onSuccess={(msg) => setSuccessMessage(msg)}
+      />
+
+      <ChangePasswordModal
+        isOpen={isPasswordModalOpen}
+        onClose={() => setIsPasswordModalOpen(false)}
+        onSuccess={(msg) => setSuccessMessage(msg)}
+      />
+
+      <SignOutAllSessionsModal
+        isOpen={isSessionsModalOpen}
+        onClose={() => setIsSessionsModalOpen(false)}
+      />
+
+      <DeleteAccountModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+      />
     </div>
   );
 };
