@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS public.purchases (
     purchase_date DATE NOT NULL,
     price NUMERIC NOT NULL CHECK (price >= 0),
     currency TEXT NOT NULL DEFAULT 'BDT',
+    store_vendor TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

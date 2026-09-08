@@ -125,7 +125,7 @@ export async function buildImportPlan(
         purchase_date: bpu.purchase_date,
         price: bpu.price,
         currency: bpu.currency || 'BDT',
-        store_vendor: bpu.store_vendor || null,
+        store_vendor: bpu.store_vendor ? (bpu.store_vendor.trim() || null) : null,
         created_at: (bpu as any).created_at,
       });
     }

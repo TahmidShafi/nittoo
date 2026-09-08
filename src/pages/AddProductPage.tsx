@@ -28,6 +28,7 @@ export const AddProductPage: React.FC = () => {
   const [sizeValue, setSizeValue] = useState('');
   const [sizeUnit, setSizeUnit] = useState<SizeUnit>('ml');
   const [price, setPrice] = useState('');
+  const [storeVendor, setStoreVendor] = useState('');
   const [purchaseDate, setPurchaseDate] = useState(today);
   const [openedDate, setOpenedDate] = useState(today);
   const [usageOption, setUsageOption] = useState<'start_today' | 'keep_unopened'>('start_today');
@@ -201,6 +202,7 @@ export const AddProductPage: React.FC = () => {
           purchase_date: purchaseDate,
           price: parsedPrice,
           currency: 'BDT',
+          store_vendor: storeVendor.trim() ? storeVendor.trim() : null,
         });
       } catch (purErr: unknown) {
         const msg = purErr instanceof Error ? purErr.message : 'Failed to create purchase';
@@ -539,6 +541,28 @@ export const AddProductPage: React.FC = () => {
                   disabled={submitting}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#2D6A4F]/10 transition-all bg-white disabled:opacity-60 text-neutral-900"
                 />
+              </div>
+
+              {/* Store / Vendor */}
+              <div>
+                <label
+                  className="block text-xs font-semibold text-neutral-700 mb-1.5"
+                  htmlFor="store-vendor"
+                >
+                  Store / Vendor
+                </label>
+                <input
+                  id="store-vendor"
+                  type="text"
+                  value={storeVendor}
+                  onChange={(e) => setStoreVendor(e.target.value)}
+                  placeholder="e.g. Shajgoj, Daraz, local pharmacy"
+                  disabled={submitting}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#2D6A4F]/10 transition-all bg-neutral-50/40 disabled:opacity-60 placeholder:text-neutral-400"
+                />
+                <p className="text-[11px] text-neutral-400 mt-1">
+                  Optional — where you bought this purchase.
+                </p>
               </div>
 
               {/* "When will you start using it?" Options */}

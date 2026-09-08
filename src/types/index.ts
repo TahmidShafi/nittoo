@@ -44,6 +44,7 @@ export interface Purchase {
   purchase_date: string; // ISO format: YYYY-MM-DD
   price: number;
   currency: string; // Defaults to 'BDT'
+  store_vendor?: string | null;
   created_at: string;
 }
 
@@ -74,6 +75,7 @@ export interface CreatePurchaseInput {
   purchase_date: string; // YYYY-MM-DD
   price: number;
   currency?: string; // Default: 'BDT'
+  store_vendor?: string | null;
 }
 
 export interface StartUsagePeriodInput {
@@ -99,6 +101,7 @@ export interface UpdatePurchaseInput {
   purchase_date: string; // YYYY-MM-DD
   price: number;
   currency?: string;
+  store_vendor?: string | null;
 }
 
 export interface UpdateUsagePeriodInput {

@@ -54,6 +54,7 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
   const [purchaseDate, setPurchaseDate] = useState('');
   const [price, setPrice] = useState<string>('');
   const [currency, setCurrency] = useState('BDT');
+  const [storeVendor, setStoreVendor] = useState('');
 
   // Usage Details (only active bottle)
   const [openedDate, setOpenedDate] = useState('');
@@ -72,6 +73,7 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
       setPurchaseDate(purchase.purchase_date || '');
       setPrice(String(purchase.price ?? ''));
       setCurrency(purchase.currency || 'BDT');
+      setStoreVendor(purchase.store_vendor || '');
 
       if (mode === 'active_bottle' && usagePeriod) {
         setOpenedDate(usagePeriod.opened_date || '');
@@ -146,6 +148,7 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
         purchase_date: purchaseDate,
         price: Number(price),
         currency: currency.trim() || 'BDT',
+        store_vendor: storeVendor.trim() ? storeVendor.trim() : null,
       });
 
       // 3. Update Usage Period if active bottle
@@ -345,6 +348,23 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
                   className="w-full px-3 py-2 rounded-xl border border-neutral-200/80 bg-neutral-50/50 focus:bg-white focus:outline-none focus:border-[#2D6A4F] focus:ring-2 focus:ring-[#2D6A4F]/15 transition-all"
                 />
               </div>
+            </div>
+
+            <div className="space-y-1">
+              <label htmlFor="edit-store-vendor" className="font-medium text-neutral-700 block">
+                Store / Vendor
+              </label>
+              <input
+                id="edit-store-vendor"
+                type="text"
+                value={storeVendor}
+                onChange={(e) => setStoreVendor(e.target.value)}
+                placeholder="e.g. Shajgoj, Daraz, local pharmacy"
+                className="w-full px-3 py-2 rounded-xl border border-neutral-200/80 bg-neutral-50/50 focus:bg-white focus:outline-none focus:border-[#2D6A4F] focus:ring-2 focus:ring-[#2D6A4F]/15 transition-all placeholder:text-neutral-400"
+              />
+              <p className="text-[11px] text-neutral-400">
+                Optional — where you bought this purchase.
+              </p>
             </div>
           </div>
 

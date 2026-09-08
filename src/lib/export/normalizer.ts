@@ -89,7 +89,7 @@ export async function buildExportData(
       purchase_date: pu.purchase_date,
       price: pu.price,
       currency: 'BDT',
-      store_vendor: (pu as { store_vendor?: string | null }).store_vendor ?? null,
+      store_vendor: pu.store_vendor ?? null,
     };
   });
 

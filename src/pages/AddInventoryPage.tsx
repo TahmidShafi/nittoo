@@ -39,6 +39,7 @@ export const AddInventoryPage: React.FC = () => {
   const [purchaseDate, setPurchaseDate] = useState(today);
   const [price, setPrice] = useState('');
   const [currency, setCurrency] = useState('BDT');
+  const [storeVendor, setStoreVendor] = useState('');
   const [usageOption, setUsageOption] = useState<'keep_unopened' | 'start_today'>('keep_unopened');
 
   // Status & Error
@@ -155,6 +156,7 @@ export const AddInventoryPage: React.FC = () => {
         purchase_date: purchaseDate,
         price: numPrice,
         currency: currency.trim() || 'BDT',
+        store_vendor: storeVendor.trim() ? storeVendor.trim() : null,
       });
 
       // 2. Start usage if requested and permitted
@@ -422,6 +424,24 @@ export const AddInventoryPage: React.FC = () => {
                     />
                   </div>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-neutral-700 mb-1.5" htmlFor="store-vendor">
+                  Store / Vendor
+                </label>
+                <input
+                  id="store-vendor"
+                  type="text"
+                  value={storeVendor}
+                  onChange={(e) => setStoreVendor(e.target.value)}
+                  placeholder="e.g. Shajgoj, Daraz, local pharmacy"
+                  disabled={submitting}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#2D6A4F]/10 transition-all bg-neutral-50/40 placeholder:text-neutral-400"
+                />
+                <p className="text-[11px] text-neutral-400 mt-1">
+                  Optional — where you bought this purchase.
+                </p>
               </div>
             </div>
           )}

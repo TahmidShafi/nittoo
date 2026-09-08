@@ -72,6 +72,11 @@ export class SupabaseDatabase implements IDataSource {
       throw new Error('Unauthorized or product does not exist');
     }
 
+    const normalizedVendor =
+      input.store_vendor !== undefined && input.store_vendor !== null
+        ? input.store_vendor.trim() || null
+        : null;
+
     const { data, error } = await client
       .from('purchases')
       .insert({
@@ -79,6 +84,7 @@ export class SupabaseDatabase implements IDataSource {
         purchase_date: input.purchase_date,
         price: input.price,
         currency: input.currency || 'BDT',
+        store_vendor: normalizedVendor,
       })
       .select('*')
       .single();
@@ -299,13 +305,20 @@ export class SupabaseDatabase implements IDataSource {
       }
     }
 
+    const updatePayload: Record<string, any> = {
+      purchase_date: input.purchase_date,
+      price: input.price,
+      currency: input.currency.trim() || 'BDT',
+    };
+
+    if (input.store_vendor !== undefined) {
+      updatePayload.store_vendor =
+        input.store_vendor !== null ? input.store_vendor.trim() || null : null;
+    }
+
     const { data, error } = await client
       .from('purchases')
-      .update({
-        purchase_date: input.purchase_date,
-        price: input.price,
-        currency: input.currency.trim() || 'BDT',
-      })
+      .update(updatePayload)
       .eq('id', purchaseId)
       .select('*')
       .single();
@@ -798,6 +811,7 @@ export class SupabaseDatabase implements IDataSource {
           purchase_date: pu.purchase_date,
           price: Number(pu.price),
           currency: pu.currency || 'BDT',
+          store_vendor: pu.store_vendor ? pu.store_vendor.trim() || null : null,
         };
         if (pu.created_at) insertPayload.created_at = pu.created_at;
 

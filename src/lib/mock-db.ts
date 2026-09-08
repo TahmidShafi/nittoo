@@ -414,12 +414,18 @@ export class MockDatabase implements IDataSource {
       throw new Error('Unauthorized: You do not own this product');
     }
 
+    const normalizedVendor =
+      input.store_vendor !== undefined && input.store_vendor !== null
+        ? input.store_vendor.trim() || null
+        : null;
+
     const newPurchase: Purchase = {
       id: `pur-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       product_id: input.product_id,
       purchase_date: input.purchase_date,
       price: input.price,
       currency: input.currency || 'BDT',
+      store_vendor: normalizedVendor,
       created_at: new Date().toISOString(),
     };
 
@@ -589,6 +595,11 @@ export class MockDatabase implements IDataSource {
       price: input.price,
       currency: input.currency.trim() || 'BDT',
     };
+
+    if (input.store_vendor !== undefined) {
+      updatedPurchase.store_vendor =
+        input.store_vendor !== null ? input.store_vendor.trim() || null : null;
+    }
 
     data.purchases[purchaseIndex] = updatedPurchase;
     this.saveData(data);
@@ -884,6 +895,7 @@ export class MockDatabase implements IDataSource {
           purchase_date: pu.purchase_date,
           price: Number(pu.price),
           currency: pu.currency || 'BDT',
+          store_vendor: pu.store_vendor ? pu.store_vendor.trim() || null : null,
           created_at: pu.created_at || new Date().toISOString(),
         };
         data.purchases.push(newPurchase);

@@ -26,7 +26,8 @@
     "verify:focus-refresh": "tsx scripts/verify-focus-refresh.ts",
     "verify:export": "tsx scripts/verify-export.ts",
     "verify:restore": "tsx scripts/verify-restore.ts",
-    "verify:restore-button": "tsx scripts/verify-restore-button.ts"
+    "verify:restore-button": "tsx scripts/verify-restore-button.ts",
+    "verify:vendor": "tsx scripts/verify-vendor.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",

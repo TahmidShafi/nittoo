@@ -250,6 +250,7 @@ export const ProductDetailPage: React.FC = () => {
           duration,
           purchaseDate: linkedPurchase ? formatDisplayDate(linkedPurchase.purchase_date) : '—',
           price: linkedPurchase ? linkedPurchase.price : null,
+          storeVendor: linkedPurchase?.store_vendor || null,
           cycleCostPerDay,
         };
       });
@@ -462,6 +463,12 @@ export const ProductDetailPage: React.FC = () => {
                     <span>
                       ৳{activePurchase.price.toLocaleString()} {activePurchase.currency || 'BDT'}
                     </span>
+                    {activePurchase.store_vendor && (
+                      <>
+                        <span className="text-neutral-300 mx-1.5">•</span>
+                        <span>Store / Vendor: {activePurchase.store_vendor}</span>
+                      </>
+                    )}
                   </>
                 )}
               </p>
@@ -703,6 +710,7 @@ export const ProductDetailPage: React.FC = () => {
                   </div>
                   <p className="text-neutral-400 text-[11px]">
                     {product.name}
+                    {purchase.store_vendor ? ` • Store / Vendor: ${purchase.store_vendor}` : ''}
                   </p>
                 </div>
 
@@ -913,6 +921,7 @@ export const ProductDetailPage: React.FC = () => {
                   <p className="text-neutral-400 text-[11px]">
                     Purchased on {cycle.purchaseDate}
                     {cycle.price !== null ? ` for ৳${cycle.price}` : ''}
+                    {cycle.storeVendor ? ` • Store / Vendor: ${cycle.storeVendor}` : ''}
                   </p>
                 </div>
 

@@ -433,6 +433,14 @@ export const InventoryPage: React.FC = () => {
                                 <span className="text-xs font-medium text-neutral-700">
                                   ৳{item.purchase.price.toLocaleString()} {item.purchase.currency || 'BDT'}
                                 </span>
+                                {item.purchase.store_vendor && (
+                                  <>
+                                    <span className="text-neutral-300">•</span>
+                                    <span className="text-xs text-neutral-500">
+                                      {item.purchase.store_vendor}
+                                    </span>
+                                  </>
+                                )}
                                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 border border-neutral-200/40">
                                   Unopened
                                 </span>
