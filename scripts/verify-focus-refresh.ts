@@ -67,7 +67,7 @@ async function runFocusRefreshVerification() {
   await loadActiveProducts(DEFAULT_MOCK_USER_ID);
 
   assert(loading === false, 'Loading completed (loading === false)');
-  assert(isInitialLoad === false, 'isInitialLoad flipped to false');
+  assert((isInitialLoad as boolean) === false, 'isInitialLoad flipped to false');
   assert(error === null, 'No error on initial load');
   assert(products.length > 0, `Loaded ${products.length} active products`);
 
@@ -101,7 +101,7 @@ async function runFocusRefreshVerification() {
 
   await onWindowFocus();
 
-  assert(backgroundRefreshStarted === true, 'Background refresh initiated on focus');
+  assert((backgroundRefreshStarted as boolean) === true, 'Background refresh initiated on focus');
   assert(skeletonRendered === false, 'Skeleton was NEVER rendered on focus return');
   assert(loading === false, 'loading state remained false throughout focus recovery');
   assert(products.length === initialProductsSnapshot.length, 'Existing products remained continuously available');
