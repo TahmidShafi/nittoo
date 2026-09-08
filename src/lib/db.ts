@@ -77,17 +77,35 @@ export class SupabaseDatabase implements IDataSource {
         ? input.store_vendor.trim() || null
         : null;
 
-    const { data, error } = await client
+    const insertPayload: Record<string, any> = {
+      product_id: input.product_id,
+      purchase_date: input.purchase_date,
+      price: input.price,
+      currency: input.currency || 'BDT',
+    };
+    if (normalizedVendor !== null) {
+      insertPayload.store_vendor = normalizedVendor;
+    }
+
+    let { data, error } = await client
       .from('purchases')
-      .insert({
-        product_id: input.product_id,
-        purchase_date: input.purchase_date,
-        price: input.price,
-        currency: input.currency || 'BDT',
-        store_vendor: normalizedVendor,
-      })
+      .insert(insertPayload)
       .select('*')
       .single();
+
+    if (error && error.message?.includes('store_vendor') && 'store_vendor' in insertPayload) {
+      console.warn(
+        "Supabase purchases table is missing 'store_vendor' column. Run: ALTER TABLE public.purchases ADD COLUMN IF NOT EXISTS store_vendor TEXT; in Supabase SQL Editor. Retrying insert without vendor."
+      );
+      delete insertPayload.store_vendor;
+      const fallbackRes = await client
+        .from('purchases')
+        .insert(insertPayload)
+        .select('*')
+        .single();
+      data = fallbackRes.data;
+      error = fallbackRes.error;
+    }
 
     if (error) throw new Error(`Failed to create purchase: ${error.message}`);
     return data as Purchase;
@@ -316,12 +334,28 @@ export class SupabaseDatabase implements IDataSource {
         input.store_vendor !== null ? input.store_vendor.trim() || null : null;
     }
 
-    const { data, error } = await client
+    let { data, error } = await client
       .from('purchases')
       .update(updatePayload)
       .eq('id', purchaseId)
       .select('*')
       .single();
+
+    if (error && error.message?.includes('store_vendor') && 'store_vendor' in updatePayload) {
+      console.warn(
+        "Supabase purchases table is missing 'store_vendor' column. Run: ALTER TABLE public.purchases ADD COLUMN IF NOT EXISTS store_vendor TEXT; in Supabase SQL Editor. Retrying update without vendor."
+      );
+      const fallbackPayload = { ...updatePayload };
+      delete fallbackPayload.store_vendor;
+      const fallbackRes = await client
+        .from('purchases')
+        .update(fallbackPayload)
+        .eq('id', purchaseId)
+        .select('*')
+        .single();
+      data = fallbackRes.data;
+      error = fallbackRes.error;
+    }
 
     if (error || !data) {
       throw new Error(`Failed to update purchase: ${error?.message || 'Purchase update failed'}`);
