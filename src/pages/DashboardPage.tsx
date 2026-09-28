@@ -6,6 +6,7 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { usePageMeta } from '../hooks/usePageMeta';
 import { db } from '../lib/dataSource';
 import { getPredictionMetrics } from '../hooks/usePrediction';
 import { ProductCard } from '../components/ProductCard';
@@ -54,6 +55,8 @@ export function sortActiveProducts(
 }
 
 export const DashboardPage: React.FC = () => {
+  usePageMeta({ title: 'Dashboard', noindex: true });
+
   const { user } = useAuth();
   const location = useLocation();
 

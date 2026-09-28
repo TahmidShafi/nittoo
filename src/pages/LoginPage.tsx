@@ -7,10 +7,18 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { usePageMeta } from '../hooks/usePageMeta';
 import { isMockMode } from '../lib/dataSource';
 import { NittooLogo } from '../components/NittooLogo';
 
 export const LoginPage: React.FC = () => {
+  usePageMeta({
+    title: 'Sign In',
+    description: 'Sign in to Nittoo to track your personal essentials, lifespans, and true daily costs.',
+    noindex: false,
+    canonicalPath: '/login',
+  });
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isMagicLink, setIsMagicLink] = useState(false);

@@ -6,6 +6,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { usePageMeta } from '../hooks/usePageMeta';
 import { ChangeEmailModal } from '../components/ChangeEmailModal';
 import { ChangePasswordModal } from '../components/ChangePasswordModal';
 import { SignOutAllSessionsModal } from '../components/SignOutAllSessionsModal';
@@ -16,6 +17,8 @@ import { exportUserDataAs } from '../lib/export';
 import { db } from '../lib/dataSource';
 
 export const AccountPage: React.FC = () => {
+  usePageMeta({ title: 'Account Settings', noindex: true });
+
   const { user } = useAuth();
 
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
@@ -105,9 +108,9 @@ export const AccountPage: React.FC = () => {
       <div className="bg-white border border-[#E8ECE9] rounded-2xl divide-y divide-[#E8ECE9] shadow-xs">
         {/* 2. ACCOUNT IDENTITY */}
         <div className="p-6 sm:p-7 space-y-3">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block">
+          <h2 className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block">
             ACCOUNT
-          </span>
+          </h2>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
             <div className="space-y-0.5">
               <span className="text-base sm:text-lg font-bold text-neutral-900 break-all">
@@ -127,9 +130,9 @@ export const AccountPage: React.FC = () => {
 
         {/* 4 & 5. SECURITY SECTION (Password & Active Sessions) */}
         <div className="p-6 sm:p-7 space-y-6">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block">
+          <h2 className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block">
             SECURITY
-          </span>
+          </h2>
 
           {/* Password */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -169,9 +172,9 @@ export const AccountPage: React.FC = () => {
         {/* 6. DATA SECTION */}
         <div className="p-6 sm:p-7 space-y-6">
           <div className="space-y-3">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block">
+            <h2 className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block">
               DATA
-            </span>
+            </h2>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
               <div>
                 <h3 className="text-sm font-bold text-neutral-900">Export your Nittoo data</h3>
@@ -236,9 +239,9 @@ export const AccountPage: React.FC = () => {
 
         {/* 7. DELETE ACCOUNT (DANGER ZONE) */}
         <div className="p-6 sm:p-7 space-y-3 bg-rose-50/20 rounded-b-2xl">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-rose-600 block">
+          <h2 className="text-[11px] font-bold uppercase tracking-wider text-rose-600 block">
             DELETE ACCOUNT
-          </span>
+          </h2>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
             <div>
               <h3 className="text-sm font-bold text-neutral-900">Delete Account</h3>

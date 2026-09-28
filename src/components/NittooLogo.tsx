@@ -74,9 +74,10 @@ export const NittooLogo: React.FC<NittooLogoProps> = ({
           {/* Brand Logo Image with automatic aspect ratio */}
           <img
             src="/nittoo-logo.png"
-            alt="Nittoo Logo"
+            alt="Nittoo"
             className={`${heightStyles[size]} w-auto object-contain select-none`}
             draggable={false}
+            decoding="async"
           />
         </div>
       )}

@@ -15,6 +15,7 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { useAuth } from '../hooks/useAuth';
+import { usePageMeta } from '../hooks/usePageMeta';
 import { db } from '../lib/dataSource';
 import { formatDisplayDate } from '../lib/dateUtils';
 import {
@@ -30,6 +31,8 @@ import { calculateConfidence, getConfidenceBadgeStyles } from '../lib/confidence
 import type { ProductWithHistory } from '../types';
 
 export const AnalyticsPage: React.FC = () => {
+  usePageMeta({ title: 'Consumption Analytics', noindex: true });
+
   const { user } = useAuth();
 
   const [loading, setLoading] = useState(true);

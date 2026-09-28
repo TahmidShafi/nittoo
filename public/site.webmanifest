@@ -1,0 +1,21 @@
+{
+  "name": "Nittoo — Know What Lasts",
+  "short_name": "Nittoo",
+  "description": "Personal consumption intelligence application for everyday physical consumables.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FBFBFB",
+  "theme_color": "#2D6A4F",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/nittoo-logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -6,9 +6,17 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { usePageMeta } from '../hooks/usePageMeta';
 import { NittooLogo } from '../components/NittooLogo';
 
 export const ForgotPasswordPage: React.FC = () => {
+  usePageMeta({
+    title: 'Reset Password',
+    description: 'Request a secure password reset link for your Nittoo account.',
+    noindex: false,
+    canonicalPath: '/forgot-password',
+  });
+
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);

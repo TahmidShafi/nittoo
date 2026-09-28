@@ -7,6 +7,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { usePageMeta } from '../hooks/usePageMeta';
 import { db } from '../lib/dataSource';
 import { getTodayUTC } from '../lib/dateUtils';
 import { getPredictionMetrics } from '../hooks/usePrediction';
@@ -17,6 +18,8 @@ import type {
 } from '../types';
 
 export const AddInventoryPage: React.FC = () => {
+  usePageMeta({ title: 'Add Purchase to Inventory', noindex: true });
+
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();

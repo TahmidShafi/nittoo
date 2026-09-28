@@ -7,11 +7,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { usePageMeta } from '../hooks/usePageMeta';
 import { db } from '../lib/dataSource';
 import { getTodayUTC } from '../lib/dateUtils';
 import { PRODUCT_CATEGORIES, type Product, type ProductCategory, type SizeUnit } from '../types';
 
 export const AddProductPage: React.FC = () => {
+  usePageMeta({ title: 'Add Essential', noindex: true });
+
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();

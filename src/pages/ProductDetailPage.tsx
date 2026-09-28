@@ -15,6 +15,7 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { useAuth } from '../hooks/useAuth';
+import { usePageMeta } from '../hooks/usePageMeta';
 import { db } from '../lib/dataSource';
 import { formatDisplayDate } from '../lib/dateUtils';
 import {
@@ -35,6 +36,12 @@ export const ProductDetailPage: React.FC = () => {
   const navigate = useNavigate();
 
   const [history, setHistory] = useState<ProductWithHistory | null>(null);
+
+  usePageMeta({
+    title: history?.product ? history.product.name : 'Essential Details',
+    noindex: true,
+  });
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

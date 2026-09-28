@@ -30,7 +30,8 @@ Unlike traditional warehouse inventory trackers that ask *"How many units are in
 - **Professional Data Portability**: 4-format unified export engine (Excel `.xlsx`, CSV archive `.zip`, editorial PDF report `.pdf`, and authoritative JSON backup `.json`).
 - **Idempotent Backup Restore & Import**: Multi-step, user-confirmed restore system with schema validation, relational integrity checks, active-container conflict preservation, and strict current-user ownership reassignment.
 - **Tab Return & Window Focus Silent Revalidation**: Resilient 3-second throttled background revalidation eliminating dashboard repaint flashes on window focus.
-- **Comprehensive Automated Verification**: 21 automated test scripts (`npm run verify:*`) validating 100% of domain math, vendor attributes, RLS policies, multi-tenant isolation, mock persistence, and UI layout invariants.
+- **Technical SEO & Web Presence Polish (Stage 16.5)**: Comprehensive metadata, per-route document title/description/robots management via `usePageMeta`, Open Graph & Twitter cards, semantic `h1`->`h2` hierarchy, image alt text audit, robots.txt, sitemap generator with strict production-domain isolation, web manifest metadata preparation, and 22-check automated test suite (`npm run verify:seo`).
+- **Comprehensive Automated Verification**: 22 automated test scripts (`npm run verify:*`) validating 100% of domain math, vendor attributes, RLS policies, multi-tenant isolation, mock persistence, UI layout invariants, and SEO technical compliance.
 
 ---
 
@@ -1037,32 +1038,87 @@ During comprehensive inspection, the following discrepancies were identified bet
 
 ---
 
-## 37. Current State Assessment
+## 37. Stage 16.5: Technical SEO & Web Presence Polish
 
-Nittoo is in a **mature, production-ready state** for personal essentials tracking. The codebase demonstrates high architectural discipline:
-- **Clean Boundaries**: UI components never bypass the `dataSource.ts` abstraction.
-- **Deterministic Logic**: Domain mathematics (lifespans, daily costs, unit economics, confidence, insights) are isolated in pure functions covered by 21 verification test suites.
-- **Resilient UX**: Window focus revalidation prevents screen flickering; touch targets meet 44px accessibility standards; empty states and error boundaries are present throughout.
-- **Enterprise-Grade Data Portability**: The export and restore system adheres to relational integrity, security token stripping, active conflict resolution, and multi-tenant isolation.
+Stage 16.5 delivered a zero-dependency, non-invasive technical SEO and web presence foundation for Nittoo, strictly adhering to personal privacy invariants, calm editorial branding, and robust domain isolation.
+
+### 1. Public vs. Private SEO Indexing Strategy
+- **Public / Indexable Routes (`PUBLIC_ROUTES`)**:
+  - `/login`: Public sign-in portal. Document title: `Sign In — Nittoo`.
+  - `/signup`: Public account registration. Document title: `Create Account — Nittoo`.
+  - `/forgot-password`: Public recovery request. Document title: `Reset Password — Nittoo`.
+- **Private / Strictly Non-Indexable Routes (`PRIVATE_ROUTES`)**:
+  - `/dashboard`, `/inventory`, `/analytics`, `/product/:id`, `/compare`, `/account`, `/add-product`, `/add-inventory`, `/reset-password`.
+  - Enforced via `usePageMeta({ noindex: true })` which sets `<meta name="robots" content="noindex, nofollow" />`.
+  - Excluded entirely from `public/robots.txt` and public XML sitemaps.
+
+### 2. Centralized SEO Engine (`src/lib/seo.ts` & `src/hooks/usePageMeta.ts`)
+- **Document Title & Tone**: Formatted calmly as `<Page Name> — Nittoo` (e.g. `Sign In — Nittoo`, `Nittoo — Know What Lasts`). Zero keyword stuffing or hype claims.
+- **Truthful Meta Descriptions**: Authoritative product copy explaining physical consumption lifecycles and cost-per-day intelligence without unsubstantiated buzzwords ("AI-powered", "revolutionary", "guaranteed").
+- **Zero Re-Render DOM Updater**: `setPageMetadata` updates `document.title`, description, robots directives, Open Graph, and Twitter metadata using direct DOM mutations.
+- **Declarative Route Integration**: All 12 application pages integrate `usePageMeta` with clean cleanup restoring defaults upon unmount.
+
+### 3. Open Graph, Twitter Cards & Structured Data (`index.html`)
+- **Open Graph Metadata**: Fully declared with `og:type` (`website`), `og:site_name` (`Nittoo`), `og:title`, `og:description`, and `og:image` referencing `/nittoo-logo.png`.
+- **Twitter / X Cards**: Standard `summary` card with brand title, description, and logo.
+- **Structured Data (JSON-LD)**: Minimal, truthful `WebApplication` schema identifying the application category without fabricated ratings, reviews, or pricing.
+- **Brand Theme Color**: Declares `<meta name="theme-color" content="#2D6A4F" />` and preconnect links for Google Fonts.
+
+### 4. Robots Exclusion Standard (`public/robots.txt`)
+- Clearly identifies `User-agent: *`.
+- Explicitly permits discovery routes: `Allow: /login`, `Allow: /signup`, `Allow: /forgot-password`.
+- Explicitly disallows all 9 private application paths (`/dashboard`, `/inventory`, `/analytics`, `/product/`, `/compare`, `/account`, `/add-product`, `/add-inventory`, `/reset-password`).
+- Never uses blanket `Disallow: /`.
+
+### 5. Web App Manifest (`public/site.webmanifest`)
+- **Metadata Preparation Only**: Implements `name`, `short_name`, `theme_color` (`#2D6A4F`), `background_color` (`#FBFBFB`), `display: standalone`, and icons (`/favicon.svg`, `/nittoo-logo.png`).
+- Documented strictly as identity metadata preparation; does not claim complete PWA offline sync or service worker implementation.
+
+### 6. Sitemap Generation & Production Domain Isolation (`src/lib/sitemap.ts` & `scripts/generate-sitemap.ts`)
+- **Policy**: Public sitemaps must contain only genuine public routes and zero private or user-specific data.
+- **Domain Independence**: When no verified production domain is supplied, `generateSitemapXml` returns `null` to stop short of publishing incorrect XML with invented domains.
+- **On-Demand Generation**: `scripts/generate-sitemap.ts` generates `public/sitemap.xml` whenever `VITE_SITE_URL` is configured in production.
+
+### 7. Semantic Headings & Accessibility
+- **Heading Hierarchy**: Every page component contains exactly one primary `<h1>`.
+- **Semantic Section Headers**: `AccountPage.tsx` section dividers (`ACCOUNT`, `SECURITY`, `DATA`, `DELETE ACCOUNT`) converted to semantic `<h2>` elements with identical classes, achieving a flawless `h1` $\to$ `h2` $\to$ `h3` hierarchy without changing visual presentation.
+- **Image Alt Attributes**: `NittooLogo` updated from redundant `alt="Nittoo Logo"` to clean, descriptive `alt="Nittoo"` with `decoding="async"`.
+
+### 8. Unresolved Dependency Note
+- **Production Domain Availability**: The repository does not currently define a live custom domain or verified production URL. As designed, canonical URL tags and `public/sitemap.xml` avoid guessing or inventing a domain. When deployed, setting `VITE_SITE_URL` (e.g. `https://your-domain.com`) in environment variables will automatically activate canonical links and enable sitemap emission.
 
 ---
 
-## 38. Safe Next-Step Candidates
+## 38. Current State Assessment
+
+Nittoo is in a **mature, production-ready state** for personal essentials tracking. The codebase demonstrates high architectural discipline:
+- **Clean Boundaries**: UI components never bypass the `dataSource.ts` abstraction.
+- **Deterministic Logic**: Domain mathematics (lifespans, daily costs, unit economics, confidence, insights) are isolated in pure functions covered by 22 verification test suites.
+- **Resilient UX**: Window focus revalidation prevents screen flickering; touch targets meet 44px accessibility standards; empty states and error boundaries are present throughout.
+- **Enterprise-Grade Data Portability**: The export and restore system adheres to relational integrity, security token stripping, active conflict resolution, and multi-tenant isolation.
+- **Search & Web Presence**: Privacy-preserving technical SEO with per-route metadata, valid robots directives, truthful Open Graph tags, and zero leaked credentials.
+
+---
+
+## 39. Safe Next-Step Candidates
 
 Based strictly on what currently exists in the codebase, the following are safe, non-breaking candidates for future work:
 
-1. **Synchronize `README.md` Discrepancies**:
+1. **Configure Production Domain (`VITE_SITE_URL`)**:
+   - Provide custom domain URL in Vercel environment variables to automatically emit canonical tags and generate `public/sitemap.xml`.
+2. **Synchronize `README.md` Discrepancies**:
    - Update `README.md` to accurately describe indirect relational ownership for `purchases` and `usage_periods`.
    - Fix `/products/:id` $\to$ `/product/:id` and update `vercel.json` documentation.
 3. **Code Splitting & Bundle Optimization**:
-   - Vite build notes that `dist/assets/index-*.js` exceeds 500kB (`1,908 kB`) due to bundling `jspdf`, `xlsx`, `recharts`, and `jszip`.
+   - Vite build notes that `dist/assets/index-*.js` exceeds 500kB (`1,915 kB`) due to bundling `jspdf`, `xlsx`, `recharts`, and `jszip`.
    - Use `React.lazy()` or Vite manual rollup chunking (`build.rollupOptions.output.manualChunks`) to split export libraries (`xlsx`, `jspdf`, `jszip`) into on-demand chunks loaded only when export modals open.
 4. **Historical Cycle Editing / Deletion**:
    - Currently, active bottles and unopened backups can be edited via `EditInventoryModal`. Historical finished cycles cannot be edited or deleted from the UI if entered mistakenly.
    - Introduce an edit/delete action for historical cycles on `ProductDetailPage`.
-5. **PWA Manifest & Service Worker**:
-   - Add a Web App Manifest (`manifest.json`) and service worker configuration to enable home screen installation on mobile devices.
+5. **PWA Service Worker & Offline Sync**:
+   - Build upon `public/site.webmanifest` by adding a service worker for offline asset caching.
 6. **Multi-Currency UI Selector**:
    - Allow user selection of preferred currency symbol in Account Settings (`$`, `€`, `£`, `₹`, `৳`) while retaining numeric math.
 7. **Category Spending Breakdown in Analytics**:
    - Surface the existing `ExportCategoryBreakdown` calculations directly in the `/analytics` UI as an interactive breakdown card.
+

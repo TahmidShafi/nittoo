@@ -7,12 +7,15 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { usePageMeta } from '../hooks/usePageMeta';
 import { db } from '../lib/dataSource';
 import { buildComparisonReport, type ComparisonReport } from '../lib/comparison';
 import { getConfidenceBadgeStyles } from '../lib/confidence';
 import type { Product, ProductWithHistory } from '../types';
 
 export const ProductComparisonPage: React.FC = () => {
+  usePageMeta({ title: 'Product Comparison', noindex: true });
+
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 

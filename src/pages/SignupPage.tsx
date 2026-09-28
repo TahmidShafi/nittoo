@@ -7,9 +7,17 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { usePageMeta } from '../hooks/usePageMeta';
 import { NittooLogo } from '../components/NittooLogo';
 
 export const SignupPage: React.FC = () => {
+  usePageMeta({
+    title: 'Create Account',
+    description: 'Create a Nittoo account to start tracking how long your everyday essentials last and predict when you will run out.',
+    noindex: false,
+    canonicalPath: '/signup',
+  });
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');

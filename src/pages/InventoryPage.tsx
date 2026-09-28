@@ -7,6 +7,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { usePageMeta } from '../hooks/usePageMeta';
 import { db } from '../lib/dataSource';
 import { getTodayUTC, formatDisplayDate } from '../lib/dateUtils';
 import { getPredictionMetrics } from '../hooks/usePrediction';
@@ -20,6 +21,8 @@ import type {
 } from '../types';
 
 export const InventoryPage: React.FC = () => {
+  usePageMeta({ title: 'Inventory', noindex: true });
+
   const { user } = useAuth();
   const [inventory, setInventory] = useState<UserInventory>({ active: [], unopened: [] });
   const [loading, setLoading] = useState(true);

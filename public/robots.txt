@@ -1,0 +1,22 @@
+# ==============================================================================
+# Nittoo robots.txt
+# Personal Consumption Intelligence — Know What Lasts
+# ==============================================================================
+
+User-agent: *
+
+# Allow crawling of public discovery and authentication entry points
+Allow: /login
+Allow: /signup
+Allow: /forgot-password
+
+# Disallow private application views and authenticated user workspaces
+Disallow: /dashboard
+Disallow: /inventory
+Disallow: /analytics
+Disallow: /product/
+Disallow: /compare
+Disallow: /account
+Disallow: /add-product
+Disallow: /add-inventory
+Disallow: /reset-password
