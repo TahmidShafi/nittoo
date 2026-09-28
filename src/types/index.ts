@@ -106,6 +106,7 @@ export interface UpdatePurchaseInput {
 
 export interface UpdateUsagePeriodInput {
   opened_date: string; // YYYY-MM-DD
+  finished_date?: string | null; // YYYY-MM-DD (allowed for completed historical cycles)
 }
 
 // ------------------------------------------------------------------------------
@@ -273,6 +274,11 @@ export interface IDataSource {
     userId: string,
     usagePeriodId: string,
     input: UpdateUsagePeriodInput
+  ): Promise<UsagePeriod>;
+
+  deleteUsagePeriod(
+    userId: string,
+    usagePeriodId: string
   ): Promise<UsagePeriod>;
 
   getActiveProducts(

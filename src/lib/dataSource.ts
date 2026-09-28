@@ -73,7 +73,13 @@ export const db: IDataSource = {
 
   updateUsagePeriod: async (userId, usagePeriodId, input) => {
     const res = await rawDb.updateUsagePeriod(userId, usagePeriodId, input);
-    dataCache.invalidateProduct(userId);
+    dataCache.invalidateProduct(userId, res.product_id);
+    return res;
+  },
+
+  deleteUsagePeriod: async (userId, usagePeriodId) => {
+    const res = await rawDb.deleteUsagePeriod(userId, usagePeriodId);
+    dataCache.invalidateProduct(userId, res.product_id);
     return res;
   },
 

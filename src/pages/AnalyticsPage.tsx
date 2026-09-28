@@ -23,9 +23,11 @@ import {
   calculateEstimatedMonthlyConsumption,
   getCostEfficiencyRankings,
   getCostComparisonChartData,
+  getCategorySpending,
   type UpcomingPurchaseItem,
   type ProductCostEfficiency,
   type CostComparisonChartPoint,
+  type CategorySpending,
 } from '../lib/analytics';
 import { calculateConfidence, getConfidenceBadgeStyles } from '../lib/confidence';
 import { dataCache, areValuesEqual } from '../lib/dataCache';
@@ -47,6 +49,7 @@ export const AnalyticsPage: React.FC = () => {
           monthlyConsumption: null as number | null,
           costRankings: { mostEfficient: [], leastEfficient: [] },
           chartData: [] as CostComparisonChartPoint[],
+          categorySpending: [] as CategorySpending[],
         }
       : {
           hasProducts: true,
@@ -54,6 +57,7 @@ export const AnalyticsPage: React.FC = () => {
           monthlyConsumption: calculateEstimatedMonthlyConsumption(cachedEntry.data),
           costRankings: getCostEfficiencyRankings(cachedEntry.data),
           chartData: getCostComparisonChartData(cachedEntry.data),
+          categorySpending: getCategorySpending(cachedEntry.data),
         }
     : null;
 
@@ -76,6 +80,9 @@ export const AnalyticsPage: React.FC = () => {
   }>(() => initialComputed?.costRankings ?? { mostEfficient: [], leastEfficient: [] });
   const [chartData, setChartData] = useState<CostComparisonChartPoint[]>(
     () => initialComputed?.chartData ?? []
+  );
+  const [categorySpending, setCategorySpending] = useState<CategorySpending[]>(
+    () => initialComputed?.categorySpending ?? []
   );
   const [hasProducts, setHasProducts] = useState<boolean>(
     () => initialComputed?.hasProducts ?? true
@@ -101,6 +108,7 @@ export const AnalyticsPage: React.FC = () => {
           setMonthlyConsumption(null);
           setCostRankings({ mostEfficient: [], leastEfficient: [] });
           setChartData([]);
+          setCategorySpending([]);
           setError(null);
           return;
         }
@@ -112,11 +120,13 @@ export const AnalyticsPage: React.FC = () => {
         const monthly = calculateEstimatedMonthlyConsumption(validHistories);
         const rankings = getCostEfficiencyRankings(validHistories);
         const chartPoints = getCostComparisonChartData(validHistories);
+        const catSpending = getCategorySpending(validHistories);
 
         setUpcomingPurchases((prev) => (areValuesEqual(prev, upcoming) ? prev : upcoming));
         setMonthlyConsumption((prev) => (prev === monthly ? prev : monthly));
         setCostRankings((prev) => (areValuesEqual(prev, rankings) ? prev : rankings));
         setChartData((prev) => (areValuesEqual(prev, chartPoints) ? prev : chartPoints));
+        setCategorySpending((prev) => (areValuesEqual(prev, catSpending) ? prev : catSpending));
         setError(null);
       } catch (err: unknown) {
         console.error('Failed to load analytics data:', err);
@@ -383,6 +393,120 @@ export const AnalyticsPage: React.FC = () => {
             </>
           )}
         </div>
+      </div>
+
+      {/* Stage 18: CATEGORY SPENDING INTELLIGENCE */}
+      <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 sm:p-7 shadow-xs space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#2D6A4F] block mb-1">
+              Category Spending
+            </span>
+            <h2 className="text-base sm:text-lg font-bold text-neutral-900">
+              Estimated Consumption by Category
+            </h2>
+            <p className="text-xs text-neutral-500 mt-0.5">
+              Estimated 30-day consumption run rate broken down across essential categories.
+            </p>
+          </div>
+          {categorySpending.length > 0 && (
+            <span className="self-start sm:self-auto text-xs font-semibold px-3 py-1 bg-[#EBF4F0] text-[#2D6A4F] rounded-full border border-[#2D6A4F]/20">
+              {categorySpending.length} Categor{categorySpending.length === 1 ? 'y' : 'ies'}
+            </span>
+          )}
+        </div>
+
+        {categorySpending.length > 0 ? (
+          <div className="space-y-6">
+            {/* Visual Horizontal Distribution (Recharts) */}
+            <div className="w-full pt-1">
+              <ResponsiveContainer width="100%" height={Math.max(140, categorySpending.length * 38)}>
+                <BarChart
+                  layout="vertical"
+                  data={categorySpending}
+                  margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#F0F2F1" />
+                  <XAxis
+                    type="number"
+                    unit="%"
+                    domain={[0, 100]}
+                    tick={{ fontSize: 11, fill: '#6B7280' }}
+                    axisLine={{ stroke: '#E5E7EB' }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="category"
+                    width={130}
+                    tick={{ fontSize: 11, fill: '#374151', fontWeight: 600 }}
+                    axisLine={{ stroke: '#E5E7EB' }}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    formatter={(value: any, _name: any, item: any) => {
+                      const payload = item?.payload as CategorySpending | undefined;
+                      return [
+                        `${value}% · ৳${payload?.monthlyCost.toLocaleString() ?? 0}/mo (${payload?.productCount ?? 0} item${payload?.productCount === 1 ? '' : 's'})`,
+                        'Share of Monthly Run Rate',
+                      ];
+                    }}
+                    contentStyle={{
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: '12px',
+                      border: '1px solid #E8ECE9',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.06)',
+                      fontSize: '12px',
+                    }}
+                  />
+                  <Bar
+                    dataKey="percentageOfTotal"
+                    fill="#2D6A4F"
+                    radius={[0, 6, 6, 0]}
+                    maxBarSize={22}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Ranked Category Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
+              {categorySpending.map((item) => (
+                <div
+                  key={item.category}
+                  className="p-3.5 bg-neutral-50/80 rounded-xl border border-neutral-100 flex flex-col justify-between space-y-2 hover:bg-neutral-100/60 transition-colors"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-neutral-900 truncate">
+                      {item.category}
+                    </span>
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#EBF4F0] text-[#2D6A4F] border border-[#2D6A4F]/20 shrink-0">
+                      {item.percentageOfTotal}%
+                    </span>
+                  </div>
+                  <div className="flex items-baseline justify-between pt-1 border-t border-neutral-200/50 text-[11px]">
+                    <span className="font-semibold text-neutral-800 text-sm">
+                      ৳{item.monthlyCost.toLocaleString()}
+                      <span className="text-[10px] text-neutral-500 font-normal ml-0.5">/ mo</span>
+                    </span>
+                    <span className="text-neutral-400">
+                      {item.productCount} product{item.productCount === 1 ? '' : 's'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-8 bg-neutral-50/70 border border-dashed border-neutral-200/80 rounded-xl">
+            <p className="text-xs text-neutral-700 font-semibold">
+              Not enough completed history for category insights.
+            </p>
+            <p className="text-[11px] text-neutral-400 mt-1 max-w-sm mx-auto">
+              Complete usage cycles on your essentials to reveal how your monthly consumption divides across categories.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Priority 3: COST EFFICIENCY RANKINGS */}

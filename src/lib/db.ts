@@ -379,10 +379,10 @@ export class SupabaseDatabase implements IDataSource {
       throw new Error('Opened date cannot be in the future');
     }
 
-    // Verify ownership and active status
+    // Verify ownership and purchase date constraint
     const { data: period, error: periodErr } = await client
       .from('usage_periods')
-      .select('id, purchase_id, status, products!inner(user_id), purchases!inner(purchase_date)')
+      .select('id, product_id, purchase_id, status, opened_date, finished_date, products!inner(user_id), purchases!inner(purchase_date)')
       .eq('id', usagePeriodId)
       .single();
 
@@ -392,8 +392,11 @@ export class SupabaseDatabase implements IDataSource {
 
     const typedPeriod = period as unknown as {
       id: string;
+      product_id: string;
       purchase_id: string;
       status: string;
+      opened_date: string;
+      finished_date: string | null;
       products: { user_id: string } | { user_id: string }[];
       purchases: { purchase_date: string } | { purchase_date: string }[];
     };
@@ -406,10 +409,6 @@ export class SupabaseDatabase implements IDataSource {
       throw new Error('Unauthorized: You do not own this product');
     }
 
-    if (typedPeriod.status !== 'active') {
-      throw new Error('Only active bottles can be edited');
-    }
-
     const pur = Array.isArray(typedPeriod.purchases)
       ? typedPeriod.purchases[0]
       : typedPeriod.purchases;
@@ -418,20 +417,118 @@ export class SupabaseDatabase implements IDataSource {
       throw new Error('Opened date cannot be earlier than purchase date');
     }
 
-    const { data, error } = await client
+    // 1. Active bottle update
+    if (typedPeriod.status === 'active') {
+      const { data, error } = await client
+        .from('usage_periods')
+        .update({
+          opened_date: input.opened_date,
+        })
+        .eq('id', usagePeriodId)
+        .eq('status', 'active')
+        .select('*')
+        .single();
+
+      if (error || !data) {
+        throw new Error(`Failed to update usage period: ${error?.message || 'Update failed'}`);
+      }
+      return data as UsagePeriod;
+    }
+
+    // 2. Completed historical cycle update
+    if (typedPeriod.status === 'finished') {
+      if (!input.finished_date || !input.finished_date.trim()) {
+        throw new Error('Finished date is required for completed cycles');
+      }
+
+      if (input.finished_date > today) {
+        throw new Error('Finished date cannot be in the future');
+      }
+
+      if (input.finished_date < input.opened_date) {
+        throw new Error('Finished date cannot be earlier than opened date');
+      }
+
+      const { data, error } = await client
+        .from('usage_periods')
+        .update({
+          opened_date: input.opened_date,
+          finished_date: input.finished_date,
+        })
+        .eq('id', usagePeriodId)
+        .eq('status', 'finished')
+        .select('*')
+        .single();
+
+      if (error || !data) {
+        throw new Error(`Failed to update usage period: ${error?.message || 'Update failed'}`);
+      }
+      return data as UsagePeriod;
+    }
+
+    throw new Error('Unsupported usage period status');
+  }
+
+  async deleteUsagePeriod(
+    userId: string,
+    usagePeriodId: string
+  ): Promise<UsagePeriod> {
+    const client = this.getClient();
+    if (!userId) throw new Error('User ID is required');
+    if (!usagePeriodId) throw new Error('Usage period ID is required');
+
+    // Verify ownership and ensure it is a completed cycle
+    const { data: period, error: periodErr } = await client
       .from('usage_periods')
-      .update({
-        opened_date: input.opened_date,
-      })
+      .select('id, product_id, purchase_id, status, opened_date, finished_date, created_at, products!inner(user_id)')
       .eq('id', usagePeriodId)
-      .eq('status', 'active')
-      .select('*')
       .single();
 
-    if (error || !data) {
-      throw new Error(`Failed to update usage period: ${error?.message || 'Update failed'}`);
+    if (periodErr || !period) {
+      throw new Error('Usage period not found');
     }
-    return data as UsagePeriod;
+
+    const typedPeriod = period as unknown as {
+      id: string;
+      product_id: string;
+      purchase_id: string;
+      status: string;
+      opened_date: string;
+      finished_date: string | null;
+      created_at: string;
+      products: { user_id: string } | { user_id: string }[];
+    };
+
+    const prodUser = Array.isArray(typedPeriod.products)
+      ? typedPeriod.products[0]
+      : typedPeriod.products;
+
+    if (!prodUser || prodUser.user_id !== userId) {
+      throw new Error('Unauthorized: You do not own this product');
+    }
+
+    if (typedPeriod.status !== 'finished') {
+      throw new Error('Only completed cycles can be deleted');
+    }
+
+    const { error: delErr } = await client
+      .from('usage_periods')
+      .delete()
+      .eq('id', usagePeriodId);
+
+    if (delErr) {
+      throw new Error(`Failed to delete usage period: ${delErr.message}`);
+    }
+
+    return {
+      id: typedPeriod.id,
+      product_id: typedPeriod.product_id,
+      purchase_id: typedPeriod.purchase_id,
+      status: typedPeriod.status as 'finished',
+      opened_date: typedPeriod.opened_date,
+      finished_date: typedPeriod.finished_date,
+      created_at: typedPeriod.created_at,
+    };
   }
 
   async getActiveProducts(userId: string): Promise<ProductWithDetails[]> {

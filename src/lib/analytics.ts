@@ -210,3 +210,85 @@ export function getCostComparisonChartData(
     };
   });
 }
+
+// ------------------------------------------------------------------------------
+// Category Spending Intelligence (Stage 18)
+// Pure, deterministic aggregation of estimated monthly consumption by category.
+// ------------------------------------------------------------------------------
+
+export interface CategorySpending {
+  category: string;
+  monthlyCost: number;
+  productCount: number;
+  percentageOfTotal: number;
+}
+
+/**
+ * Calculates Estimated Monthly Consumption Cost aggregated by Product Category.
+ * Strictly includes only products eligible under existing monthly consumption logic
+ * (requires completed lifespan history and valid latest purchase price).
+ *
+ * Deterministic Sorting:
+ * 1. Primary: Highest monthly cost first (descending)
+ * 2. Secondary: Alphabetical category order when monthly costs are equal
+ *
+ * Returns empty array if no eligible products exist or total monthly cost is 0.
+ */
+export function getCategorySpending(
+  productsWithHistory: ProductWithHistory[]
+): CategorySpending[] {
+  const categoryMap = new Map<string, { totalMonthly: number; count: number }>();
+  let totalEligibleMonthly = 0;
+
+  for (const item of productsWithHistory) {
+    const averageLifespan = calculateAverageLifespan(item.finished_periods);
+    if (averageLifespan === null || averageLifespan <= 0) continue;
+
+    const sortedPurchases = [...item.purchases].sort((a, b) =>
+      b.purchase_date.localeCompare(a.purchase_date)
+    );
+    const latestPurchase = sortedPurchases[0];
+    if (!latestPurchase || typeof latestPurchase.price !== 'number' || latestPurchase.price < 0) {
+      continue;
+    }
+
+    const monthlyCost = (latestPurchase.price / averageLifespan) * 30;
+    if (isNaN(monthlyCost) || !isFinite(monthlyCost)) continue;
+
+    totalEligibleMonthly += monthlyCost;
+
+    const catName = item.product.category || 'Other';
+    const existing = categoryMap.get(catName) || { totalMonthly: 0, count: 0 };
+    existing.totalMonthly += monthlyCost;
+    existing.count += 1;
+    categoryMap.set(catName, existing);
+  }
+
+  if (categoryMap.size === 0 || totalEligibleMonthly <= 0) {
+    return [];
+  }
+
+  const results: CategorySpending[] = [];
+
+  for (const [category, data] of categoryMap.entries()) {
+    const roundedCost = Math.round(data.totalMonthly);
+    const percentage = Math.round((data.totalMonthly / totalEligibleMonthly) * 100);
+
+    results.push({
+      category,
+      monthlyCost: roundedCost,
+      productCount: data.count,
+      percentageOfTotal: percentage,
+    });
+  }
+
+  // Deterministic Sort: Highest monthly cost first; tie-breaker: alphabetical
+  return results.sort((a, b) => {
+    if (b.monthlyCost !== a.monthlyCost) {
+      return b.monthlyCost - a.monthlyCost;
+    }
+    return a.category.localeCompare(b.category);
+  });
+}
+
+export const calculateCategorySpending = getCategorySpending;

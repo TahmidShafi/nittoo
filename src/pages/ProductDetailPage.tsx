@@ -28,6 +28,8 @@ import {
 import { calculateConfidence, getConfidenceBadgeStyles } from '../lib/confidence';
 import { FinishUsageModal } from '../components/FinishUsageModal';
 import { EditInventoryModal } from '../components/EditInventoryModal';
+import { EditCompletedCycleModal } from '../components/EditCompletedCycleModal';
+import { DeleteCompletedCycleModal } from '../components/DeleteCompletedCycleModal';
 import { dataCache, areValuesEqual } from '../lib/dataCache';
 import type { ProductWithHistory, ProductWithDetails, Purchase, UsagePeriod } from '../types';
 
@@ -66,6 +68,13 @@ export const ProductDetailPage: React.FC = () => {
   const [editMode, setEditMode] = useState<'active_bottle' | 'unopened'>('active_bottle');
   const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
   const [editingUsagePeriod, setEditingUsagePeriod] = useState<UsagePeriod | null>(null);
+
+  // Modal State for Editing / Deleting Completed Historical Cycles (Stage 17)
+  const [isEditCycleModalOpen, setIsEditCycleModalOpen] = useState(false);
+  const [isDeleteCycleModalOpen, setIsDeleteCycleModalOpen] = useState(false);
+  const [selectedCycle, setSelectedCycle] = useState<UsagePeriod | null>(null);
+  const [selectedCycleNumber, setSelectedCycleNumber] = useState<number | undefined>(undefined);
+  const [selectedCycleDuration, setSelectedCycleDuration] = useState<number | undefined>(undefined);
 
   const loadData = useCallback(
     async (isSilent = false) => {
@@ -274,6 +283,7 @@ export const ProductDetailPage: React.FC = () => {
 
         return {
           id: fp.id,
+          rawPeriod: fp,
           cycleNumber: arr.length - idx,
           openedDate: formatDisplayDate(fp.opened_date),
           finishedDate: formatDisplayDate(fp.finished_date || ''),
@@ -335,7 +345,7 @@ export const ProductDetailPage: React.FC = () => {
     );
   }, [history, activeUsageData]);
 
-  // Edit Handlers
+  // Edit Handlers for Current Inventory
   const handleOpenEditActive = () => {
     if (!history || !activeUsageData?.active || !activePurchase) return;
     setEditingPurchase(activePurchase);
@@ -354,6 +364,30 @@ export const ProductDetailPage: React.FC = () => {
 
   const handleInventorySaved = async () => {
     setActionSuccess('Inventory updated.');
+    await loadData();
+  };
+
+  // Stage 17: Edit & Delete Handlers for Completed Historical Cycles
+  const handleOpenEditCycle = (cycle: UsagePeriod, cycleNumber?: number) => {
+    setSelectedCycle(cycle);
+    setSelectedCycleNumber(cycleNumber);
+    setIsEditCycleModalOpen(true);
+  };
+
+  const handleOpenDeleteCycle = (cycle: UsagePeriod, cycleNumber?: number, duration?: number) => {
+    setSelectedCycle(cycle);
+    setSelectedCycleNumber(cycleNumber);
+    setSelectedCycleDuration(duration);
+    setIsDeleteCycleModalOpen(true);
+  };
+
+  const handleCycleSaved = async () => {
+    setActionSuccess('Historical cycle updated. Insights recalculated.');
+    await loadData();
+  };
+
+  const handleCycleDeleted = async () => {
+    setActionSuccess('Historical cycle removed. Historical insights recalculated.');
     await loadData();
   };
 
@@ -955,7 +989,7 @@ export const ProductDetailPage: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-6 sm:text-right">
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 sm:gap-6 sm:text-right">
                   <div>
                     <span className="text-neutral-400 block text-[10px] uppercase font-semibold tracking-wider">Duration</span>
                     <span className="font-bold text-neutral-900 text-sm">
@@ -971,6 +1005,26 @@ export const ProductDetailPage: React.FC = () => {
                     ) : (
                       <span className="text-neutral-400 italic">—</span>
                     )}
+                  </div>
+
+                  {/* Stage 17: Restrained Historical Edit and Delete Actions */}
+                  <div className="flex items-center gap-1.5 sm:pl-2">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditCycle(cycle.rawPeriod, cycle.cycleNumber)}
+                      className="btn-press min-h-[30px] px-2.5 py-1 rounded-lg bg-neutral-100 hover:bg-neutral-200/80 text-neutral-700 text-xs font-medium transition-colors cursor-pointer"
+                      title="Edit this completed cycle's dates"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDeleteCycle(cycle.rawPeriod, cycle.cycleNumber, cycle.duration)}
+                      className="btn-press min-h-[30px] px-2.5 py-1 rounded-lg text-neutral-400 hover:text-rose-600 hover:bg-rose-50 text-xs font-medium transition-colors cursor-pointer"
+                      title="Delete this completed cycle"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
               </div>
@@ -1000,6 +1054,36 @@ export const ProductDetailPage: React.FC = () => {
         purchase={editingPurchase}
         usagePeriod={editingUsagePeriod}
         mode={editMode}
+      />
+
+      {/* Stage 17: Edit Completed Historical Cycle Modal */}
+      <EditCompletedCycleModal
+        isOpen={isEditCycleModalOpen}
+        onClose={() => {
+          setIsEditCycleModalOpen(false);
+          setSelectedCycle(null);
+          setSelectedCycleNumber(undefined);
+        }}
+        onSaved={handleCycleSaved}
+        productName={history.product.name}
+        cycle={selectedCycle}
+        cycleNumber={selectedCycleNumber}
+      />
+
+      {/* Stage 17: Delete Completed Historical Cycle Confirmation Modal */}
+      <DeleteCompletedCycleModal
+        isOpen={isDeleteCycleModalOpen}
+        onClose={() => {
+          setIsDeleteCycleModalOpen(false);
+          setSelectedCycle(null);
+          setSelectedCycleNumber(undefined);
+          setSelectedCycleDuration(undefined);
+        }}
+        onDeleted={handleCycleDeleted}
+        productName={history.product.name}
+        cycle={selectedCycle}
+        cycleNumber={selectedCycleNumber}
+        durationDays={selectedCycleDuration}
       />
     </div>
   );

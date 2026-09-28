@@ -76,7 +76,7 @@ async function run() {
         id: 'prod-test-1',
         name: 'Test Essential',
         category: 'Skincare',
-        unit: 'ml',
+        size_unit: 'ml',
         user_id: userA,
         created_at: new Date().toISOString(),
         active_usage: null,

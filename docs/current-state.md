@@ -34,7 +34,11 @@ Unlike traditional warehouse inventory trackers that ask *"How many units are in
 - **Performance & Bundle Optimization (Stage 16.6)**: Comprehensive bundle audit, dynamic on-demand imports for export engines (`xlsx`, `jspdf`, `html2canvas`, `jszip`), route-level code splitting across all 12 pages with `React.lazy()` and calm fallback loader, manual vendor chunking in Vite (`react-vendor`, `supabase`), dropping initial entry JS from 1,915 kB (554 kB gzip) to 51.6 kB (13.0 kB gzip) and combined initial load to 514.3 kB (146.1 kB gzip) — a 73.1% reduction with zero chunk warnings and 100% behavioral immutability.
 - **PWA Foundation & Offline Asset Caching (Stage 16.7)**: Production service worker (`public/service-worker.js`) with versioned cache (`nittoo-static-v1`), pre-caching of safe core application shell assets, cache-first serving of Vite-hashed static chunks (`/assets/*`), network-first navigation with `/index.html` offline shell fallback, strict security guards explicitly bypassing Supabase API/Auth endpoints and user data, obsolete cache version purging, production-only registration guard (`import.meta.env.PROD`), and 14-check automated test suite (`npm run verify:pwa`).
 - **Supabase Query & Data-Fetch Optimization (Stage 16.8)**: Full query audit and network roundtrip reduction across core pages. Eliminated duplicate `usage_periods(status=active)` query in `getActiveProducts` and `getUserInventory`, parallelized `getProductHistory` across products/purchases/usage_periods into a single concurrent roundtrip (50% latency reduction), eliminated the $3N + 1$ N+1 query cascade in `AnalyticsPage` via a new composite batched `getUserProductsWithHistory` method (90.3% query reduction for 10 products), added composite database indexes for date-ordered purchases and usage periods, and verified 100% API parity with mock database across 25 verification suites.
-- **Comprehensive Automated Verification**: 25 automated test scripts (`npm run verify:*`) validating 100% of domain math, vendor attributes, RLS policies, multi-tenant isolation, mock persistence, UI layout invariants, SEO compliance, bundle chunking isolation, PWA caching rules, and database query deduplication.
+- **Client-Side In-Memory SWR Cache (Stage 16.9)**: Lightweight, zero-storage, tenant-isolated in-memory cache providing frame-0 rendering for previously visited pages, conservative 30-second stale-time window, silent background revalidation without screen flashing, LRU size capping, zero auth-secret leakage guarantees, and universal mutation invalidation.
+- **Historical Finished Cycle Editing & Deletion (Stage 17)**: Non-destructive historical correction and removal of completed usage periods on `ProductDetailPage`. Strictly preserves associated purchases, maintains historical vendor and pricing truth without inventing states, enforces date chronological constraints (finished >= opened, no future dates), protects active bottles, automatically recalculates pure derived insights (average lifespan, predicted remaining days, confidence, cost/day), cleanses dependent SWR caches, and verifies mathematical invariance across 26 test suites.
+- **Category Spending Intelligence (Stage 18)**: Pure deterministic aggregation of normalized 30-day monthly consumption expenditure by product category on `/analytics`. Integrates horizontal Recharts visualization and responsive ranked category breakdown cards, clearly distinguishes estimated run rates from actual past expenditure, strictly excludes products lacking completed cycle history, requires 0 additional database queries or schema changes, updates via existing SWR invalidation, and maintains 100% mathematical invariance across 27 verification suites.
+- **Comprehensive Automated Verification**: 27 automated test scripts (`npm run verify:*`) validating 100% of domain math, vendor attributes, RLS policies, multi-tenant isolation, mock persistence, UI layout invariants, SEO compliance, bundle chunking isolation, PWA caching rules, database query deduplication, SWR cache lifecycle, historical cycle editing/deletion, and category spending intelligence.
+
 
 ---
 
@@ -1199,12 +1203,76 @@ Implemented in September 2026. This stage introduced a high-performance, strictl
 
 ---
 
-## 42. Current State Assessment
+## 42. Stage 17 — Historical Finished Cycle Editing & Deletion Architecture
+
+### Problem Solved
+Prior to Stage 17, completed usage cycles were immutable in the UI once closed via `FinishUsageModal`. If a user made a typographical error in the opened or finished date, or prematurely finished a bottle, there was no user-facing mechanism to correct or remove the observation. Furthermore, because Nittoo derives 100% of its learning calculations (average lifespan, runout forecast, confidence maturity, unit cost per day, normalized monthly consumption) strictly from finished usage cycles, an incorrect historical record could permanently skew all downstream insights.
+
+### Immutability & Safety Rules
+1. **Restricted Historical Fields**: Users can only edit `opened_date` and `finished_date`. All relational keys (`product_id`, `purchase_id`, `user_id`, `id`) and creation timestamps remain completely immutable.
+2. **Status Immutability**: Historical cycle edits strictly preserve `status = 'finished'`. An edit cannot convert a finished cycle into an active bottle, preserving the single-active-bottle constraint (`idx_usage_periods_single_active`).
+3. **Active Cycle Protection**: Active bottles cannot be edited or deleted through the historical flow. Active bottles continue to use the established `FinishUsageModal` completion flow and `EditInventoryModal` metadata editing.
+4. **Chronological Validity**:
+   - `opened_date` is required.
+   - `finished_date` is required.
+   - `finished_date >= opened_date`.
+   - `opened_date <= today` (no future opened dates).
+   - `finished_date <= today` (no future finished dates).
+   - `opened_date >= purchase.purchase_date` (container cannot be opened prior to acquisition).
+5. **Purchase Data Preservation**: Deleting a finished usage period removes that historical observation row from `usage_periods`, but strictly preserves the linked row in `purchases`. The purchase returns to being an unopened/stored backup in the product inventory without altering original acquisition pricing, currency, date, or store/vendor metadata. Zero phantom states are invented.
+6. **Pure Dynamic Recalculation**: All derived metrics are recalculated on the fly from the revised set of finished periods using existing pure functions (`calculateAverageLifespan`, `calculateUsageDuration`, `calculatePredictedRemainingDays`, `calculateConfidence`, `calculateCostPerDay`). If deleting a cycle leaves 0 completed cycles, average lifespan returns `null`, prediction returns `null`, and confidence cleanly transitions to `no_data` ("Not enough data").
+7. **SWR Cache Cleansing**: All mutations dispatch `dataCache.invalidateProduct(userId, productId)`, synchronously flushing cached snapshots for `dashboard`, `inventory`, `analytics`, `all-products`, `product:<productId>`, and all relevant `comparison:*` keys.
+8. **Multi-User Security & RLS**: Both `db.ts` and `mock-db.ts` validate user ownership through linked product records. Database-level RLS policies strictly reject any cross-tenant read, update, or deletion.
+
+---
+
+## 43. Stage 18 — Category Spending Intelligence Architecture
+
+Implemented in September 2026. This stage introduced Category Spending Intelligence to Nittoo's `/analytics` page, providing users with a deterministic breakdown of their ongoing 30-day normalized consumption expenditure by product category.
+
+### 1. Product Principle & Consumption Distinction
+- **Consumption Intelligence vs. Generic Budgeting**: Nittoo is strictly an essentials consumption intelligence engine, not personal finance or expense tracking software. It answers *"How much of my ongoing everyday consumption is associated with each category?"* (e.g. Skincare ৳420/month, Haircare ৳310/month, Supplements ৳220/month).
+- **Mandatory Estimation Labeling**: Section and visual headers are explicitly labeled as **"Estimated monthly consumption by category"** / **"Estimated 30-day consumption by category"**. It is strictly not labeled as "Actual monthly spending", maintaining clear intellectual honesty that the metrics represent normalized run-rate consumption rather than lump-sum cash purchases.
+
+### 2. Pure Mathematical Aggregation Formula
+- **Product-Level Eligibility**: Adheres strictly to Nittoo's finished-periods requirement. Only products meeting existing monthly consumption calculation criteria are eligible:
+  $$\text{monthly\_consumption} = \left(\frac{\text{latest\_price}}{\text{average\_lifespan}}\right) \times 30$$
+- **Strict History Exclusion**: Products with zero completed cycles, non-positive lifespans, or non-positive latest prices are strictly excluded. Zero synthetic estimates are invented.
+- **Category Run-Rate Aggregation**:
+  $$\text{category\_monthly\_cost} = \sum_{p \in \text{eligible products in category}} \text{monthly\_consumption}(p)$$
+- **Percentage of Total Normalization**:
+  $$\text{percentageOfTotal} = \text{round}\left(\frac{\text{category\_monthly\_cost}}{\text{totalEligibleMonthlyConsumption}} \times 100\right)$$
+- **Division-by-Zero Safety**: When total eligible consumption is 0 or no eligible products exist, `getCategorySpending` deterministically returns an empty array `[]` rather than dividing by zero or emitting fabricated zero-value categories.
+- **Deterministic Ranking**:
+  - Primary sort: `monthlyCost` descending (highest consumption first).
+  - Secondary sort: `category` alphabetically (case-insensitive tie-breaking).
+  - Strictly non-judgmental: No categories are labeled "good", "bad", "best", or "worst".
+
+### 3. Architecture & Zero-Query Integration
+- **Single-Roundtrip Data Reusability**: Reuses the batch-loaded `getUserProductsWithHistory(userId)` dataset already fetched by `AnalyticsPage`. Requires **0 additional database queries**, 0 network roundtrips, and 0 database schema changes.
+- **Zero Database Aggregation Tables**: Category totals remain 100% derived in pure memory via `getCategorySpending` (`src/lib/analytics.ts`). No denormalized aggregates are stored in Supabase or Mock tables.
+- **SWR Cache Integration**: Fully integrated into the existing user-scoped in-memory SWR cache under resource key `'analytics'`. Historical cycle edits, deletions, new purchases, or finished bottles automatically trigger cache invalidation and silently recalculate category breakdowns.
+
+### 4. Calm UI & Editorial Visualization
+- **Restrained Visual Language**: Placed cleanly beneath the primary "Estimated Monthly Consumption" metric card and above the "Cost Efficiency Rankings".
+- **Horizontal Bar Visualization**: Accessible Recharts horizontal `BarChart` (`layout="vertical"`) mapping category proportions with Nittoo's calm theme styling, custom accessible tooltip, and rounded bar radius.
+- **Accessible Textual Complement**: Accompanied by a responsive grid of ranked category cards displaying category title, percentage proportion, `৳monthlyCost / mo`, and eligible product counts. The list remains completely understandable without hover tooltips or chart rendering.
+- **Empty State UX**: Displays an informative, calm fallback notice (`"Not enough completed history for category insights. Complete at least one usage cycle to see category breakdown."`) when no eligible product cycles exist.
+
+### 5. Multi-Tenant & Export/Restore Parity
+- **Export Compatibility**: Pure alignment with Nittoo's unified export engine (`exportData.summary.category_breakdown`).
+- **Restore Parity**: Authoritative JSON backup/restore files remain untouched. Restored products and usage periods naturally regenerate accurate category breakdowns on demand.
+
+---
+
+## 44. Current State Assessment
 
 Nittoo is in a **mature, production-ready state** for personal essentials tracking. The codebase demonstrates high architectural discipline:
 - **Clean Boundaries**: UI components never bypass the `dataSource.ts` abstraction.
-- **Deterministic Logic**: Domain mathematics (lifespans, daily costs, unit economics, confidence, insights) are isolated in pure functions covered by 26 verification test suites.
+- **Deterministic Logic**: Domain mathematics (lifespans, daily costs, unit economics, confidence, insights, category spending) are isolated in pure functions covered by 27 verification test suites.
 - **Resilient UX**: In-memory SWR caching renders previously viewed pages instantly with zero skeleton flash; window focus revalidation prevents screen flickering; touch targets meet 44px accessibility standards; empty states and error boundaries are present throughout.
+- **Historical Accuracy & Agency**: Users have non-destructive correction and deletion controls over completed cycles with instant metric recalibration and purchase preservation.
+- **Category Spending Intelligence**: Pure, deterministic category run-rate aggregation with calm horizontal bar visualization and responsive ranked cards.
 - **Enterprise-Grade Data Portability**: The export and restore system adheres to relational integrity, security token stripping, active conflict resolution, and multi-tenant isolation.
 - **Search & Web Presence**: Privacy-preserving technical SEO with per-route metadata, valid robots directives, truthful Open Graph tags, and zero leaked credentials.
 - **High-Performance Delivery**: Initial load is optimized to ~514 kB total JS (146 kB gzip) with zero chunk warnings and heavy export/chart modules isolated on-demand.
@@ -1213,7 +1281,7 @@ Nittoo is in a **mature, production-ready state** for personal essentials tracki
 
 ---
 
-## 43. Safe Next-Step Candidates
+## 45. Safe Next-Step Candidates
 
 Based strictly on what currently exists in the codebase, the following are safe, non-breaking candidates for future work:
 
@@ -1222,15 +1290,11 @@ Based strictly on what currently exists in the codebase, the following are safe,
 2. **Synchronize `README.md` Discrepancies**:
    - Update `README.md` to accurately describe indirect relational ownership for `purchases` and `usage_periods`.
    - Fix `/products/:id` $\to$ `/product/:id` and update `vercel.json` documentation.
-3. **Historical Cycle Editing / Deletion**:
-   - Currently, active bottles and unopened backups can be edited via `EditInventoryModal`. Historical finished cycles cannot be edited or deleted from the UI if entered mistakenly.
-   - Introduce an edit/delete action for historical cycles on `ProductDetailPage`.
-4. **Multi-Currency UI Selector**:
+3. **Multi-Currency UI Selector**:
    - Allow user selection of preferred currency symbol in Account Settings (`$`, `€`, `£`, `₹`, `৳`) while retaining numeric math.
-5. **Category Spending Breakdown in Analytics**:
-   - Surface the existing `ExportCategoryBreakdown` calculations directly in the `/analytics` UI as an interactive breakdown card.
-6. **PWA Background Sync & Push Notifications (Future Stages)**:
+4. **PWA Background Sync & Push Notifications (Future Stages)**:
    - When product requirements demand it, introduce background sync for offline mutation queuing and web push notifications for overdue runouts.
+
 
 
 

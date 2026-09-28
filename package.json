@@ -32,7 +32,9 @@
     "verify:performance": "tsx scripts/verify-performance.ts",
     "verify:pwa": "tsx scripts/verify-pwa.ts",
     "verify:db-performance": "tsx scripts/verify-db-performance.ts",
-    "verify:swr": "tsx scripts/verify-swr-cache.ts"
+    "verify:swr": "tsx scripts/verify-swr-cache.ts",
+    "verify:history": "tsx scripts/verify-history-edit-delete.ts",
+    "verify:category": "tsx scripts/verify-category-spending.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",

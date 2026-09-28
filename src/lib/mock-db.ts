@@ -633,23 +633,77 @@ export class MockDatabase implements IDataSource {
       throw new Error('Unauthorized: You do not own this product');
     }
 
-    if (period.status !== 'active') {
-      throw new Error('Only active bottles can be edited');
-    }
-
     const purchase = data.purchases.find((pu) => pu.id === period.purchase_id);
     if (purchase && input.opened_date < purchase.purchase_date) {
       throw new Error('Opened date cannot be earlier than purchase date');
     }
 
-    const updatedPeriod: UsagePeriod = {
-      ...period,
-      opened_date: input.opened_date,
-    };
+    // 1. Active bottle update
+    if (period.status === 'active') {
+      const updatedPeriod: UsagePeriod = {
+        ...period,
+        opened_date: input.opened_date,
+      };
 
-    data.usage_periods[periodIndex] = updatedPeriod;
+      data.usage_periods[periodIndex] = updatedPeriod;
+      this.saveData(data);
+      return updatedPeriod;
+    }
+
+    // 2. Completed historical cycle update
+    if (period.status === 'finished') {
+      if (!input.finished_date || !input.finished_date.trim()) {
+        throw new Error('Finished date is required for completed cycles');
+      }
+
+      if (input.finished_date > today) {
+        throw new Error('Finished date cannot be in the future');
+      }
+
+      if (input.finished_date < input.opened_date) {
+        throw new Error('Finished date cannot be earlier than opened date');
+      }
+
+      const updatedPeriod: UsagePeriod = {
+        ...period,
+        opened_date: input.opened_date,
+        finished_date: input.finished_date,
+      };
+
+      data.usage_periods[periodIndex] = updatedPeriod;
+      this.saveData(data);
+      return updatedPeriod;
+    }
+
+    throw new Error('Unsupported usage period status');
+  }
+
+  async deleteUsagePeriod(
+    userId: string,
+    usagePeriodId: string
+  ): Promise<UsagePeriod> {
+    if (!userId) throw new Error('User ID is required');
+    if (!usagePeriodId) throw new Error('Usage period ID is required');
+
+    const data = this.getData();
+    const periodIndex = data.usage_periods.findIndex((u) => u.id === usagePeriodId);
+    if (periodIndex === -1) {
+      throw new Error('Usage period not found');
+    }
+
+    const period = data.usage_periods[periodIndex];
+    const product = data.products.find((p) => p.id === period.product_id);
+    if (!product || product.user_id !== userId) {
+      throw new Error('Unauthorized: You do not own this product');
+    }
+
+    if (period.status !== 'finished') {
+      throw new Error('Only completed cycles can be deleted');
+    }
+
+    data.usage_periods.splice(periodIndex, 1);
     this.saveData(data);
-    return updatedPeriod;
+    return period;
   }
 
   async getActiveProducts(userId: string): Promise<ProductWithDetails[]> {
