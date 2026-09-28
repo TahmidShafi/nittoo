@@ -28,6 +28,7 @@ import {
   type CostComparisonChartPoint,
 } from '../lib/analytics';
 import { calculateConfidence, getConfidenceBadgeStyles } from '../lib/confidence';
+import { dataCache, areValuesEqual } from '../lib/dataCache';
 import type { ProductWithHistory } from '../types';
 
 export const AnalyticsPage: React.FC = () => {
@@ -35,33 +36,66 @@ export const AnalyticsPage: React.FC = () => {
 
   const { user } = useAuth();
 
-  const [loading, setLoading] = useState(true);
+  // Instant SWR state initialization from in-memory cache
+  const cachedEntry = user?.id ? dataCache.get<ProductWithHistory[]>(user.id, 'analytics') : null;
+
+  const initialComputed = cachedEntry?.data
+    ? cachedEntry.data.length === 0
+      ? {
+          hasProducts: false,
+          upcomingPurchases: [] as UpcomingPurchaseItem[],
+          monthlyConsumption: null as number | null,
+          costRankings: { mostEfficient: [], leastEfficient: [] },
+          chartData: [] as CostComparisonChartPoint[],
+        }
+      : {
+          hasProducts: true,
+          upcomingPurchases: getUpcomingPurchases(cachedEntry.data),
+          monthlyConsumption: calculateEstimatedMonthlyConsumption(cachedEntry.data),
+          costRankings: getCostEfficiencyRankings(cachedEntry.data),
+          chartData: getCostComparisonChartData(cachedEntry.data),
+        }
+    : null;
+
+  const [loading, setLoading] = useState<boolean>(() => !cachedEntry);
   const [error, setError] = useState<string | null>(null);
 
   // Stale-while-revalidate refs
-  const isInitialLoad = useRef(true);
+  const isInitialLoad = useRef(!cachedEntry);
   const lastRefetchTimeRef = useRef(Date.now());
 
-  const [upcomingPurchases, setUpcomingPurchases] = useState<UpcomingPurchaseItem[]>([]);
-  const [monthlyConsumption, setMonthlyConsumption] = useState<number | null>(null);
+  const [upcomingPurchases, setUpcomingPurchases] = useState<UpcomingPurchaseItem[]>(
+    () => initialComputed?.upcomingPurchases ?? []
+  );
+  const [monthlyConsumption, setMonthlyConsumption] = useState<number | null>(
+    () => initialComputed?.monthlyConsumption ?? null
+  );
   const [costRankings, setCostRankings] = useState<{
     mostEfficient: ProductCostEfficiency[];
     leastEfficient: ProductCostEfficiency[];
-  }>({ mostEfficient: [], leastEfficient: [] });
-  const [chartData, setChartData] = useState<CostComparisonChartPoint[]>([]);
-  const [hasProducts, setHasProducts] = useState(true);
+  }>(() => initialComputed?.costRankings ?? { mostEfficient: [], leastEfficient: [] });
+  const [chartData, setChartData] = useState<CostComparisonChartPoint[]>(
+    () => initialComputed?.chartData ?? []
+  );
+  const [hasProducts, setHasProducts] = useState<boolean>(
+    () => initialComputed?.hasProducts ?? true
+  );
 
   const loadAnalyticsData = useCallback(
     async (isSilent = false) => {
       if (!user?.id) return;
+      const currentCached = dataCache.get<ProductWithHistory[]>(user.id, 'analytics');
+      const hasCachedData = !!currentCached;
 
-      if (isInitialLoad.current && !isSilent) {
+      if (!hasCachedData && !isSilent) {
         setLoading(true);
       }
 
       try {
-        const products = await db.getAllUserProducts(user.id);
-        if (products.length === 0) {
+        const validHistories = await db.getUserProductsWithHistory(user.id);
+        dataCache.set(user.id, 'analytics', validHistories);
+
+        if (validHistories.length === 0) {
           setHasProducts(false);
           setUpcomingPurchases([]);
           setMonthlyConsumption(null);
@@ -73,24 +107,20 @@ export const AnalyticsPage: React.FC = () => {
 
         setHasProducts(true);
 
-        const historyPromises = products.map((p) => db.getProductHistory(p.id, user.id));
-        const histories = await Promise.all(historyPromises);
-        const validHistories = histories.filter((h): h is ProductWithHistory => h !== null);
-
         // Compute pure analytics metrics
         const upcoming = getUpcomingPurchases(validHistories);
         const monthly = calculateEstimatedMonthlyConsumption(validHistories);
         const rankings = getCostEfficiencyRankings(validHistories);
         const chartPoints = getCostComparisonChartData(validHistories);
 
-        setUpcomingPurchases(upcoming);
-        setMonthlyConsumption(monthly);
-        setCostRankings(rankings);
-        setChartData(chartPoints);
+        setUpcomingPurchases((prev) => (areValuesEqual(prev, upcoming) ? prev : upcoming));
+        setMonthlyConsumption((prev) => (prev === monthly ? prev : monthly));
+        setCostRankings((prev) => (areValuesEqual(prev, rankings) ? prev : rankings));
+        setChartData((prev) => (areValuesEqual(prev, chartPoints) ? prev : chartPoints));
         setError(null);
       } catch (err: unknown) {
         console.error('Failed to load analytics data:', err);
-        if (isInitialLoad.current) {
+        if (!hasCachedData) {
           setError('Unable to load analytics data. Please try again later.');
         }
       } finally {
@@ -101,9 +131,16 @@ export const AnalyticsPage: React.FC = () => {
     [user?.id]
   );
 
+  // Initial load / SWR revalidation
   useEffect(() => {
-    loadAnalyticsData();
-  }, [loadAnalyticsData]);
+    if (!user?.id) return;
+    const entry = dataCache.get<ProductWithHistory[]>(user.id, 'analytics');
+    if (!entry) {
+      loadAnalyticsData(false);
+    } else if (dataCache.isStale(entry)) {
+      loadAnalyticsData(true);
+    }
+  }, [user?.id, loadAnalyticsData]);
 
   // Silent background revalidation on window focus / tab return
   useEffect(() => {

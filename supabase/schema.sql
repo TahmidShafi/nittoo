@@ -60,6 +60,10 @@ CREATE INDEX IF NOT EXISTS idx_usage_periods_product_id ON public.usage_periods(
 CREATE INDEX IF NOT EXISTS idx_usage_periods_purchase_id ON public.usage_periods(purchase_id);
 CREATE INDEX IF NOT EXISTS idx_usage_periods_status ON public.usage_periods(status);
 
+-- Composite query optimization indexes (Stage 16.8)
+CREATE INDEX IF NOT EXISTS idx_purchases_product_date ON public.purchases(product_id, purchase_date DESC);
+CREATE INDEX IF NOT EXISTS idx_usage_periods_product_opened ON public.usage_periods(product_id, opened_date DESC);
+
 -- Enforce exactly one active usage period per product
 CREATE UNIQUE INDEX IF NOT EXISTS idx_usage_periods_single_active 
 ON public.usage_periods (product_id) 

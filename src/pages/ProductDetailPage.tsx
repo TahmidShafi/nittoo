@@ -28,6 +28,7 @@ import {
 import { calculateConfidence, getConfidenceBadgeStyles } from '../lib/confidence';
 import { FinishUsageModal } from '../components/FinishUsageModal';
 import { EditInventoryModal } from '../components/EditInventoryModal';
+import { dataCache, areValuesEqual } from '../lib/dataCache';
 import type { ProductWithHistory, ProductWithDetails, Purchase, UsagePeriod } from '../types';
 
 export const ProductDetailPage: React.FC = () => {
@@ -35,18 +36,21 @@ export const ProductDetailPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [history, setHistory] = useState<ProductWithHistory | null>(null);
+  // Instant SWR state initialization from in-memory cache
+  const cachedEntry = user?.id && id ? dataCache.get<ProductWithHistory>(user.id, `product:${id}`) : null;
+
+  const [history, setHistory] = useState<ProductWithHistory | null>(() => cachedEntry?.data ?? null);
 
   usePageMeta({
     title: history?.product ? history.product.name : 'Essential Details',
     noindex: true,
   });
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(() => !cachedEntry);
   const [error, setError] = useState<string | null>(null);
 
   // Stale-while-revalidate refs
-  const isInitialLoad = useRef(true);
+  const isInitialLoad = useRef(!cachedEntry);
   const lastRefetchTimeRef = useRef(Date.now());
 
   // Unopened Purchase Action State
@@ -66,24 +70,28 @@ export const ProductDetailPage: React.FC = () => {
   const loadData = useCallback(
     async (isSilent = false) => {
       if (!user?.id || !id) return;
-      if (isInitialLoad.current && !isSilent) {
+      const currentCached = dataCache.get<ProductWithHistory>(user.id, `product:${id}`);
+      const hasCachedData = !!currentCached;
+
+      if (!hasCachedData && !isSilent) {
         setLoading(true);
       }
 
       try {
         const data = await db.getProductHistory(id, user.id);
         if (!data) {
-          if (isInitialLoad.current) {
+          if (!hasCachedData) {
             setError('Product not found or you do not have permission to view it.');
           }
         } else {
-          setHistory(data);
+          dataCache.set(user.id, `product:${id}`, data);
+          setHistory((prev) => (areValuesEqual(prev, data) ? prev : data));
           setError(null);
         }
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Failed to load product history';
         console.error('Failed to load product history:', err);
-        if (isInitialLoad.current) {
+        if (!hasCachedData) {
           setError(msg);
         }
       } finally {
@@ -94,9 +102,24 @@ export const ProductDetailPage: React.FC = () => {
     [user?.id, id]
   );
 
+  // Parameter change / Initial load / SWR revalidation
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (!user?.id || !id) return;
+    const entry = dataCache.get<ProductWithHistory>(user.id, `product:${id}`);
+    if (entry) {
+      setHistory(entry.data);
+      setLoading(false);
+      isInitialLoad.current = false;
+      if (dataCache.isStale(entry)) {
+        loadData(true);
+      }
+    } else {
+      setHistory(null);
+      setLoading(true);
+      isInitialLoad.current = true;
+      loadData(false);
+    }
+  }, [user?.id, id, loadData]);
 
   // Silent background revalidation on window focus / tab return
   useEffect(() => {

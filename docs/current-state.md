@@ -31,7 +31,10 @@ Unlike traditional warehouse inventory trackers that ask *"How many units are in
 - **Idempotent Backup Restore & Import**: Multi-step, user-confirmed restore system with schema validation, relational integrity checks, active-container conflict preservation, and strict current-user ownership reassignment.
 - **Tab Return & Window Focus Silent Revalidation**: Resilient 3-second throttled background revalidation eliminating dashboard repaint flashes on window focus.
 - **Technical SEO & Web Presence Polish (Stage 16.5)**: Comprehensive metadata, per-route document title/description/robots management via `usePageMeta`, Open Graph & Twitter cards, semantic `h1`->`h2` hierarchy, image alt text audit, robots.txt, sitemap generator with strict production-domain isolation, web manifest metadata preparation, and 22-check automated test suite (`npm run verify:seo`).
-- **Comprehensive Automated Verification**: 22 automated test scripts (`npm run verify:*`) validating 100% of domain math, vendor attributes, RLS policies, multi-tenant isolation, mock persistence, UI layout invariants, and SEO technical compliance.
+- **Performance & Bundle Optimization (Stage 16.6)**: Comprehensive bundle audit, dynamic on-demand imports for export engines (`xlsx`, `jspdf`, `html2canvas`, `jszip`), route-level code splitting across all 12 pages with `React.lazy()` and calm fallback loader, manual vendor chunking in Vite (`react-vendor`, `supabase`), dropping initial entry JS from 1,915 kB (554 kB gzip) to 51.6 kB (13.0 kB gzip) and combined initial load to 514.3 kB (146.1 kB gzip) — a 73.1% reduction with zero chunk warnings and 100% behavioral immutability.
+- **PWA Foundation & Offline Asset Caching (Stage 16.7)**: Production service worker (`public/service-worker.js`) with versioned cache (`nittoo-static-v1`), pre-caching of safe core application shell assets, cache-first serving of Vite-hashed static chunks (`/assets/*`), network-first navigation with `/index.html` offline shell fallback, strict security guards explicitly bypassing Supabase API/Auth endpoints and user data, obsolete cache version purging, production-only registration guard (`import.meta.env.PROD`), and 14-check automated test suite (`npm run verify:pwa`).
+- **Supabase Query & Data-Fetch Optimization (Stage 16.8)**: Full query audit and network roundtrip reduction across core pages. Eliminated duplicate `usage_periods(status=active)` query in `getActiveProducts` and `getUserInventory`, parallelized `getProductHistory` across products/purchases/usage_periods into a single concurrent roundtrip (50% latency reduction), eliminated the $3N + 1$ N+1 query cascade in `AnalyticsPage` via a new composite batched `getUserProductsWithHistory` method (90.3% query reduction for 10 products), added composite database indexes for date-ordered purchases and usage periods, and verified 100% API parity with mock database across 25 verification suites.
+- **Comprehensive Automated Verification**: 25 automated test scripts (`npm run verify:*`) validating 100% of domain math, vendor attributes, RLS policies, multi-tenant isolation, mock persistence, UI layout invariants, SEO compliance, bundle chunking isolation, PWA caching rules, and database query deduplication.
 
 ---
 
@@ -70,8 +73,11 @@ d:\nittoo\
 │   └── supabase-rls-checklist.md   # Supabase RLS security audit checklist
 ├── public/                         # Static assets served at root
 │   ├── favicon.svg                 # SVG brand favicon
-│   └── nittoo-logo.png             # Official high-resolution brand wordmark/logo
-├── scripts/                        # 20 Automated verification suites (Node.js / tsx)
+│   ├── nittoo-logo.png             # Official high-resolution brand wordmark/logo
+│   ├── robots.txt                  # Search engine crawler policies
+│   ├── service-worker.js           # Production service worker for static asset caching
+│   └── site.webmanifest            # PWA manifest metadata
+├── scripts/                        # 25 Automated verification suites (Node.js / tsx)
 │   ├── verify-account.ts           # Account settings & touch target audit
 │   ├── verify-add-product.ts       # Product creation & repeat purchase logic
 │   ├── verify-analytics.ts         # Run rate, upcoming rebuys, and rankings
@@ -80,18 +86,24 @@ d:\nittoo\
 │   ├── verify-confidence.ts        # Evidence maturity thresholds and confidence states
 │   ├── verify-dashboard.ts         # Dashboard data loading, sorting, and edge cases
 │   ├── verify-data-layer.ts        # IDataSource API adherence across mock and real DB
+│   ├── verify-db-performance.ts    # Supabase query deduplication and batched reads audit
 │   ├── verify-edit-inventory.ts    # Inventory editing rules and date validations
 │   ├── verify-export.ts            # Multi-format export generation and schema audit
 │   ├── verify-focus-refresh.ts     # Window focus revalidation and referential stability
 │   ├── verify-full-walkthrough.ts  # End-to-end full user journey simulation
 │   ├── verify-inventory.ts         # Active vs Unopened inventory lifecycle
 │   ├── verify-live-audit.ts        # Live Supabase multi-tenant isolation audit
+│   ├── verify-performance.ts       # Route splitting, bundle size, and export lazy load audit
 │   ├── verify-product-detail.ts    # Product detail data aggregation and trend math
+│   ├── verify-pwa.ts               # PWA service worker, caching rules, and auth security audit
 │   ├── verify-restore-button.ts    # Visual button styling and responsive layout verification
 │   ├── verify-restore.ts           # 40-test restore engine verification suite
+│   ├── verify-seo.ts               # Technical SEO, metadata, robots, and sitemap audit
 │   ├── verify-supabase-live.ts     # Live cloud database connection and CRUD checks
 │   ├── verify-supabase-rls.ts      # Live 2-account cross-tenant RLS attack suite
-│   └── verify-unopened-lifecycle.ts# Unopened purchase state transitions
+│   ├── verify-swr-cache.ts         # 20-test client-side in-memory SWR cache verification suite
+│   ├── verify-unopened-lifecycle.ts# Unopened purchase state transitions
+│   └── verify-vendor.ts            # Vendor metadata lifecycle across CRUD and exports
 ├── src/                            # Application source code
 │   ├── App.tsx                     # Top-level application routing and route guards
 │   ├── main.tsx                    # React 19 root mounting
@@ -120,11 +132,13 @@ d:\nittoo\
 │   │   ├── analytics.ts            # Cross-product analytics (monthly run rate, rebuys)
 │   │   ├── comparison.ts           # Value intelligence comparison engine
 │   │   ├── confidence.ts           # Prediction confidence & evidence maturity engine
-│   │   ├── dataSource.ts           # Central data source router (routes to db or mockDb)
+│   │   ├── dataCache.ts            # Tenant-isolated in-memory SWR cache with LRU eviction
+│   │   ├── dataSource.ts           # Central data source router with automatic write invalidation
 │   │   ├── dateUtils.ts            # UTC date arithmetic, day calculations, formatting
 │   │   ├── db.ts                   # Supabase database client implementing IDataSource
 │   │   ├── mock-db.ts              # Offline mock database implementing IDataSource
 │   │   ├── prediction.ts           # Pure prediction math (lifespan, cost/day, remaining days)
+│   │   ├── pwa.ts                  # Production service worker registration helper
 │   │   ├── supabase.ts             # Supabase client initializer and environment detector
 │   │   ├── export/                 # Data export subsystem
 │   │   │   ├── csv.ts              # RFC 4180 CSV tables + ZIP packager
@@ -1089,18 +1103,117 @@ Stage 16.5 delivered a zero-dependency, non-invasive technical SEO and web prese
 
 ---
 
-## 38. Current State Assessment
+## 38. Stage 16.6 — Performance & Bundle Optimization
 
-Nittoo is in a **mature, production-ready state** for personal essentials tracking. The codebase demonstrates high architectural discipline:
-- **Clean Boundaries**: UI components never bypass the `dataSource.ts` abstraction.
-- **Deterministic Logic**: Domain mathematics (lifespans, daily costs, unit economics, confidence, insights) are isolated in pure functions covered by 22 verification test suites.
-- **Resilient UX**: Window focus revalidation prevents screen flickering; touch targets meet 44px accessibility standards; empty states and error boundaries are present throughout.
-- **Enterprise-Grade Data Portability**: The export and restore system adheres to relational integrity, security token stripping, active conflict resolution, and multi-tenant isolation.
-- **Search & Web Presence**: Privacy-preserving technical SEO with per-route metadata, valid robots directives, truthful Open Graph tags, and zero leaked credentials.
+Implemented in September 2026. This stage focused strictly on performance, bundle size reduction, and code splitting without modifying features, UI layouts, database schemas, or calculation semantics.
+
+### 1. Architectural Strategy
+- **Route-Level Code Splitting**: All 12 application pages (`DashboardPage`, `InventoryPage`, `AnalyticsPage`, `ProductDetailPage`, `ProductComparisonPage`, `AccountPage`, `AddProductPage`, `AddInventoryPage`, `LoginPage`, `SignupPage`, `ForgotPasswordPage`, `ResetPasswordPage`) are lazily loaded via `React.lazy()` with `<React.Suspense>` rendering Nittoo's calm, centered pulse skeleton fallback.
+- **Export Engine On-Demand Dynamic Imports**: Converted the format generators in `src/lib/export/index.ts` from static re-exports (`export * from './excel'`, etc.) to asynchronous on-demand dynamic imports (`await import('./excel')`, etc.) invoked only when `exportUserDataAs()` is triggered by user interaction.
+- **Manual Vendor Chunking**: Standard Rollup `manualChunks` in `vite.config.ts` partitions heavy foundational libraries (`@supabase` and `react`/`react-dom`/`react-router-dom`) into dedicated cached vendor bundles (`supabase`, `react-vendor`), completely eliminating Vite's `> 500 kB` chunk warning.
+- **Strict Behavioral Invariance**: 100% of domain calculations (lifespans, daily costs, unit rates, confidence, insights, inventory invariants, vendors, RLS policies, export schemas, and restore deduplication) remain completely identical and validated across all 23 verification suites.
+
+### 2. Bundle Measurement & Impact
+
+| Metric | Before (Monolithic Entry) | After (Split & Chunked) | Absolute Change | % Reduction |
+| :--- | :--- | :--- | :--- | :--- |
+| **Main App Entry (`index-*.js`)** | 1,915.68 kB (554.42 kB gzip) | 51.62 kB (13.03 kB gzip) | -1,864.06 kB | **-97.3%** |
+| **Combined Initial Auth Load** | 1,915.68 kB (554.42 kB gzip) | 514.33 kB (146.11 kB gzip) | -1,401.35 kB | **-73.1%** |
+| **Export Engines In Initial Load** | Eagerly bundled (xlsx, jspdf, jszip) | **0 kB** (Strictly on-demand) | 100% deferred | **-100%** |
+| **Recharts In Initial Auth Load** | Eagerly bundled (~382 kB) | **0 kB** (Loaded on `/analytics`, `/product/:id`) | 100% deferred | **-100%** |
+| **Vite `> 500 kB` Chunk Warnings** | 1 Warning (index-*.js was 1.9 MB) | **0 Warnings** (Largest chunk is 396 kB) | Clean build | **Resolved** |
+
+### 3. Isolated On-Demand Modules
+- `excel-*.js` (~286.8 kB raw / ~96.2 kB gzip): Loaded only upon Excel `.xlsx` export request.
+- `pdf-*.js` (~396.1 kB raw / ~130.5 kB gzip): Loaded only upon PDF document export request.
+- `csv-*.js` (~100.4 kB raw / ~31.3 kB gzip): Loaded only upon CSV archive ZIP export request.
+- `BarChart-*.js` (~382.4 kB raw / ~105.7 kB gzip): Loaded only when navigating to `/analytics` or `/product/:id`.
+- Public auth routes (`/login`, `/signup`, `/forgot-password`, `/reset-password`) download only their respective tiny page chunks (~4-6 kB raw / ~1.6-2.1 kB gzip) plus foundational react/supabase vendor chunks.
 
 ---
 
-## 39. Safe Next-Step Candidates
+## 39. Stage 16.7 — PWA Foundation & Offline Asset Caching
+
+Implemented in September 2026. This stage delivered Nittoo's Progressive Web App (PWA) foundation and client-side static asset caching strategy while strictly preserving authentication security and data boundaries.
+
+### 1. Architectural Strategy
+- **Production Service Worker (`public/service-worker.js`)**: Installed and activated only in production builds (`import.meta.env.PROD === true`), completely eliminating stale caching issues during local development.
+- **Cache Versioning (`nittoo-static-v1`)**: Governed by a dedicated namespace. Obsolete caches matching the `nittoo-` prefix are automatically purged during the worker's `activate` lifecycle, while `self.clients.claim()` immediately assumes control.
+- **Static Asset Caching (Cache-First)**: Vite-hashed chunks (`/assets/*`), static scripts, stylesheets, SVGs, PNGs, and Google Fonts utilize a cache-first strategy with network fallback, providing instant repeat-visit rendering.
+- **Application Shell Navigation (Network-First with Offline Fallback)**: Client SPA navigation requests (`mode === 'navigate'`) attempt network-first delivery, seamlessly updating the cached `/index.html`. When offline, navigation falls back to the precached `/index.html` shell so React Router mounts cleanly and displays native offline states without fabricated data.
+- **Strict Security & Supabase Isolation**:
+  - All requests to `*.supabase.co` are strictly excluded from service worker interception.
+  - All Supabase Auth (`/auth/v1/*`), REST (`/rest/v1/*`), and Storage endpoints pass directly to native browser networking.
+  - Non-GET requests (POST, PUT, DELETE, PATCH) and requests containing `Authorization` or `apikey` headers are never intercepted or cached.
+  - Zero user records, credentials, session tokens, or consumption histories are stored in the service worker cache.
+- **Registration Utility (`src/lib/pwa.ts`)**: Clean, non-intrusive registration executed during window `load` in [`src/main.tsx`](file:///d:/nittoo/src/main.tsx).
+
+---
+
+## 40. Stage 16.8 — Supabase Query & Data-Fetch Optimization
+
+Implemented in September 2026. This stage audited and optimized Supabase database queries and client data-fetching roundtrips across all core application pages while strictly preserving prediction formulas, confidence thresholds, RLS multi-tenant security, and mock database parity.
+
+### 1. Architectural Strategy & Query Deduplication
+- **Duplicate Query Elimination (`getActiveProducts` & `getUserInventory`)**:
+  - The audit revealed that both methods previously fired an extra query on `usage_periods` with `status = 'active'` in parallel with a query for all `usage_periods` for the same `product_id` set.
+  - Removed the redundant query. Both `activePeriodMap` and `finishedPeriodsMap` are now populated from the single `allPeriods` result set, immediately reducing Supabase network queries by 25% on every dashboard and inventory load.
+- **Single-Roundtrip Product Detail Hydration (`getProductHistory`)**:
+  - Concurrently executes `products`, `purchases`, and `usage_periods` queries via `Promise.all` in **1 single network roundtrip** (down from 2 sequential roundtrips), halving network latency on `/product/:id` views.
+  - If the product does not exist or belongs to another user, RLS and domain ownership checks safely return `null` with zero data leakage.
+- **Elimination of the $3N + 1$ N+1 Query Cascade (`getUserProductsWithHistory`)**:
+  - `AnalyticsPage` previously fetched all user products and then mapped each product to a separate `getProductHistory` invocation, creating a $3N + 1$ query cascade (31 queries across 21 sequential roundtrips for 10 products).
+  - Introduced the composite `getUserProductsWithHistory(userId)` method to `IDataSource`.
+  - Batch-loads products, purchases, and usage periods across the user's entire portfolio in **3 queries across 2 roundtrips**, representing a **90.3% query reduction** for a 10-product portfolio.
+  - Implemented with 100% parity across both `SupabaseDatabase` and `MockDatabase`.
+- **Composite Database Indexes (`supabase/schema.sql`)**:
+  - Added `idx_purchases_product_date ON public.purchases(product_id, purchase_date DESC)` to eliminate in-memory sort nodes when ordering purchases.
+  - Added `idx_usage_periods_product_opened ON public.usage_periods(product_id, opened_date DESC)` to eliminate in-memory sort nodes for usage timelines.
+
+---
+
+## 41. Stage 16.9 — Client-Side In-Memory SWR Cache
+
+Implemented in September 2026. This stage introduced a high-performance, strictly in-memory Stale-While-Revalidate (SWR) caching layer across all primary application views (`DashboardPage`, `InventoryPage`, `AnalyticsPage`, `ProductDetailPage`, `ProductComparisonPage`), eliminating skeleton screen flashing on intra-session route navigation.
+
+### 1. Architectural Strategy
+- **In-Memory Tenant Isolation (`src/lib/dataCache.ts`)**:
+  - The cache maintains an explicit double-mapped structure: `Map<userId, Map<resourceKey, CacheEntry<T>>>`.
+  - Zero cross-tenant data leakage: No user can access or query another user's cached snapshots.
+  - Explicit sign-out and account-deletion hooks (`AuthContext.tsx`) immediately purge user entries with `dataCache.clearUser(userId)`.
+  - Zero persistent storage: Strictly in-memory; no data is ever written to `localStorage`, `sessionStorage`, IndexedDB, or Service Worker CacheStorage.
+  - Automatic LRU Eviction: Capped at 100 entries per user to guarantee bounded memory usage.
+- **Conservative Staleness Policy**:
+  - `FRESH` (0–30s): Cached snapshot renders instantly on frame 0. No redundant network fetch is initiated on tab switches within the freshness window.
+  - `STALE` (>30s): Cached snapshot renders instantly on frame 0. Silent background revalidation is dispatched to reconcile with Supabase/Mock data.
+  - `NO CACHE`: Initial page load displays the calm pulse skeleton and performs network hydration.
+- **Silent Background Revalidation & Failure Resilience**:
+  - Background network refreshes never trigger loading skeletons or block user interaction.
+  - If a background revalidation fails (e.g. temporary network drop), the existing visible data snapshot is preserved in the UI without presenting blocking error banners.
+  - Unchanged Data Optimization (`areValuesEqual`): Structural comparison prevents unnecessary React state updates and component rerenders when fresh data matches the current snapshot.
+- **Universal Mutation Invalidation (`src/lib/dataSource.ts`)**:
+  - The `db` singleton wraps all write operations (`createProduct`, `createPurchase`, `startUsagePeriod`, `finishUsagePeriod`, `updateProduct`, `updatePurchase`, `updateUsagePeriod`, `importUserData`, `resetUserData`).
+  - Successful mutations automatically invalidate affected cache keys (`dashboard`, `inventory`, `analytics`, `all-products`, and specific product/comparison entries) across both Supabase and Mock implementations.
+- **Focus & Visibility Coordination**:
+  - Seamlessly integrates with the existing 3-second throttled window focus and `visibilitychange` revalidation architecture without spawning competing timers.
+
+---
+
+## 42. Current State Assessment
+
+Nittoo is in a **mature, production-ready state** for personal essentials tracking. The codebase demonstrates high architectural discipline:
+- **Clean Boundaries**: UI components never bypass the `dataSource.ts` abstraction.
+- **Deterministic Logic**: Domain mathematics (lifespans, daily costs, unit economics, confidence, insights) are isolated in pure functions covered by 26 verification test suites.
+- **Resilient UX**: In-memory SWR caching renders previously viewed pages instantly with zero skeleton flash; window focus revalidation prevents screen flickering; touch targets meet 44px accessibility standards; empty states and error boundaries are present throughout.
+- **Enterprise-Grade Data Portability**: The export and restore system adheres to relational integrity, security token stripping, active conflict resolution, and multi-tenant isolation.
+- **Search & Web Presence**: Privacy-preserving technical SEO with per-route metadata, valid robots directives, truthful Open Graph tags, and zero leaked credentials.
+- **High-Performance Delivery**: Initial load is optimized to ~514 kB total JS (146 kB gzip) with zero chunk warnings and heavy export/chart modules isolated on-demand.
+- **PWA & Offline Resilience**: Instant static shell loading on repeat visits via a secured, versioned service worker with zero credential caching risk.
+- **Optimized Data Hydration**: Core pages load in 1-2 roundtrips with zero N+1 cascades, deduplicated queries, and instant SWR cached re-entry.
+
+---
+
+## 43. Safe Next-Step Candidates
 
 Based strictly on what currently exists in the codebase, the following are safe, non-breaking candidates for future work:
 
@@ -1109,16 +1222,16 @@ Based strictly on what currently exists in the codebase, the following are safe,
 2. **Synchronize `README.md` Discrepancies**:
    - Update `README.md` to accurately describe indirect relational ownership for `purchases` and `usage_periods`.
    - Fix `/products/:id` $\to$ `/product/:id` and update `vercel.json` documentation.
-3. **Code Splitting & Bundle Optimization**:
-   - Vite build notes that `dist/assets/index-*.js` exceeds 500kB (`1,915 kB`) due to bundling `jspdf`, `xlsx`, `recharts`, and `jszip`.
-   - Use `React.lazy()` or Vite manual rollup chunking (`build.rollupOptions.output.manualChunks`) to split export libraries (`xlsx`, `jspdf`, `jszip`) into on-demand chunks loaded only when export modals open.
-4. **Historical Cycle Editing / Deletion**:
+3. **Historical Cycle Editing / Deletion**:
    - Currently, active bottles and unopened backups can be edited via `EditInventoryModal`. Historical finished cycles cannot be edited or deleted from the UI if entered mistakenly.
    - Introduce an edit/delete action for historical cycles on `ProductDetailPage`.
-5. **PWA Service Worker & Offline Sync**:
-   - Build upon `public/site.webmanifest` by adding a service worker for offline asset caching.
-6. **Multi-Currency UI Selector**:
+4. **Multi-Currency UI Selector**:
    - Allow user selection of preferred currency symbol in Account Settings (`$`, `€`, `£`, `₹`, `৳`) while retaining numeric math.
-7. **Category Spending Breakdown in Analytics**:
+5. **Category Spending Breakdown in Analytics**:
    - Surface the existing `ExportCategoryBreakdown` calculations directly in the `/analytics` UI as an interactive breakdown card.
+6. **PWA Background Sync & Push Notifications (Future Stages)**:
+   - When product requirements demand it, introduce background sync for offline mutation queuing and web push notifications for overdue runouts.
+
+
+
 

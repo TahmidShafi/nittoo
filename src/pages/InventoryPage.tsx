@@ -12,6 +12,7 @@ import { db } from '../lib/dataSource';
 import { getTodayUTC, formatDisplayDate } from '../lib/dateUtils';
 import { getPredictionMetrics } from '../hooks/usePrediction';
 import { EditInventoryModal } from '../components/EditInventoryModal';
+import { dataCache, areValuesEqual } from '../lib/dataCache';
 import type {
   Product,
   Purchase,
@@ -24,14 +25,18 @@ export const InventoryPage: React.FC = () => {
   usePageMeta({ title: 'Inventory', noindex: true });
 
   const { user } = useAuth();
-  const [inventory, setInventory] = useState<UserInventory>({ active: [], unopened: [] });
-  const [loading, setLoading] = useState(true);
+
+  // Instant SWR state initialization from in-memory cache
+  const cachedEntry = user?.id ? dataCache.get<UserInventory>(user.id, 'inventory') : null;
+
+  const [inventory, setInventory] = useState<UserInventory>(() => cachedEntry?.data ?? { active: [], unopened: [] });
+  const [loading, setLoading] = useState<boolean>(() => !cachedEntry);
   const [error, setError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [activatingId, setActivatingId] = useState<string | null>(null);
 
   // Stale-while-revalidate refs
-  const isInitialLoad = useRef(true);
+  const isInitialLoad = useRef(!cachedEntry);
   const lastRefetchTimeRef = useRef(Date.now());
 
   // Edit Modal State
@@ -43,17 +48,21 @@ export const InventoryPage: React.FC = () => {
   const loadInventory = useCallback(
     async (isSilent = false) => {
       if (!user?.id) return;
-      if (isInitialLoad.current && !isSilent) {
+      const currentCached = dataCache.get<UserInventory>(user.id, 'inventory');
+      const hasCachedData = !!currentCached;
+
+      if (!hasCachedData && !isSilent) {
         setLoading(true);
       }
       try {
         const data = await db.getUserInventory(user.id);
-        setInventory(data);
+        dataCache.set(user.id, 'inventory', data);
+        setInventory((prev) => (areValuesEqual(prev, data) ? prev : data));
         setError(null);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Failed to load inventory';
         console.error('Failed to load inventory:', err);
-        if (isInitialLoad.current) {
+        if (!hasCachedData) {
           setError(msg);
         }
       } finally {
@@ -64,9 +73,16 @@ export const InventoryPage: React.FC = () => {
     [user?.id]
   );
 
+  // Initial load / SWR revalidation
   useEffect(() => {
-    loadInventory();
-  }, [loadInventory]);
+    if (!user?.id) return;
+    const entry = dataCache.get<UserInventory>(user.id, 'inventory');
+    if (!entry) {
+      loadInventory(false);
+    } else if (dataCache.isStale(entry)) {
+      loadInventory(true);
+    }
+  }, [user?.id, loadInventory]);
 
   // Silent background revalidation on window focus / tab return
   useEffect(() => {

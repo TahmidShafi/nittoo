@@ -1,22 +1,16 @@
 // ==============================================================================
 // Nittoo Export Engine Entry Point
 // Coordinates unified data normalization and triggers format-specific file generation.
+// Dynamic imports ensure heavy export dependencies (XLSX, JSZip, jsPDF) are
+// only loaded on-demand when the user actually requests an export.
 // ==============================================================================
 
 import type { IDataSource } from '../../types';
 import type { ExportFormat, NittooExportData } from './types';
 import { buildExportData } from './normalizer';
-import { generateExcelWorkbook } from './excel';
-import { generateCsvZip } from './csv';
-import { generatePdfReport } from './pdf';
-import { generateJsonBackup } from './json';
 
 export * from './types';
 export * from './normalizer';
-export * from './excel';
-export * from './csv';
-export * from './pdf';
-export * from './json';
 
 export function triggerBrowserDownload(blob: Blob, filename: string): void {
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
@@ -48,6 +42,7 @@ export async function exportUserDataAs(
   switch (format) {
     case 'excel': {
       filename = `nittoo-data-export-${today}.xlsx`;
+      const { generateExcelWorkbook } = await import('./excel');
       const buffer = generateExcelWorkbook(exportData);
       blob = new Blob([buffer as unknown as BlobPart], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -57,6 +52,7 @@ export async function exportUserDataAs(
 
     case 'csv': {
       filename = `nittoo-data-export-${today}.zip`;
+      const { generateCsvZip } = await import('./csv');
       const buffer = await generateCsvZip(exportData);
       blob = new Blob([buffer as unknown as BlobPart], {
         type: 'application/zip',
@@ -66,6 +62,7 @@ export async function exportUserDataAs(
 
     case 'pdf': {
       filename = `nittoo-consumption-report-${today}.pdf`;
+      const { generatePdfReport } = await import('./pdf');
       const buffer = generatePdfReport(exportData);
       blob = new Blob([buffer as unknown as BlobPart], {
         type: 'application/pdf',
@@ -75,6 +72,7 @@ export async function exportUserDataAs(
 
     case 'json': {
       filename = `nittoo-data-backup-${today}.json`;
+      const { generateJsonBackup } = await import('./json');
       const jsonString = generateJsonBackup(exportData);
       blob = new Blob([jsonString], {
         type: 'application/json;charset=utf-8;',

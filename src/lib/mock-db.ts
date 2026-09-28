@@ -745,6 +745,39 @@ export class MockDatabase implements IDataSource {
       .sort((a, b) => a.name.localeCompare(b.name));
   }
 
+  async getUserProductsWithHistory(userId: string): Promise<ProductWithHistory[]> {
+    if (!userId) return [];
+    const data = this.getData();
+    const userProducts = data.products
+      .filter((p) => p.user_id === userId)
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    return userProducts.map((product) => {
+      const purchases = data.purchases
+        .filter((pu) => pu.product_id === product.id)
+        .sort((a, b) => b.purchase_date.localeCompare(a.purchase_date));
+
+      const usagePeriods = data.usage_periods
+        .filter((u) => u.product_id === product.id)
+        .sort((a, b) => b.opened_date.localeCompare(a.opened_date));
+
+      const activeUsage = usagePeriods.find((u) => u.status === 'active') || null;
+      const finishedPeriods = usagePeriods.filter((u) => u.status === 'finished');
+
+      const usedPurchaseIds = new Set(usagePeriods.map((u) => u.purchase_id));
+      const unopenedPurchases = purchases.filter((pu) => !usedPurchaseIds.has(pu.id));
+
+      return {
+        product,
+        purchases,
+        usage_periods: usagePeriods,
+        active_usage: activeUsage,
+        finished_periods: finishedPeriods,
+        unopened_purchases: unopenedPurchases,
+      };
+    });
+  }
+
   async getUserInventory(userId: string): Promise<UserInventory> {
     if (!userId) return { active: [], unopened: [] };
 

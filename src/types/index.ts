@@ -288,6 +288,10 @@ export interface IDataSource {
     userId: string
   ): Promise<Product[]>;
 
+  getUserProductsWithHistory(
+    userId: string
+  ): Promise<ProductWithHistory[]>;
+
   getUserInventory(
     userId: string
   ): Promise<UserInventory>;

@@ -7,6 +7,7 @@ import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { DEFAULT_MOCK_USER_ID } from '../lib/mock-db';
 import { db } from '../lib/dataSource';
+import { dataCache } from '../lib/dataCache';
 
 export interface AuthUser {
   id: string;
@@ -123,6 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 };
               });
             } else {
+              dataCache.clearAll();
               setUser(null);
             }
             setLoading(false);
@@ -267,6 +269,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Sign Out
   // ----------------------------------------------------------------------------
   const signOut = useCallback(async () => {
+    if (user?.id) {
+      dataCache.clearUser(user.id);
+    }
     if (isSupabaseConfigured && supabase) {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
@@ -277,7 +282,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
     setUser(null);
-  }, []);
+  }, [user?.id]);
 
   // ----------------------------------------------------------------------------
   // Magic Link
@@ -418,6 +423,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Sign Out All Sessions (Stage 13 / Account Settings)
   // ----------------------------------------------------------------------------
   const signOutAllSessions = useCallback(async () => {
+    if (user?.id) {
+      dataCache.clearUser(user.id);
+    }
     if (isSupabaseConfigured && supabase) {
       try {
         await supabase.auth.signOut({ scope: 'global' });
@@ -430,7 +438,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
     setUser(null);
-  }, []);
+  }, [user?.id]);
 
   // ----------------------------------------------------------------------------
   // Delete Account (Stage 13 / Account Settings)
@@ -440,6 +448,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       // 1. Permanently delete all user data (products, purchases, usage periods)
       await db.resetUserData(user.id, true);
+      dataCache.clearUser(user.id);
 
       // 2. Global sign-out / session clear
       if (isSupabaseConfigured && supabase) {
@@ -450,6 +459,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
     } finally {
+      dataCache.clearUser(user.id);
       setUser(null);
     }
   }, [user]);

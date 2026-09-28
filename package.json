@@ -28,7 +28,11 @@
     "verify:restore": "tsx scripts/verify-restore.ts",
     "verify:restore-button": "tsx scripts/verify-restore-button.ts",
     "verify:vendor": "tsx scripts/verify-vendor.ts",
-    "verify:seo": "tsx scripts/verify-seo.ts"
+    "verify:seo": "tsx scripts/verify-seo.ts",
+    "verify:performance": "tsx scripts/verify-performance.ts",
+    "verify:pwa": "tsx scripts/verify-pwa.ts",
+    "verify:db-performance": "tsx scripts/verify-db-performance.ts",
+    "verify:swr": "tsx scripts/verify-swr-cache.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",

@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './index.css';
+import { registerServiceWorker } from './lib/pwa';
 
 const rootElement = document.getElementById('root');
 
@@ -17,3 +18,6 @@ ReactDOM.createRoot(rootElement).render(
     </BrowserRouter>
   </React.StrictMode>
 );
+
+// Register production service worker for static asset caching
+registerServiceWorker();

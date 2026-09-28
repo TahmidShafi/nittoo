@@ -11,6 +11,7 @@ import { db } from '../lib/dataSource';
 import { getPredictionMetrics } from '../hooks/usePrediction';
 import { ProductCard } from '../components/ProductCard';
 import { FinishUsageModal } from '../components/FinishUsageModal';
+import { dataCache, areValuesEqual } from '../lib/dataCache';
 import type { ProductWithDetails } from '../types';
 
 function getSortPriority(predictedRemaining: number | null): number {
@@ -60,12 +61,15 @@ export const DashboardPage: React.FC = () => {
   const { user } = useAuth();
   const location = useLocation();
 
-  const [products, setProducts] = useState<ProductWithDetails[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Instant SWR state initialization from in-memory cache
+  const cachedEntry = user?.id ? dataCache.get<ProductWithDetails[]>(user.id, 'dashboard') : null;
+
+  const [products, setProducts] = useState<ProductWithDetails[]>(() => cachedEntry?.data ?? []);
+  const [loading, setLoading] = useState<boolean>(() => !cachedEntry);
   const [error, setError] = useState<string | null>(null);
 
   // Stale-while-revalidate refs
-  const isInitialLoad = useRef(true);
+  const isInitialLoad = useRef(!cachedEntry);
   const lastRefetchTimeRef = useRef(Date.now());
 
   // Filter & Search State
@@ -84,20 +88,25 @@ export const DashboardPage: React.FC = () => {
   const loadActiveProducts = useCallback(
     async (isSilent = false) => {
       if (!user?.id) return;
-      // Only show full skeleton indicator on the true initial page load
-      if (isInitialLoad.current && !isSilent) {
+      const currentCached = dataCache.get<ProductWithDetails[]>(user.id, 'dashboard');
+      const hasCachedData = !!currentCached;
+
+      // Only show full skeleton indicator if there is NO cached data and it's not silent
+      if (!hasCachedData && !isSilent) {
         setLoading(true);
       }
 
       try {
         const active = await db.getActiveProducts(user.id);
-        setProducts(active);
+        dataCache.set(user.id, 'dashboard', active);
+        setProducts((prev) => (areValuesEqual(prev, active) ? prev : active));
         setError(null);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Failed to load active products';
         console.error('Failed to load active products:', err);
-        // If initial load fails, display error banner. If background refresh fails, keep existing products visible.
-        if (isInitialLoad.current) {
+        // If initial load fails without cached data, display error banner.
+        // If background refresh fails or cached data exists, keep existing products visible silently.
+        if (!hasCachedData) {
           setError(msg);
         }
       } finally {
@@ -108,10 +117,20 @@ export const DashboardPage: React.FC = () => {
     [user?.id]
   );
 
-  // Initial load
+  // Initial load / SWR revalidation
   useEffect(() => {
-    loadActiveProducts();
-  }, [loadActiveProducts]);
+    if (!user?.id) return;
+    const entry = dataCache.get<ProductWithDetails[]>(user.id, 'dashboard');
+    if (!entry) {
+      // No cache: initial load with skeleton
+      loadActiveProducts(false);
+    } else if (dataCache.isStale(entry)) {
+      // Stale cache: rendered immediately from cache, now silently revalidate
+      loadActiveProducts(true);
+    } else {
+      // Fresh cache: rendered immediately, no initial refetch needed
+    }
+  }, [user?.id, loadActiveProducts]);
 
   // Silent background revalidation when returning to tab/window
   useEffect(() => {

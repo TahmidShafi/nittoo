@@ -11,6 +11,7 @@ import { usePageMeta } from '../hooks/usePageMeta';
 import { db } from '../lib/dataSource';
 import { buildComparisonReport, type ComparisonReport } from '../lib/comparison';
 import { getConfidenceBadgeStyles } from '../lib/confidence';
+import { dataCache, areValuesEqual } from '../lib/dataCache';
 import type { Product, ProductWithHistory } from '../types';
 
 export const ProductComparisonPage: React.FC = () => {
@@ -22,21 +23,27 @@ export const ProductComparisonPage: React.FC = () => {
   const baseId = searchParams.get('base') || '';
   const targetId = searchParams.get('target') || '';
 
+  // Instant SWR state initialization from in-memory cache
+  const cachedProds = user?.id ? dataCache.get<Product[]>(user.id, 'all-products') : null;
+  const cachedA = user?.id && baseId ? dataCache.get<ProductWithHistory>(user.id, `product:${baseId}`) : null;
+  const cachedB = user?.id && targetId ? dataCache.get<ProductWithHistory>(user.id, `product:${targetId}`) : null;
+  const hasBothCached = (!baseId || !!cachedA) && (!targetId || !!cachedB);
+
   // Data State
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
-  const [historyA, setHistoryA] = useState<ProductWithHistory | null>(null);
-  const [historyB, setHistoryB] = useState<ProductWithHistory | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [allProducts, setAllProducts] = useState<Product[]>(() => cachedProds?.data ?? []);
+  const [historyA, setHistoryA] = useState<ProductWithHistory | null>(() => cachedA?.data ?? null);
+  const [historyB, setHistoryB] = useState<ProductWithHistory | null>(() => cachedB?.data ?? null);
+  const [loading, setLoading] = useState<boolean>(() => !hasBothCached && !!(baseId || targetId));
   const [error, setError] = useState<string | null>(null);
 
   // Stale-while-revalidate refs
-  const isInitialLoad = useRef(true);
+  const isInitialLoad = useRef(!hasBothCached);
   const lastRefetchTimeRef = useRef(Date.now());
 
   // Search filter for comparison product selector
   const [searchQuery, setSearchQuery] = useState('');
 
-  // 1. Load User Tracked Products
+  // 1. Load User Tracked Products with SWR
   useEffect(() => {
     if (!user?.id) return;
     let mounted = true;
@@ -44,13 +51,20 @@ export const ProductComparisonPage: React.FC = () => {
     async function loadProducts() {
       try {
         const prods = await db.getAllUserProducts(user!.id);
-        if (mounted) setAllProducts(prods);
+        dataCache.set(user!.id, 'all-products', prods);
+        if (mounted) setAllProducts((prev) => (areValuesEqual(prev, prods) ? prev : prods));
       } catch (err) {
         console.error('Failed to load user products:', err);
       }
     }
 
-    loadProducts();
+    const entry = dataCache.get<Product[]>(user.id, 'all-products');
+    if (!entry) {
+      loadProducts();
+    } else if (dataCache.isStale(entry)) {
+      loadProducts();
+    }
+
     return () => {
       mounted = false;
     };
@@ -60,9 +74,11 @@ export const ProductComparisonPage: React.FC = () => {
   const loadHistories = useCallback(
     async (isSilent = false) => {
       if (!user?.id) return;
+      const currentA = baseId ? dataCache.get<ProductWithHistory>(user.id, `product:${baseId}`) : null;
+      const currentB = targetId ? dataCache.get<ProductWithHistory>(user.id, `product:${targetId}`) : null;
+      const hasCached = (!baseId || !!currentA) && (!targetId || !!currentB);
 
-      const needsSkeleton = isInitialLoad.current || (!historyA && !historyB && (baseId || targetId));
-      if (needsSkeleton && !isSilent) {
+      if (!hasCached && !isSilent) {
         setLoading(true);
       }
 
@@ -76,13 +92,20 @@ export const ProductComparisonPage: React.FC = () => {
         ];
 
         const [resA, resB] = await Promise.all(promises);
-        setHistoryA(resA);
-        setHistoryB(resB);
+        if (baseId && resA) dataCache.set(user.id, `product:${baseId}`, resA);
+        if (targetId && resB) dataCache.set(user.id, `product:${targetId}`, resB);
+        if (baseId && targetId && resA && resB) {
+          const compKey = dataCache.getComparisonKey(baseId, targetId);
+          dataCache.set(user.id, compKey, { base: resA, target: resB });
+        }
+
+        setHistoryA((prev) => (areValuesEqual(prev, resA) ? prev : resA));
+        setHistoryB((prev) => (areValuesEqual(prev, resB) ? prev : resB));
         setError(null);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Failed to load comparison data';
         console.error('Failed to load comparison data:', err);
-        if (isInitialLoad.current) {
+        if (!hasCached) {
           setError(msg);
         }
       } finally {
@@ -93,9 +116,31 @@ export const ProductComparisonPage: React.FC = () => {
     [user?.id, baseId, targetId]
   );
 
+  // Sync parameter selection with SWR cache
   useEffect(() => {
-    loadHistories();
-  }, [loadHistories]);
+    if (!user?.id) return;
+    const entryA = baseId ? dataCache.get<ProductWithHistory>(user.id, `product:${baseId}`) : null;
+    const entryB = targetId ? dataCache.get<ProductWithHistory>(user.id, `product:${targetId}`) : null;
+    const hasA = !baseId || !!entryA;
+    const hasB = !targetId || !!entryB;
+
+    if (hasA && hasB) {
+      setHistoryA(entryA?.data ?? null);
+      setHistoryB(entryB?.data ?? null);
+      setLoading(false);
+      isInitialLoad.current = false;
+      const isAnyStale = (entryA && dataCache.isStale(entryA)) || (entryB && dataCache.isStale(entryB));
+      if (isAnyStale) {
+        loadHistories(true);
+      }
+    } else {
+      if (!entryA) setHistoryA(null);
+      if (!entryB) setHistoryB(null);
+      setLoading(true);
+      isInitialLoad.current = true;
+      loadHistories(false);
+    }
+  }, [user?.id, baseId, targetId, loadHistories]);
 
   // Silent background revalidation on window focus / tab return
   useEffect(() => {

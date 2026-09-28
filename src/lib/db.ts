@@ -450,26 +450,30 @@ export class SupabaseDatabase implements IDataSource {
 
     const productIds = products.map((p) => p.id);
 
-    const [{ data: activePeriods }, { data: purchases }, { data: allPeriods }] =
-      await Promise.all([
-        client
-          .from('usage_periods')
-          .select('*')
-          .in('product_id', productIds)
-          .eq('status', 'active'),
-        client
-          .from('purchases')
-          .select('*')
-          .in('product_id', productIds)
-          .order('purchase_date', { ascending: false }),
-        client
-          .from('usage_periods')
-          .select('*')
-          .in('product_id', productIds),
-      ]);
+    const [{ data: purchases }, { data: allPeriods }] = await Promise.all([
+      client
+        .from('purchases')
+        .select('*')
+        .in('product_id', productIds)
+        .order('purchase_date', { ascending: false }),
+      client
+        .from('usage_periods')
+        .select('*')
+        .in('product_id', productIds)
+        .order('opened_date', { ascending: false }),
+    ]);
 
     const activePeriodMap = new Map<string, UsagePeriod>();
-    (activePeriods || []).forEach((u) => activePeriodMap.set(u.product_id, u as UsagePeriod));
+    const finishedPeriodsMap = new Map<string, UsagePeriod[]>();
+    (allPeriods || []).forEach((u) => {
+      if (u.status === 'active') {
+        activePeriodMap.set(u.product_id, u as UsagePeriod);
+      } else if (u.status === 'finished') {
+        const list = finishedPeriodsMap.get(u.product_id) || [];
+        list.push(u as UsagePeriod);
+        finishedPeriodsMap.set(u.product_id, list);
+      }
+    });
 
     const purchaseByIdMap = new Map<string, Purchase>();
     const latestPurchaseMap = new Map<string, Purchase>();
@@ -477,15 +481,6 @@ export class SupabaseDatabase implements IDataSource {
       purchaseByIdMap.set(pu.id, pu as Purchase);
       if (!latestPurchaseMap.has(pu.product_id)) {
         latestPurchaseMap.set(pu.product_id, pu as Purchase);
-      }
-    });
-
-    const finishedPeriodsMap = new Map<string, UsagePeriod[]>();
-    (allPeriods || []).forEach((u) => {
-      if (u.status === 'finished') {
-        const list = finishedPeriodsMap.get(u.product_id) || [];
-        list.push(u as UsagePeriod);
-        finishedPeriodsMap.set(u.product_id, list);
       }
     });
 
@@ -524,27 +519,28 @@ export class SupabaseDatabase implements IDataSource {
     const client = this.getClient();
     if (!userId || !productId) return null;
 
-    const { data: product, error: prodErr } = await client
-      .from('products')
-      .select('*')
-      .eq('id', productId)
-      .eq('user_id', userId)
-      .single();
+    // Concurrently fetch product ownership, purchases, and usage periods in a single roundtrip
+    const [{ data: product, error: prodErr }, { data: purchases }, { data: usagePeriods }] =
+      await Promise.all([
+        client
+          .from('products')
+          .select('*')
+          .eq('id', productId)
+          .eq('user_id', userId)
+          .maybeSingle(),
+        client
+          .from('purchases')
+          .select('*')
+          .eq('product_id', productId)
+          .order('purchase_date', { ascending: false }),
+        client
+          .from('usage_periods')
+          .select('*')
+          .eq('product_id', productId)
+          .order('opened_date', { ascending: false }),
+      ]);
 
     if (prodErr || !product) return null;
-
-    const [{ data: purchases }, { data: usagePeriods }] = await Promise.all([
-      client
-        .from('purchases')
-        .select('*')
-        .eq('product_id', productId)
-        .order('purchase_date', { ascending: false }),
-      client
-        .from('usage_periods')
-        .select('*')
-        .eq('product_id', productId)
-        .order('opened_date', { ascending: false }),
-    ]);
 
     const castUsage = (usagePeriods || []) as UsagePeriod[];
     const activeUsage = castUsage.find((u) => u.status === 'active') || null;
@@ -562,6 +558,69 @@ export class SupabaseDatabase implements IDataSource {
       finished_periods: finishedPeriods,
       unopened_purchases: unopenedPurchases,
     };
+  }
+
+  async getUserProductsWithHistory(userId: string): Promise<ProductWithHistory[]> {
+    const client = this.getClient();
+    if (!userId) return [];
+
+    const { data: products, error: prodErr } = await client
+      .from('products')
+      .select('*')
+      .eq('user_id', userId)
+      .order('name');
+
+    if (prodErr) throw new Error(`Failed to load user products: ${prodErr.message}`);
+    if (!products || products.length === 0) return [];
+
+    const productIds = products.map((p) => p.id);
+
+    // Concurrently batch-load all purchases and usage periods across the user's products
+    const [{ data: purchases }, { data: usagePeriods }] = await Promise.all([
+      client
+        .from('purchases')
+        .select('*')
+        .in('product_id', productIds)
+        .order('purchase_date', { ascending: false }),
+      client
+        .from('usage_periods')
+        .select('*')
+        .in('product_id', productIds)
+        .order('opened_date', { ascending: false }),
+    ]);
+
+    const purchasesByProductId = new Map<string, Purchase[]>();
+    (purchases || []).forEach((pu) => {
+      const list = purchasesByProductId.get(pu.product_id) || [];
+      list.push(pu as Purchase);
+      purchasesByProductId.set(pu.product_id, list);
+    });
+
+    const usageByProductId = new Map<string, UsagePeriod[]>();
+    (usagePeriods || []).forEach((u) => {
+      const list = usageByProductId.get(u.product_id) || [];
+      list.push(u as UsagePeriod);
+      usageByProductId.set(u.product_id, list);
+    });
+
+    return (products as Product[]).map((product) => {
+      const prodPurchases = purchasesByProductId.get(product.id) || [];
+      const prodUsage = usageByProductId.get(product.id) || [];
+
+      const activeUsage = prodUsage.find((u) => u.status === 'active') || null;
+      const finishedPeriods = prodUsage.filter((u) => u.status === 'finished');
+      const usedPurchaseIds = new Set(prodUsage.map((u) => u.purchase_id));
+      const unopenedPurchases = prodPurchases.filter((pu) => !usedPurchaseIds.has(pu.id));
+
+      return {
+        product,
+        purchases: prodPurchases,
+        usage_periods: prodUsage,
+        active_usage: activeUsage,
+        finished_periods: finishedPeriods,
+        unopened_purchases: unopenedPurchases,
+      };
+    });
   }
 
   async getAllUserProducts(userId: string): Promise<Product[]> {
@@ -595,26 +654,30 @@ export class SupabaseDatabase implements IDataSource {
     products.forEach((p) => productMap.set(p.id, p as Product));
     const productIds = products.map((p) => p.id);
 
-    const [{ data: activePeriods }, { data: purchases }, { data: allPeriods }] =
-      await Promise.all([
-        client
-          .from('usage_periods')
-          .select('*')
-          .in('product_id', productIds)
-          .eq('status', 'active'),
-        client
-          .from('purchases')
-          .select('*')
-          .in('product_id', productIds)
-          .order('purchase_date', { ascending: false }),
-        client
-          .from('usage_periods')
-          .select('*')
-          .in('product_id', productIds),
-      ]);
+    const [{ data: purchases }, { data: allPeriods }] = await Promise.all([
+      client
+        .from('purchases')
+        .select('*')
+        .in('product_id', productIds)
+        .order('purchase_date', { ascending: false }),
+      client
+        .from('usage_periods')
+        .select('*')
+        .in('product_id', productIds)
+        .order('opened_date', { ascending: false }),
+    ]);
 
     const activePeriodMap = new Map<string, UsagePeriod>();
-    (activePeriods || []).forEach((u) => activePeriodMap.set(u.product_id, u as UsagePeriod));
+    const finishedPeriodsMap = new Map<string, UsagePeriod[]>();
+    (allPeriods || []).forEach((u) => {
+      if (u.status === 'active') {
+        activePeriodMap.set(u.product_id, u as UsagePeriod);
+      } else if (u.status === 'finished') {
+        const list = finishedPeriodsMap.get(u.product_id) || [];
+        list.push(u as UsagePeriod);
+        finishedPeriodsMap.set(u.product_id, list);
+      }
+    });
 
     const purchaseByIdMap = new Map<string, Purchase>();
     const latestPurchaseMap = new Map<string, Purchase>();
@@ -622,15 +685,6 @@ export class SupabaseDatabase implements IDataSource {
       purchaseByIdMap.set(pu.id, pu as Purchase);
       if (!latestPurchaseMap.has(pu.product_id)) {
         latestPurchaseMap.set(pu.product_id, pu as Purchase);
-      }
-    });
-
-    const finishedPeriodsMap = new Map<string, UsagePeriod[]>();
-    (allPeriods || []).forEach((u) => {
-      if (u.status === 'finished') {
-        const list = finishedPeriodsMap.get(u.product_id) || [];
-        list.push(u as UsagePeriod);
-        finishedPeriodsMap.set(u.product_id, list);
       }
     });
 
