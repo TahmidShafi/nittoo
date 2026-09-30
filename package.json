@@ -34,7 +34,8 @@
     "verify:db-performance": "tsx scripts/verify-db-performance.ts",
     "verify:swr": "tsx scripts/verify-swr-cache.ts",
     "verify:history": "tsx scripts/verify-history-edit-delete.ts",
-    "verify:category": "tsx scripts/verify-category-spending.ts"
+    "verify:category": "tsx scripts/verify-category-spending.ts",
+    "verify:discovery": "tsx scripts/verify-product-discovery.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",

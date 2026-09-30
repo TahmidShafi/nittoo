@@ -11,6 +11,11 @@ import { usePageMeta } from '../hooks/usePageMeta';
 import { db } from '../lib/dataSource';
 import { getTodayUTC } from '../lib/dateUtils';
 import { PRODUCT_CATEGORIES, type Product, type ProductCategory, type SizeUnit } from '../types';
+import {
+  searchExternalProducts,
+  MIN_SEARCH_QUERY_LENGTH,
+  type DiscoveryProduct,
+} from '../lib/discovery';
 
 export const AddProductPage: React.FC = () => {
   usePageMeta({ title: 'Add Essential', noindex: true });
@@ -41,6 +46,16 @@ export const AddProductPage: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+
+  // External Discovery State
+  const [discoveryResults, setDiscoveryResults] = useState<DiscoveryProduct[]>([]);
+  const [isSearchingDiscovery, setIsSearchingDiscovery] = useState(false);
+  const [discoveryError, setDiscoveryError] = useState<string | null>(null);
+  const [discoveryStatus, setDiscoveryStatus] = useState<
+    'idle' | 'searching' | 'results' | 'no_results' | 'error'
+  >('idle');
+  const [prefillNotice, setPrefillNotice] = useState<string | null>(null);
+  const discoveryAbortRef = useRef<AbortController | null>(null);
 
   // Status & Error States
   const [submitting, setSubmitting] = useState(false);
@@ -118,6 +133,96 @@ export const AddProductPage: React.FC = () => {
   // Revert back to New Product Mode
   const handleDeselectExisting = () => {
     setSelectedProduct(null);
+    setError(null);
+  };
+
+  // Perform external catalog search
+  const performDiscoverySearch = (query: string) => {
+    const clean = query.trim();
+    if (clean.length < MIN_SEARCH_QUERY_LENGTH) {
+      setDiscoveryResults([]);
+      setDiscoveryStatus('idle');
+      setDiscoveryError(null);
+      return;
+    }
+
+    if (discoveryAbortRef.current) {
+      discoveryAbortRef.current.abort();
+    }
+
+    const abortController = new AbortController();
+    discoveryAbortRef.current = abortController;
+
+    setIsSearchingDiscovery(true);
+    setDiscoveryStatus('searching');
+    setDiscoveryError(null);
+
+    searchExternalProducts(clean, { signal: abortController.signal, limit: 6 })
+      .then((results) => {
+        if (abortController.signal.aborted) return;
+        setDiscoveryResults(results);
+        setIsSearchingDiscovery(false);
+        setDiscoveryStatus(results.length > 0 ? 'results' : 'no_results');
+      })
+      .catch((err: unknown) => {
+        if (abortController.signal.aborted) return;
+        setIsSearchingDiscovery(false);
+        if ((err as Error)?.name !== 'AbortError') {
+          setDiscoveryError('Product discovery is temporarily unavailable. You can continue manually.');
+          setDiscoveryStatus('error');
+        }
+      });
+  };
+
+  // Debounced search on name change
+  useEffect(() => {
+    if (selectedProduct) return;
+    const timer = setTimeout(() => {
+      if (name.trim().length >= MIN_SEARCH_QUERY_LENGTH) {
+        performDiscoverySearch(name);
+      } else {
+        setDiscoveryResults([]);
+        setDiscoveryStatus('idle');
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [name, selectedProduct]);
+
+  // When user selects a discovery result
+  const handleSelectDiscovery = (item: DiscoveryProduct) => {
+    setName(item.name);
+    if (item.brand) setBrand(item.brand);
+    if (item.category) setCategory(item.category);
+    if (item.sizeValue !== undefined && item.sizeValue !== null) {
+      setSizeValue(String(item.sizeValue));
+    }
+    if (item.sizeUnit) {
+      setSizeUnit(item.sizeUnit);
+    }
+
+    // Check if this product matches an existing essential the user already tracks
+    const existingMatch = existingProducts.find(
+      (p) =>
+        p.name.toLowerCase() === item.name.toLowerCase() &&
+        (!item.brand || (p.brand && p.brand.toLowerCase() === item.brand.toLowerCase()))
+    );
+
+    if (existingMatch) {
+      setSelectedProduct(existingMatch);
+      setPrefillNotice(
+        `Prefilled "${item.name}" from public catalog and linked to your existing tracked essential.`
+      );
+    } else {
+      setSelectedProduct(null);
+      setPrefillNotice(
+        `Prefilled "${item.name}" from public catalog. You can review and edit every field below.`
+      );
+    }
+
+    setDiscoveryResults([]);
+    setDiscoveryStatus('idle');
+    setShowSuggestions(false);
     setError(null);
   };
 
@@ -321,6 +426,24 @@ export const AddProductPage: React.FC = () => {
           </div>
         )}
 
+        {/* Prefill Notice Banner */}
+        {prefillNotice && (
+          <div className="mb-5 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-xs flex items-center justify-between gap-2 animate-page-in">
+            <div className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+              <span>{prefillNotice}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPrefillNotice(null)}
+              className="text-emerald-500 hover:text-emerald-800 text-sm font-bold p-1 leading-none cursor-pointer"
+              aria-label="Close notice"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* GROUP 1: PRODUCT IDENTITY */}
           <div className="space-y-4">
@@ -330,12 +453,25 @@ export const AddProductPage: React.FC = () => {
 
             {/* Product Name (Free-form with suggestions) */}
             <div className="relative" ref={suggestionsRef}>
-              <label
-                className="block text-xs font-semibold text-neutral-700 mb-1.5"
-                htmlFor="product-name"
-              >
-                Product Name *
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label
+                  className="block text-xs font-semibold text-neutral-700"
+                  htmlFor="product-name"
+                >
+                  Product Name *
+                </label>
+                {name.trim().length >= MIN_SEARCH_QUERY_LENGTH && !selectedProduct && (
+                  <button
+                    type="button"
+                    onClick={() => performDiscoverySearch(name)}
+                    disabled={isSearchingDiscovery}
+                    className="text-[11px] font-semibold text-[#2D6A4F] hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                  >
+                    <span>🔍</span>
+                    <span>{isSearchingDiscovery ? 'Searching catalog...' : 'Search public catalog'}</span>
+                  </button>
+                )}
+              </div>
               <input
                 id="product-name"
                 type="text"
@@ -399,6 +535,113 @@ export const AddProductPage: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* Public Catalog Discovery Results */}
+            {!selectedProduct &&
+              name.trim().length >= MIN_SEARCH_QUERY_LENGTH &&
+              discoveryStatus !== 'idle' && (
+                <div className="p-4 rounded-xl bg-stone-50 border border-stone-200/90 animate-page-in">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-stone-600">
+                        Public Catalog Matches
+                      </span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-stone-200/70 text-stone-600 font-medium">
+                        Optional Enrichment
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDiscoveryResults([]);
+                        setDiscoveryStatus('idle');
+                      }}
+                      className="text-stone-400 hover:text-stone-700 text-xs font-semibold p-1 cursor-pointer"
+                      aria-label="Dismiss catalog suggestions"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+
+                  {discoveryStatus === 'searching' && (
+                    <div className="py-3 flex items-center gap-2.5 text-xs text-stone-500">
+                      <span className="w-3.5 h-3.5 border-2 border-[#2D6A4F]/30 border-t-[#2D6A4F] rounded-full animate-spin" />
+                      <span>Searching public catalog for "{name.trim()}"...</span>
+                    </div>
+                  )}
+
+                  {discoveryStatus === 'results' && (
+                    <div className="space-y-2 mt-2">
+                      <p className="text-[11px] text-stone-500 mb-2">
+                        Select a product below to prefill details. Price and dates remain user-controlled.
+                      </p>
+                      <div className="divide-y divide-stone-200/70 rounded-xl bg-white border border-stone-200/80 overflow-hidden shadow-xs">
+                        {discoveryResults.map((item) => (
+                          <div
+                            key={item.externalId}
+                            className="p-3 hover:bg-stone-50/80 transition-colors flex items-center justify-between gap-3"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              {item.imageUrl ? (
+                                <img
+                                  src={item.imageUrl}
+                                  alt={`${item.name} thumbnail`}
+                                  className="w-10 h-10 object-contain rounded-lg bg-white border border-stone-200 p-0.5 shrink-0"
+                                  loading="lazy"
+                                  onError={(e) => {
+                                    (e.target as HTMLElement).style.display = 'none';
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-10 h-10 rounded-lg bg-stone-100 border border-stone-200 flex items-center justify-center text-xs text-stone-400 shrink-0">
+                                  📦
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <div className="text-xs font-semibold text-stone-900 truncate">
+                                  {item.name}
+                                </div>
+                                <div className="text-[11px] text-stone-500 truncate">
+                                  {[
+                                    item.brand,
+                                    item.category || item.rawCategory,
+                                    item.sizeValue
+                                      ? `${item.sizeValue} ${item.sizeUnit}`
+                                      : item.rawSize,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(' • ')}
+                                </div>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleSelectDiscovery(item)}
+                              className="btn-press shrink-0 px-3 py-1.5 rounded-lg bg-[#2D6A4F]/10 hover:bg-[#2D6A4F] text-[#2D6A4F] hover:text-white text-xs font-semibold transition-all min-h-[44px] flex items-center justify-center cursor-pointer"
+                            >
+                              Use this
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {discoveryStatus === 'no_results' && (
+                    <div className="py-2 text-xs text-stone-500">
+                      No matching products found in public catalog. You can continue entering details manually below.
+                    </div>
+                  )}
+
+                  {discoveryStatus === 'error' && (
+                    <div className="py-2 text-xs text-stone-500">
+                      {discoveryError ||
+                        'Product discovery is temporarily unavailable. You can continue entering details manually below.'}
+                    </div>
+                  )}
+                </div>
+              )}
 
             {/* Category & Brand */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

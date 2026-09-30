@@ -37,7 +37,9 @@ Unlike traditional warehouse inventory trackers that ask *"How many units are in
 - **Client-Side In-Memory SWR Cache (Stage 16.9)**: Lightweight, zero-storage, tenant-isolated in-memory cache providing frame-0 rendering for previously visited pages, conservative 30-second stale-time window, silent background revalidation without screen flashing, LRU size capping, zero auth-secret leakage guarantees, and universal mutation invalidation.
 - **Historical Finished Cycle Editing & Deletion (Stage 17)**: Non-destructive historical correction and removal of completed usage periods on `ProductDetailPage`. Strictly preserves associated purchases, maintains historical vendor and pricing truth without inventing states, enforces date chronological constraints (finished >= opened, no future dates), protects active bottles, automatically recalculates pure derived insights (average lifespan, predicted remaining days, confidence, cost/day), cleanses dependent SWR caches, and verifies mathematical invariance across 26 test suites.
 - **Category Spending Intelligence (Stage 18)**: Pure deterministic aggregation of normalized 30-day monthly consumption expenditure by product category on `/analytics`. Integrates horizontal Recharts visualization and responsive ranked category breakdown cards, clearly distinguishes estimated run rates from actual past expenditure, strictly excludes products lacking completed cycle history, requires 0 additional database queries or schema changes, updates via existing SWR invalidation, and maintains 100% mathematical invariance across 27 verification suites.
-- **Comprehensive Automated Verification**: 27 automated test scripts (`npm run verify:*`) validating 100% of domain math, vendor attributes, RLS policies, multi-tenant isolation, mock persistence, UI layout invariants, SEO compliance, bundle chunking isolation, PWA caching rules, database query deduplication, SWR cache lifecycle, historical cycle editing/deletion, and category spending intelligence.
+- **Product Discovery & Enrichment (Stage 19)**: Provider-agnostic catalog search and form pre-filling on `AddProductPage`. Integrates Open Beauty Facts and Open Food Facts public CPG databases with zero API keys or secrets exposed to the browser, 400ms debouncing, in-memory session caching, pure size/volume parsing (`ml`, `g`, `count`), deterministic category mapping to Nittoo taxonomy, duplicate protection against existing tracked essentials, and 100% manual-first fallback autonomy across 28 verification suites.
+- **Comprehensive Automated Verification**: 28 automated test scripts (`npm run verify:*`) validating 100% of domain math, vendor attributes, RLS policies, multi-tenant isolation, mock persistence, UI layout invariants, SEO compliance, bundle chunking isolation, PWA caching rules, database query deduplication, SWR cache lifecycle, historical cycle editing/deletion, category spending intelligence, and product discovery.
+
 
 
 ---
@@ -1265,14 +1267,53 @@ Implemented in September 2026. This stage introduced Category Spending Intellige
 
 ---
 
-## 44. Current State Assessment
+## 44. Stage 19 — Product Discovery & Enrichment Architecture
+
+Implemented in September 2026. This stage introduced optional, manual-first external product discovery and form pre-filling on [`AddProductPage.tsx`](file:///d:/nittoo/src/pages/AddProductPage.tsx).
+
+### 1. Product Principle & Enrichment Boundary
+- **Consumption Intelligence vs. E-Commerce**: Nittoo is strictly a consumption intelligence application, not an online shopping directory or product review portal. There are zero affiliate links, sponsored products, retailer suggestions, or "best product" claims.
+- **Enrichment, Not Source of Truth**: External catalog data serves strictly as an optional helper to prefill form fields (`name`, `brand`, `category`, `sizeValue`, `sizeUnit`). The user reviews, edits, and manually provides pricing, purchase dates, and store/vendor information.
+- **Zero Auto-Save**: Selecting an external catalog result never writes to the database, never creates purchases or usage periods, and never mutates user portfolios. The database save occurs strictly when the user reviews the form and clicks "Start Tracking Essential" or "Save Unopened Purchase".
+
+### 2. External Provider Architecture & Zero-Secret Security
+- **Providers Selected**:
+  - **Open Beauty Facts** (`world.openbeautyfacts.org`): Primary public catalog for skincare, haircare, body care, cosmetics, and hygiene consumables.
+  - **Open Food Facts** (`world.openfoodfacts.org`): Complementary public catalog for supplements, vitamins, and grocery essentials.
+- **Zero API Secrets**: Both providers are open databases (ODbL) that require zero API keys, subscription tokens, or secrets. No sensitive credentials exist in the client bundle or build environment.
+- **Direct Browser CORS Compatibility**: Both providers return `Access-Control-Allow-Origin: *`, allowing secure, direct client-side fetching without requiring mandatory serverless proxy infrastructure on Vercel.
+- **Privacy Guards**: Requests to external providers transmit strictly the user's typed search query. Zero user IDs, session tokens, consumption histories, prices, or portfolio data are ever transmitted.
+
+### 3. Pure Normalization & Domain Taxonomy Safety
+- **Provider-Agnostic Interface**: The UI consumes only the normalized `DiscoveryProduct` contract ([`src/lib/discovery/types.ts`](file:///d:/nittoo/src/lib/discovery/types.ts)), remaining completely decoupled from provider-specific JSON response formats.
+- **Text Sanitization**: `normalizeText` strips unexpected HTML/script tags, collapses multiple spaces, and trims whitespace.
+- **Strict Size/Volume Parsing**: `parseSize` recognizes only Nittoo's supported units: `ml`, `g`, and `count` (including capsules, tablets, softgels, pcs). It never guesses fluid densities or converts between volume and weight. Unsupported units (e.g. `8 fl oz` without metric) are left undefined for manual user entry without fabricating synthetic values.
+- **Deterministic Category Mapping**: `mapCategory` maps raw provider tags to Nittoo's authoritative `PRODUCT_CATEGORIES` taxonomy (`Skincare`, `Haircare`, `Oral Care`, `Body Care`, `Supplements`, `Household Cleaning`, etc.). Unknown categories return `undefined` rather than polluting the domain model with arbitrary external strings.
+- **Future Barcode Compatibility**: Preserves the catalog's EAN/UPC barcode (`code`) in the normalized model, establishing direct reuse for future Stage 20 barcode scanning.
+- **Image Safety**: External image thumbnails are validated for HTTPS protocols, displayed transiently with fallback placeholders and descriptive alt text, and never stored or persisted to the database.
+
+### 4. Search Behavior & Session In-Memory Caching
+- **Query Bounds & Debouncing**: Minimum 3 characters required. Input changes are debounced by 400ms. Stale network requests are automatically cancelled using `AbortController`.
+- **In-Memory Cache**: `discoveryCache` maintains a session-scoped in-memory cache with a 5-minute TTL and 50-entry LRU cap. Duplicate searches within a session resolve instantly without external network roundtrips. Zero search data is written to `localStorage` or SWR domain caches.
+
+### 5. Manual-First UX & Duplicate Safety
+- **Distinct Interaction Hierarchy**:
+  - **Existing Tracked Essentials**: Suggested in a dropdown popover when typed characters match existing user essentials, allowing instant logging of repeat purchases without duplicates.
+  - **Public Catalog Matches**: Rendered in a separate, dedicated enrichment card with explicit "Use this" action buttons.
+- **Duplicate Prevention**: If an external discovery result matches an essential the user already tracks, selecting it automatically links to their existing product record (`selectedProduct`), logging a repeat purchase instead of creating a duplicate.
+- **Failure Resilience**: If the network is offline or the provider returns 429/500 errors, the manual form continues to work seamlessly without blocking product creation.
+
+---
+
+## 45. Current State Assessment
 
 Nittoo is in a **mature, production-ready state** for personal essentials tracking. The codebase demonstrates high architectural discipline:
-- **Clean Boundaries**: UI components never bypass the `dataSource.ts` abstraction.
-- **Deterministic Logic**: Domain mathematics (lifespans, daily costs, unit economics, confidence, insights, category spending) are isolated in pure functions covered by 27 verification test suites.
+- **Clean Boundaries**: UI components never bypass the `dataSource.ts` abstraction. External discovery is completely isolated in `src/lib/discovery/`.
+- **Deterministic Logic**: Domain mathematics (lifespans, daily costs, unit economics, confidence, insights, category spending) are isolated in pure functions covered by 28 verification test suites.
 - **Resilient UX**: In-memory SWR caching renders previously viewed pages instantly with zero skeleton flash; window focus revalidation prevents screen flickering; touch targets meet 44px accessibility standards; empty states and error boundaries are present throughout.
 - **Historical Accuracy & Agency**: Users have non-destructive correction and deletion controls over completed cycles with instant metric recalibration and purchase preservation.
 - **Category Spending Intelligence**: Pure, deterministic category run-rate aggregation with calm horizontal bar visualization and responsive ranked cards.
+- **Optional Product Discovery & Enrichment**: Zero-secret, manual-first catalog lookup pre-filling product details without automatic database writes or duplicate creation.
 - **Enterprise-Grade Data Portability**: The export and restore system adheres to relational integrity, security token stripping, active conflict resolution, and multi-tenant isolation.
 - **Search & Web Presence**: Privacy-preserving technical SEO with per-route metadata, valid robots directives, truthful Open Graph tags, and zero leaked credentials.
 - **High-Performance Delivery**: Initial load is optimized to ~514 kB total JS (146 kB gzip) with zero chunk warnings and heavy export/chart modules isolated on-demand.
@@ -1281,7 +1322,7 @@ Nittoo is in a **mature, production-ready state** for personal essentials tracki
 
 ---
 
-## 45. Safe Next-Step Candidates
+## 46. Safe Next-Step Candidates
 
 Based strictly on what currently exists in the codebase, the following are safe, non-breaking candidates for future work:
 
@@ -1292,7 +1333,9 @@ Based strictly on what currently exists in the codebase, the following are safe,
    - Fix `/products/:id` $\to$ `/product/:id` and update `vercel.json` documentation.
 3. **Multi-Currency UI Selector**:
    - Allow user selection of preferred currency symbol in Account Settings (`$`, `€`, `£`, `₹`, `৳`) while retaining numeric math.
-4. **PWA Background Sync & Push Notifications (Future Stages)**:
+4. **Barcode / UPC Scanning (Stage 20 Candidate)**:
+   - Wire a camera/UPC reader directly into the existing `searchExternalProducts` / `IProductDiscoveryProvider` layer using the normalized barcode field.
+5. **PWA Background Sync & Push Notifications (Future Stages)**:
    - When product requirements demand it, introduce background sync for offline mutation queuing and web push notifications for overdue runouts.
 
 
