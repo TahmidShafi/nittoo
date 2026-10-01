@@ -4,7 +4,7 @@
 // Premium product onboarding layout with clear logical groupings
 // ==============================================================================
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { usePageMeta } from '../hooks/usePageMeta';
@@ -13,9 +13,13 @@ import { getTodayUTC } from '../lib/dateUtils';
 import { PRODUCT_CATEGORIES, type Product, type ProductCategory, type SizeUnit } from '../types';
 import {
   searchExternalProducts,
+  lookupExternalProductByBarcode,
+  validateBarcode,
   MIN_SEARCH_QUERY_LENGTH,
   type DiscoveryProduct,
 } from '../lib/discovery';
+
+const BarcodeScannerModal = React.lazy(() => import('../components/BarcodeScannerModal'));
 
 export const AddProductPage: React.FC = () => {
   usePageMeta({ title: 'Add Essential', noindex: true });
@@ -56,6 +60,17 @@ export const AddProductPage: React.FC = () => {
   >('idle');
   const [prefillNotice, setPrefillNotice] = useState<string | null>(null);
   const discoveryAbortRef = useRef<AbortController | null>(null);
+
+  // Barcode Lookup State
+  const [barcodeInput, setBarcodeInput] = useState('');
+  const [isLookingUpBarcode, setIsLookingUpBarcode] = useState(false);
+  const [barcodeResult, setBarcodeResult] = useState<DiscoveryProduct | null>(null);
+  const [barcodeError, setBarcodeError] = useState<string | null>(null);
+  const [barcodeStatus, setBarcodeStatus] = useState<
+    'idle' | 'loading' | 'found' | 'not_found' | 'error'
+  >('idle');
+  const [showBarcodeSection, setShowBarcodeSection] = useState(false);
+  const [isScannerModalOpen, setIsScannerModalOpen] = useState(false);
 
   // Status & Error States
   const [submitting, setSubmitting] = useState(false);
@@ -222,6 +237,90 @@ export const AddProductPage: React.FC = () => {
 
     setDiscoveryResults([]);
     setDiscoveryStatus('idle');
+    setShowSuggestions(false);
+    setError(null);
+  };
+
+  // Perform barcode lookup
+  const handleBarcodeLookup = async (inputCode?: string) => {
+    const codeToLookup = inputCode !== undefined ? inputCode : barcodeInput;
+    setBarcodeError(null);
+
+    // 1. Deterministic local validation before any network call
+    const validation = validateBarcode(codeToLookup);
+    if (!validation.valid || !validation.normalized) {
+      setBarcodeError(validation.error || 'Enter a valid product barcode.');
+      setBarcodeStatus('error');
+      return;
+    }
+
+    setBarcodeInput(validation.normalized);
+    setIsLookingUpBarcode(true);
+    setBarcodeStatus('loading');
+    setBarcodeResult(null);
+
+    try {
+      const product = await lookupExternalProductByBarcode(validation.normalized);
+      setIsLookingUpBarcode(false);
+      if (product) {
+        setBarcodeResult(product);
+        setBarcodeStatus('found');
+      } else {
+        setBarcodeStatus('not_found');
+        setBarcodeError('No product was found for this barcode. You can enter the product manually.');
+      }
+    } catch (err: unknown) {
+      setIsLookingUpBarcode(false);
+      setBarcodeStatus('error');
+      const msg = (err as Error)?.message;
+      if (msg && msg.includes('check digit')) {
+        setBarcodeError(msg);
+      } else {
+        setBarcodeError('Product discovery is temporarily unavailable. You can enter the product manually.');
+      }
+    }
+  };
+
+  // When a barcode is detected by the camera scanner
+  const handleBarcodeScanned = (detectedCode: string) => {
+    setIsScannerModalOpen(false);
+    setBarcodeInput(detectedCode);
+    handleBarcodeLookup(detectedCode);
+  };
+
+  // When user clicks "Use this" on a discovered barcode product
+  const handleApplyBarcodeResult = (item: DiscoveryProduct) => {
+    setName(item.name);
+    if (item.brand) setBrand(item.brand);
+    if (item.category) setCategory(item.category);
+    if (item.sizeValue !== undefined && item.sizeValue !== null) {
+      setSizeValue(String(item.sizeValue));
+    }
+    if (item.sizeUnit) {
+      setSizeUnit(item.sizeUnit);
+    }
+
+    // Check if this product matches an existing essential the user already tracks
+    const existingMatch = existingProducts.find(
+      (p) =>
+        p.name.toLowerCase() === item.name.toLowerCase() &&
+        (!item.brand || (p.brand && p.brand.toLowerCase() === item.brand.toLowerCase()))
+    );
+
+    if (existingMatch) {
+      setSelectedProduct(existingMatch);
+      setPrefillNotice(
+        `Prefilled "${item.name}" from barcode and linked to your existing tracked essential.`
+      );
+    } else {
+      setSelectedProduct(null);
+      setPrefillNotice(
+        `Prefilled "${item.name}" from barcode. You can review and edit every field below.`
+      );
+    }
+
+    setBarcodeResult(null);
+    setBarcodeStatus('idle');
     setShowSuggestions(false);
     setError(null);
   };
@@ -535,6 +634,122 @@ export const AddProductPage: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* Optional Barcode Lookup Option */}
+            {!selectedProduct && (
+              <div className="pt-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-neutral-500">Have a product barcode?</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowBarcodeSection((prev) => !prev)}
+                    className="text-[11px] font-semibold text-[#2D6A4F] hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>📷</span>
+                    <span>{showBarcodeSection ? 'Hide Barcode Lookup' : 'Scan / Enter Barcode'}</span>
+                  </button>
+                </div>
+
+                {showBarcodeSection && (
+                  <div className="mt-2.5 p-4 rounded-xl bg-stone-50 border border-stone-200/90 animate-page-in space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label htmlFor="barcode-input" className="block text-[11px] font-bold uppercase tracking-wider text-stone-600">
+                        Barcode / UPC / EAN
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setIsScannerModalOpen(true)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-stone-300 text-stone-700 hover:text-stone-900 hover:border-stone-400 text-xs font-medium shadow-2xs transition-colors cursor-pointer min-h-[44px]"
+                      >
+                        <span>📷</span>
+                        <span>Scan with Camera</span>
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="barcode-input"
+                        type="text"
+                        value={barcodeInput}
+                        onChange={(e) => {
+                          setBarcodeInput(e.target.value);
+                          setBarcodeError(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleBarcodeLookup();
+                          }
+                        }}
+                        placeholder="e.g. 012345678905 or 3337872412488"
+                        className="flex-1 px-3.5 py-2 rounded-lg border border-neutral-300 text-sm font-mono bg-white focus:outline-none focus:border-[#2D6A4F] focus:ring-2 focus:ring-[#2D6A4F]/10 placeholder:font-sans placeholder:text-neutral-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleBarcodeLookup()}
+                        disabled={isLookingUpBarcode || !barcodeInput.trim()}
+                        className="px-4 py-2 rounded-lg bg-[#2D6A4F] hover:bg-[#24543F] disabled:opacity-50 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 min-h-[44px]"
+                      >
+                        {isLookingUpBarcode ? (
+                          <>
+                            <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            <span>Finding...</span>
+                          </>
+                        ) : (
+                          <span>Find Product</span>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Validation Error Feedback */}
+                    {barcodeError && (
+                      <p className="text-xs text-rose-600 font-medium">
+                        {barcodeError}
+                      </p>
+                    )}
+
+                    {/* Barcode Discovered Result Card */}
+                    {barcodeStatus === 'found' && barcodeResult && (
+                      <div className="p-3.5 rounded-lg bg-white border border-emerald-200 shadow-2xs space-y-2 animate-page-in">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                              Product Found
+                            </span>
+                            <h4 className="text-sm font-semibold text-neutral-900 mt-1">
+                              {barcodeResult.name}
+                            </h4>
+                            <p className="text-xs text-neutral-500">
+                              {[
+                                barcodeResult.brand,
+                                barcodeResult.category,
+                                barcodeResult.sizeValue
+                                  ? `${barcodeResult.sizeValue} ${barcodeResult.sizeUnit || ''}`
+                                  : barcodeResult.rawSize,
+                              ]
+                                .filter(Boolean)
+                                .join(' • ')}
+                            </p>
+                            {barcodeResult.barcode && (
+                              <p className="text-[11px] font-mono text-neutral-400 mt-0.5">
+                                Barcode: {barcodeResult.barcode}
+                              </p>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleApplyBarcodeResult(barcodeResult)}
+                            className="px-3.5 py-1.5 rounded-lg bg-[#2D6A4F] hover:bg-[#24543F] text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer shrink-0 min-h-[44px]"
+                          >
+                            Use this
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Public Catalog Discovery Results */}
             {!selectedProduct &&
@@ -912,6 +1127,17 @@ export const AddProductPage: React.FC = () => {
           </div>
         </form>
       </div>
+
+      {/* Native Camera Barcode Scanner Modal (Lazy Loaded) */}
+      {isScannerModalOpen && (
+        <Suspense fallback={null}>
+          <BarcodeScannerModal
+            isOpen={isScannerModalOpen}
+            onClose={() => setIsScannerModalOpen(false)}
+            onDetected={handleBarcodeScanned}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };

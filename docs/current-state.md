@@ -1305,24 +1305,104 @@ Implemented in September 2026. This stage introduced optional, manual-first exte
 
 ---
 
-## 45. Current State Assessment
+## 45. Stage 20 — Barcode / UPC Product Lookup
+
+Implemented in **Stage 20**, Nittoo provides seamless, privacy-preserving barcode lookup for consumer packaged goods (CPG) by extending the Stage 19 Product Discovery architecture.
+
+```text
+User Enters Barcode / Camera Scans
+                 │
+                 ▼
+  Deterministic GS1 Modulo-10 Validation
+        (Local Check Digit Check)
+                 │
+           Valid? ├── No ──► Show inline validation feedback (no network)
+                 │
+                 ▼ Yes
+       Check In-Memory Cache
+          `barcode:<code >`
+                 │
+         Cached? ├── Yes ─► Return cached DiscoveryProduct
+                 │
+                 ▼ No
+     Query Open Beauty Facts
+       `/api/v2/product/{barcode}.json`
+                 │
+          Found? ├── Yes ─► Normalize to DiscoveryProduct & Cache
+                 │
+                 ▼ No
+     Query Open Food Facts Fallback
+       `/api/v2/product/{barcode}.json`
+                 │
+          Found? ├── Yes ─► Normalize to DiscoveryProduct & Cache
+                 │
+                 ▼ No
+       Return null (Not Found)
+```
+
+### 1. Supported Barcode Formats & Validation
+- **Supported Standards**:
+  - **UPC-A**: 12 numeric digits (standard North American retail packaging).
+  - **EAN-13**: 13 numeric digits (standard international packaging).
+  - **EAN-8**: 8 numeric digits (small package format).
+  - **GTIN-14**: 14 numeric digits (wholesale/outer-case GTIN).
+- **Leading Zeros Preserved**: Barcodes are strictly treated as strings. Numeric conversions via `Number()` or `parseInt()` are strictly prohibited to prevent stripping leading zeros (e.g., `012345678905` remains intact).
+- **Pure Local GS1 Check Digit Validation**: Implement deterministic GS1 Modulo-10 check digit validation (`calculateGs1CheckDigit`, `validateBarcodeCheckDigit`) in [`src/lib/discovery/barcode.ts`](file:///d:/nittoo/src/lib/discovery/barcode.ts). Barcodes with invalid check digits or unsupported lengths are rejected immediately before making any external network requests.
+- **Pure Normalization**: Trims leading/trailing whitespace and safely removes formatting hyphens/spaces. Non-numeric inputs and arbitrary lengths (< 8 or > 14) are rejected with clear user feedback.
+
+### 2. Provider Hierarchy & Network Order
+- **Open Beauty Facts First**: Primary catalog queried via `/api/v2/product/{barcode}.json`.
+- **Open Food Facts Fallback**: If Open Beauty Facts returns `status: 0` or 404 (product not found in cosmetics catalog), query is automatically forwarded to Open Food Facts to support supplements, vitamins, and grocery essentials.
+- **Unnecessary Fallback Prevention**: If Open Beauty Facts successfully returns a product, Open Food Facts is never called.
+- **Controlled Error Handling**: HTTP 404 and `status: 0` return `null` gracefully without throwing unhandled exceptions. Network failures, 429 rate limits, and 500 errors produce controlled, user-friendly notices advising manual entry.
+
+### 3. Camera Scanning & Resource Lifecycle
+- **Native Browser BarcodeDetector API**: Utilizes the modern native `window.BarcodeDetector` API supporting `ean_13`, `upc_a`, and `ean_8` with zero third-party library overhead and zero added JavaScript bundle weight.
+- **Lazy-Loaded Route Splitting**: `BarcodeScannerModal` is lazy-loaded with `React.lazy()` and `Suspense`, isolated in a dedicated 5.37 kB (2.07 kB gzip) chunk that is never loaded during initial application startup.
+- **Strictly User-Initiated**: Camera access is never requested on page load or automatically. The user must explicitly click "Scan with Camera".
+- **Graceful Unsupported / Denied Fallback**: If `getUserMedia` or `BarcodeDetector` is unsupported in the user's browser, or if the user denies camera permission, a clear informative notice is displayed and the manual entry input remains 100% interactive and available.
+- **Mandatory Resource Teardown**: Every active `MediaStreamTrack` is stopped and released, video element `srcObject` cleared, and `requestAnimationFrame` loops cancelled immediately upon:
+  1. Barcode detection success.
+  2. User clicking close / Enter manually.
+  3. User pressing Escape key.
+  4. React component unmount or page navigation.
+
+### 4. Prefill Rules & Duplicate Safety
+- **Non-Destructive Prefill**: Clicking "Use this" on a discovered barcode product prefills only:
+  - Product Name
+  - Brand
+  - Category (mapped to Nittoo taxonomy via `mapCategory`)
+  - Size value & unit (parsed via `parseSize`)
+  - Barcode (displayed as discovery metadata)
+- **User-Controlled Fields**: Purchase price, purchase date, store/vendor, and usage state (`start_today` vs `keep_unopened`) remain strictly manual and user-controlled.
+- **Zero Database Side-Effects**: Barcode lookup and prefill never trigger automatic database writes. The product is only saved when the user reviews and clicks "Start Tracking Essential" or "Save Unopened Purchase".
+- **Duplicate Prevention**: If the barcode result corresponds to an existing tracked essential (matched by name and brand), Nittoo highlights the existing essential path and automatically links the purchase to the existing product record, avoiding duplicate product creation.
+
+### 5. In-Memory Caching & Privacy
+- **Isolated Cache Keys**: Results are cached in the session-scoped `discoveryCache` under the distinct key `barcode:<normalized-code>`.
+- **5-Minute TTL & LRU Policy**: Uses the existing 5-minute memory cache with automatic eviction. Zero barcode data is persisted to `localStorage` or authenticated SWR caches.
+- **Privacy Enforcement**: The external HTTP GET request carries only the barcode digits in the URL path. Zero user IDs, emails, prices, stores, or usage histories are ever transmitted. Zero API keys are required.
+
+---
+
+## 46. Current State Assessment
 
 Nittoo is in a **mature, production-ready state** for personal essentials tracking. The codebase demonstrates high architectural discipline:
-- **Clean Boundaries**: UI components never bypass the `dataSource.ts` abstraction. External discovery is completely isolated in `src/lib/discovery/`.
-- **Deterministic Logic**: Domain mathematics (lifespans, daily costs, unit economics, confidence, insights, category spending) are isolated in pure functions covered by 28 verification test suites.
+- **Clean Boundaries**: UI components never bypass the `dataSource.ts` abstraction. External discovery and barcode lookup are completely isolated in `src/lib/discovery/`.
+- **Deterministic Logic**: Domain mathematics (lifespans, daily costs, unit economics, confidence, insights, category spending, GS1 check digits) are isolated in pure functions covered by 29 verification test suites.
 - **Resilient UX**: In-memory SWR caching renders previously viewed pages instantly with zero skeleton flash; window focus revalidation prevents screen flickering; touch targets meet 44px accessibility standards; empty states and error boundaries are present throughout.
 - **Historical Accuracy & Agency**: Users have non-destructive correction and deletion controls over completed cycles with instant metric recalibration and purchase preservation.
 - **Category Spending Intelligence**: Pure, deterministic category run-rate aggregation with calm horizontal bar visualization and responsive ranked cards.
-- **Optional Product Discovery & Enrichment**: Zero-secret, manual-first catalog lookup pre-filling product details without automatic database writes or duplicate creation.
+- **Product Discovery & Barcode Lookup**: Zero-secret, manual-first catalog enrichment with native camera scanning and deterministic GS1 validation.
 - **Enterprise-Grade Data Portability**: The export and restore system adheres to relational integrity, security token stripping, active conflict resolution, and multi-tenant isolation.
 - **Search & Web Presence**: Privacy-preserving technical SEO with per-route metadata, valid robots directives, truthful Open Graph tags, and zero leaked credentials.
-- **High-Performance Delivery**: Initial load is optimized to ~514 kB total JS (146 kB gzip) with zero chunk warnings and heavy export/chart modules isolated on-demand.
+- **High-Performance Delivery**: Initial load is optimized to ~514 kB total JS (146 kB gzip) with zero chunk warnings and heavy export/scanner modules isolated on-demand.
 - **PWA & Offline Resilience**: Instant static shell loading on repeat visits via a secured, versioned service worker with zero credential caching risk.
 - **Optimized Data Hydration**: Core pages load in 1-2 roundtrips with zero N+1 cascades, deduplicated queries, and instant SWR cached re-entry.
 
 ---
 
-## 46. Safe Next-Step Candidates
+## 47. Safe Next-Step Candidates
 
 Based strictly on what currently exists in the codebase, the following are safe, non-breaking candidates for future work:
 
@@ -1333,8 +1413,8 @@ Based strictly on what currently exists in the codebase, the following are safe,
    - Fix `/products/:id` $\to$ `/product/:id` and update `vercel.json` documentation.
 3. **Multi-Currency UI Selector**:
    - Allow user selection of preferred currency symbol in Account Settings (`$`, `€`, `£`, `₹`, `৳`) while retaining numeric math.
-4. **Barcode / UPC Scanning (Stage 20 Candidate)**:
-   - Wire a camera/UPC reader directly into the existing `searchExternalProducts` / `IProductDiscoveryProvider` layer using the normalized barcode field.
+4. **Persistent Product Barcode Storage Evaluation (Future Stage)**:
+   - When product requirements demand persistent barcode storage on the `Product` entity, carefully evaluate uniqueness semantics, multi-barcode packaging variants, and export/restore schema migrations.
 5. **PWA Background Sync & Push Notifications (Future Stages)**:
    - When product requirements demand it, introduce background sync for offline mutation queuing and web push notifications for overdue runouts.
 

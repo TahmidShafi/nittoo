@@ -6,11 +6,13 @@
 import type { DiscoveryProduct, DiscoverySearchOptions, IProductDiscoveryProvider } from './types';
 import { CompositeDiscoveryProvider } from './provider';
 import { discoveryCache } from './cache';
+import { validateBarcode } from './barcode';
 
 export * from './types';
 export * from './normalize';
 export * from './provider';
 export * from './cache';
+export * from './barcode';
 
 export const MIN_SEARCH_QUERY_LENGTH = 3;
 
@@ -63,4 +65,41 @@ export async function searchExternalProducts(
   }
 
   return results;
+}
+
+/**
+ * High-level barcode lookup function with pure local validation and in-memory caching.
+ * Validates check digit deterministically before making any external network requests.
+ *
+ * @param barcode Raw barcode string (e.g., UPC-A, EAN-13, EAN-8, GTIN-14)
+ * @param options Optional AbortSignal
+ * @returns Normalized DiscoveryProduct or null if not found
+ */
+export async function lookupExternalProductByBarcode(
+  barcode: string,
+  options?: DiscoverySearchOptions
+): Promise<DiscoveryProduct | null> {
+  // 1. Validate barcode format and GS1 check digit locally
+  const validation = validateBarcode(barcode);
+  if (!validation.valid || !validation.normalized) {
+    throw new Error(validation.error || 'Enter a valid product barcode.');
+  }
+
+  const normalized = validation.normalized;
+
+  // 2. Check in-memory session cache
+  const cached = discoveryCache.getBarcode(normalized);
+  if (cached) {
+    return cached;
+  }
+
+  // 3. Delegate to active provider (Beauty first, Food fallback)
+  const product = await defaultProvider.lookupByBarcode(normalized, options);
+
+  // 4. Cache non-null result
+  if (product) {
+    discoveryCache.setBarcode(normalized, product);
+  }
+
+  return product;
 }

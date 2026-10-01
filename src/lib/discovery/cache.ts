@@ -40,6 +40,35 @@ class DiscoveryCache {
     });
   }
 
+  getBarcode(barcode: string): DiscoveryProduct | null {
+    const key = `barcode:${barcode.trim().toLowerCase()}`;
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+
+    if (Date.now() - entry.timestamp > DISCOVERY_CACHE_TTL_MS) {
+      this.cache.delete(key);
+      return null;
+    }
+
+    return entry.results[0] || null;
+  }
+
+  setBarcode(barcode: string, product: DiscoveryProduct): void {
+    const key = `barcode:${barcode.trim().toLowerCase()}`;
+    if (this.cache.size >= MAX_CACHE_ENTRIES) {
+      // Evict oldest entry
+      const oldestKey = this.cache.keys().next().value;
+      if (oldestKey) {
+        this.cache.delete(oldestKey);
+      }
+    }
+
+    this.cache.set(key, {
+      timestamp: Date.now(),
+      results: [product],
+    });
+  }
+
   clear(): void {
     this.cache.clear();
   }

@@ -25,6 +25,16 @@ export interface RawOpenFactsProduct {
 export interface RawOpenFactsResponse {
   count?: number;
   products?: RawOpenFactsProduct[];
+  status?: number;
+  status_verbose?: string;
+  product?: RawOpenFactsProduct;
+  code?: string;
+}
+
+export interface OpenFactsProviderOptions {
+  fetchFn?: FetchFunction;
+  baseUrl?: string;
+  productBaseUrl?: string;
 }
 
 export type FetchFunction = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
@@ -88,10 +98,12 @@ export class OpenBeautyFactsProvider implements IProductDiscoveryProvider {
   readonly name = 'OpenBeautyFacts';
   private fetchFn: FetchFunction;
   private baseUrl: string;
+  private productBaseUrl: string;
 
-  constructor(options?: { fetchFn?: FetchFunction; baseUrl?: string }) {
+  constructor(options?: OpenFactsProviderOptions) {
     this.fetchFn = options?.fetchFn || fetch;
     this.baseUrl = options?.baseUrl || 'https://world.openbeautyfacts.org/cgi/search.pl';
+    this.productBaseUrl = options?.productBaseUrl || 'https://world.openbeautyfacts.org/api/v2/product';
   }
 
   async search(query: string, options?: DiscoverySearchOptions): Promise<DiscoveryProduct[]> {
@@ -120,6 +132,38 @@ export class OpenBeautyFactsProvider implements IProductDiscoveryProvider {
     const data = (await response.json()) as RawOpenFactsResponse;
     return normalizeOpenFactsProducts(data.products, 'openbeautyfacts').slice(0, limit);
   }
+
+  async lookupByBarcode(barcode: string, options?: DiscoverySearchOptions): Promise<DiscoveryProduct | null> {
+    const cleanBarcode = barcode.trim();
+    if (!cleanBarcode) return null;
+
+    const url = `${this.productBaseUrl}/${encodeURIComponent(cleanBarcode)}.json`;
+    const headers: Record<string, string> = {
+      Accept: 'application/json',
+    };
+
+    const response = await this.fetchFn(url, {
+      method: 'GET',
+      headers,
+      signal: options?.signal,
+    });
+
+    if (response.status === 404) {
+      return null;
+    }
+
+    if (!response.ok) {
+      throw new Error(`OpenBeautyFacts lookup failed with status ${response.status}`);
+    }
+
+    const data = (await response.json()) as RawOpenFactsResponse;
+    if (!data || data.status === 0 || !data.product) {
+      return null;
+    }
+
+    const normalized = normalizeOpenFactsProducts([data.product], 'openbeautyfacts');
+    return normalized[0] || null;
+  }
 }
 
 /**
@@ -130,10 +174,12 @@ export class OpenFoodFactsProvider implements IProductDiscoveryProvider {
   readonly name = 'OpenFoodFacts';
   private fetchFn: FetchFunction;
   private baseUrl: string;
+  private productBaseUrl: string;
 
-  constructor(options?: { fetchFn?: FetchFunction; baseUrl?: string }) {
+  constructor(options?: OpenFactsProviderOptions) {
     this.fetchFn = options?.fetchFn || fetch;
     this.baseUrl = options?.baseUrl || 'https://world.openfoodfacts.org/cgi/search.pl';
+    this.productBaseUrl = options?.productBaseUrl || 'https://world.openfoodfacts.org/api/v2/product';
   }
 
   async search(query: string, options?: DiscoverySearchOptions): Promise<DiscoveryProduct[]> {
@@ -161,6 +207,38 @@ export class OpenFoodFactsProvider implements IProductDiscoveryProvider {
 
     const data = (await response.json()) as RawOpenFactsResponse;
     return normalizeOpenFactsProducts(data.products, 'openfoodfacts').slice(0, limit);
+  }
+
+  async lookupByBarcode(barcode: string, options?: DiscoverySearchOptions): Promise<DiscoveryProduct | null> {
+    const cleanBarcode = barcode.trim();
+    if (!cleanBarcode) return null;
+
+    const url = `${this.productBaseUrl}/${encodeURIComponent(cleanBarcode)}.json`;
+    const headers: Record<string, string> = {
+      Accept: 'application/json',
+    };
+
+    const response = await this.fetchFn(url, {
+      method: 'GET',
+      headers,
+      signal: options?.signal,
+    });
+
+    if (response.status === 404) {
+      return null;
+    }
+
+    if (!response.ok) {
+      throw new Error(`OpenFoodFacts lookup failed with status ${response.status}`);
+    }
+
+    const data = (await response.json()) as RawOpenFactsResponse;
+    if (!data || data.status === 0 || !data.product) {
+      return null;
+    }
+
+    const normalized = normalizeOpenFactsProducts([data.product], 'openfoodfacts');
+    return normalized[0] || null;
   }
 }
 
@@ -214,5 +292,43 @@ export class CompositeDiscoveryProvider implements IProductDiscoveryProvider {
       // If food provider fails, gracefully return whatever beauty results we have
       return beautyResults;
     }
+  }
+
+  async lookupByBarcode(barcode: string, options?: DiscoverySearchOptions): Promise<DiscoveryProduct | null> {
+    const cleanBarcode = barcode.trim();
+    if (!cleanBarcode) return null;
+
+    let beautyResult: DiscoveryProduct | null = null;
+    let beautyError: unknown = null;
+
+    try {
+      beautyResult = await this.beautyProvider.lookupByBarcode(cleanBarcode, options);
+    } catch (err) {
+      beautyError = err;
+    }
+
+    // If beauty provider found the product, return immediately without calling food provider
+    if (beautyResult) {
+      return beautyResult;
+    }
+
+    // Try food provider fallback if beauty returned null or threw an error
+    try {
+      const foodResult = await this.foodProvider.lookupByBarcode(cleanBarcode, options);
+      if (foodResult) {
+        return foodResult;
+      }
+    } catch (foodErr) {
+      if (beautyError) {
+        throw beautyError;
+      }
+      throw foodErr;
+    }
+
+    if (beautyError) {
+      throw beautyError;
+    }
+
+    return null;
   }
 }

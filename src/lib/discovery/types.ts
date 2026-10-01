@@ -27,6 +27,7 @@ export interface DiscoverySearchOptions {
 export interface IProductDiscoveryProvider {
   readonly name: string;
   search(query: string, options?: DiscoverySearchOptions): Promise<DiscoveryProduct[]>;
+  lookupByBarcode(barcode: string, options?: DiscoverySearchOptions): Promise<DiscoveryProduct | null>;
 }
 
 export interface DiscoveryCacheEntry {
