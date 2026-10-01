@@ -38,7 +38,9 @@ Unlike traditional warehouse inventory trackers that ask *"How many units are in
 - **Historical Finished Cycle Editing & Deletion (Stage 17)**: Non-destructive historical correction and removal of completed usage periods on `ProductDetailPage`. Strictly preserves associated purchases, maintains historical vendor and pricing truth without inventing states, enforces date chronological constraints (finished >= opened, no future dates), protects active bottles, automatically recalculates pure derived insights (average lifespan, predicted remaining days, confidence, cost/day), cleanses dependent SWR caches, and verifies mathematical invariance across 26 test suites.
 - **Category Spending Intelligence (Stage 18)**: Pure deterministic aggregation of normalized 30-day monthly consumption expenditure by product category on `/analytics`. Integrates horizontal Recharts visualization and responsive ranked category breakdown cards, clearly distinguishes estimated run rates from actual past expenditure, strictly excludes products lacking completed cycle history, requires 0 additional database queries or schema changes, updates via existing SWR invalidation, and maintains 100% mathematical invariance across 27 verification suites.
 - **Product Discovery & Enrichment (Stage 19)**: Provider-agnostic catalog search and form pre-filling on `AddProductPage`. Integrates Open Beauty Facts and Open Food Facts public CPG databases with zero API keys or secrets exposed to the browser, 400ms debouncing, in-memory session caching, pure size/volume parsing (`ml`, `g`, `count`), deterministic category mapping to Nittoo taxonomy, duplicate protection against existing tracked essentials, and 100% manual-first fallback autonomy across 28 verification suites.
-- **Comprehensive Automated Verification**: 28 automated test scripts (`npm run verify:*`) validating 100% of domain math, vendor attributes, RLS policies, multi-tenant isolation, mock persistence, UI layout invariants, SEO compliance, bundle chunking isolation, PWA caching rules, database query deduplication, SWR cache lifecycle, historical cycle editing/deletion, category spending intelligence, and product discovery.
+- **Barcode / UPC Product Lookup (Stage 20)**: Native browser `BarcodeDetector` camera scanner and manual barcode search integrated into `AddProductPage`. Direct catalog lookups across Open Beauty Facts and Open Food Facts, local GS1 Modulo-10 check digit verification, non-destructive form prefilling, zero database side-effects, and complete camera stream lifecycle teardown across 29 verification suites.
+- **Restock Planning & In-App Notifications (Stage 21)**: Actionable restock planning workflow (`PREDICT -> PLAN -> REMIND -> BUY -> STORE/START USING`) integrated into active essentials. User-controlled relative (30, 21, 14, 7, 0 days before expected finish) and custom reminder dates, deterministic prediction derivation, plan lifecycle tied to specific active bottle (`usage_period_id`), zero automatic purchases, quiet in-app due reminders on Dashboard and Product Detail, full persistence via `restock_plans` with RLS, SWR cache invalidation, and complete export/restore support across 30 verification suites.
+- **Comprehensive Automated Verification**: 30 automated test scripts (`npm run verify:*`) validating 100% of domain math, vendor attributes, RLS policies, multi-tenant isolation, mock persistence, UI layout invariants, SEO compliance, bundle chunking isolation, PWA caching rules, database query deduplication, SWR cache lifecycle, historical cycle editing/deletion, category spending intelligence, product discovery, barcode scanning, and restock planning.
 
 
 
@@ -1385,16 +1387,78 @@ User Enters Barcode / Camera Scans
 
 ---
 
-## 46. Current State Assessment
+## 46. Stage 21 — Restock Planning & In-App Notifications
+
+Implemented in **Stage 21**, Nittoo transforms prediction intelligence into an actionable restock planning workflow:
+`PREDICT -> PLAN -> REMIND -> BUY -> STORE / START USING`.
+
+### 1. Conceptual Framework & Separation of Concerns
+- **Prediction vs. Restock Intent**: Prediction remains pure, mathematical evidence derived from finished cycles (`averageLifespan`, `daysUsed`, `predictedRemainingDays`). Restock planning is user intent. Creating, changing, or dismissing a restock plan never alters prediction formulas or confidence scores.
+- **Language Invariance**: Prediction is an estimate, never a guarantee. UI labels strictly use *"Estimated finish"*, *"Expected finish"*, and *"Reminder based on your estimated finish"*.
+- **No Fabricated Dates**: For products with zero completed cycles, automatic restock planning is disabled with clear guidance: *"Restock planning will be available once Nittoo has enough usage history."* Users can optionally set a manual custom date if desired.
+
+### 2. Restock Data Model & Persistence
+- **Table**: `public.restock_plans` in Supabase PostgreSQL, mirrored in `src/lib/mock-db.ts`.
+- **Fields**:
+  - `id` (`UUID`, PK)
+  - `user_id` (`UUID`, NOT NULL, FK: `auth.users(id) ON DELETE CASCADE`)
+  - `product_id` (`UUID`, NOT NULL, FK: `public.products(id) ON DELETE CASCADE`)
+  - `usage_period_id` (`UUID`, NOT NULL, FK: `public.usage_periods(id) ON DELETE CASCADE`)
+  - `mode` (`TEXT`, NOT NULL, `'relative'` | `'custom'`)
+  - `days_before_finish` (`INTEGER`, NULLABLE) — Used for relative mode (30, 21, 14, 7, 0).
+  - `reminder_date` (`DATE`, NOT NULL) — Stored ISO date (`YYYY-MM-DD`).
+  - `status` (`TEXT`, NOT NULL, default: `'planned'`, `CHECK (status IN ('planned', 'dismissed', 'completed'))`)
+  - `created_at` (`TIMESTAMPTZ`, NOT NULL, default: `now()`)
+  - `completed_at` (`TIMESTAMPTZ`, NULLABLE)
+- **Single Active Plan Invariant**:
+  ```sql
+  CREATE UNIQUE INDEX idx_restock_plans_single_planned
+  ON public.restock_plans (product_id, usage_period_id)
+  WHERE status = 'planned';
+  ```
+  Guarantees that a user cannot create multiple concurrent planned reminders for the same active container.
+- **Row Level Security**:
+  - `SELECT`, `UPDATE`, `DELETE`: `auth.uid() = user_id`.
+  - `INSERT`: Enforces cross-table ownership validation (product, usage period, and user all match `auth.uid()`).
+
+### 3. Plan Ownership & Lifecycle Invalidation
+- **Container-Specific Ownership**: A restock plan belongs to `user_id + product_id + active_usage_period_id`.
+- **Completion on Finish**: When an active bottle is marked finished (`finishUsagePeriod`), its associated planned restock plan transitions automatically to `status = 'completed'` with `completed_at = now()`.
+- **Safe Cleanup on Deletion**: Deleting a usage period or product cascades safely via foreign keys and explicit database cleanups.
+- **Clean State on Next Bottle**: Starting a new usage period creates a new `usage_period_id`. It never inherits previous restock plans, ensuring fresh bottles start with a clean restock state.
+
+### 4. Dynamic Recalculation vs. Fixed Custom Dates
+- **Relative Mode**: Defined relative to expected finish (e.g. 14 days before). If historical cycle edits change the product's average lifespan, `recalculatePlanReminderDate` deterministically updates the reminder date without user intervention.
+- **Custom Mode**: The user-selected calendar date is strictly preserved and never mutated when prediction dates shift.
+- **Pure Date Math**: Implemented in [`src/lib/restock/plan.ts`](file:///d:/nittoo/src/lib/restock/plan.ts) with strict leap year (e.g., Feb 29 in 2024 vs rejected in 2025) and month/year crossover boundary safety.
+
+### 5. UI Integration & In-App Notification Delivery
+- **Product Detail Hero Card**: Displays expected finish date, confidence badge, restock status, and compact action controls (`[ Plan Restock ]`, `[ Change ]`, `[ Dismiss ]`, `[ Complete ]`, `[ Log Purchase ]`).
+- **Dashboard Due Card**: A calm, high-agency notification section rendering only when active reminders are due (`reminder_date <= today`). Renders zero markup if no reminders are due (no empty placeholder cards).
+- **Inventory Integration**: Quiet status badge (`Restock planned · <date>` or `Restock due · <date>`) on active container cards without duplicating inventory data.
+- **Browser Notification API Policy**: Strictly user-initiated opt-in. Permission is never requested on page load. All in-app reminders work 100% reliably without requiring browser notification permissions. Background tab delivery limitations are explicitly documented.
+- **Zero Automatic Purchases**: Clicking "Log Purchase" navigates to the existing `/add-inventory?productId=...` route, keeping the user in full control of their purchase records.
+
+### 6. Cache Invalidation & Data Portability
+- **SWR Cache Invalidation**: Restock plan mutations trigger `dataCache.invalidateProduct()`, purging both product history and restock plan caches.
+- **Multi-Format Export**:
+  - **Excel (`.xlsx`)**: Dedicated "Restock Plans" worksheet with product name, mode, reminder date, and status.
+  - **CSV (`.zip`)**: `restock-plans.csv` included in the zipped archive.
+  - **JSON (`.json`)**: Authoritative `restock_plans` array in backup payload.
+- **Restore & Import**: Safe normalization in `src/lib/restore/validator.ts` preserving relational integrity.
+
+---
+
+## 47. Current State Assessment
 
 Nittoo is in a **mature, production-ready state** for personal essentials tracking. The codebase demonstrates high architectural discipline:
-- **Clean Boundaries**: UI components never bypass the `dataSource.ts` abstraction. External discovery and barcode lookup are completely isolated in `src/lib/discovery/`.
-- **Deterministic Logic**: Domain mathematics (lifespans, daily costs, unit economics, confidence, insights, category spending, GS1 check digits) are isolated in pure functions covered by 29 verification test suites.
+- **Clean Boundaries**: UI components never bypass the `dataSource.ts` abstraction. External discovery, barcode lookup, and restock planning reside in isolated domain modules.
+- **Deterministic Logic**: Domain mathematics (lifespans, daily costs, unit economics, confidence, insights, category spending, GS1 check digits, relative restock offsets) are isolated in pure functions covered by 30 verification test suites.
 - **Resilient UX**: In-memory SWR caching renders previously viewed pages instantly with zero skeleton flash; window focus revalidation prevents screen flickering; touch targets meet 44px accessibility standards; empty states and error boundaries are present throughout.
 - **Historical Accuracy & Agency**: Users have non-destructive correction and deletion controls over completed cycles with instant metric recalibration and purchase preservation.
-- **Category Spending Intelligence**: Pure, deterministic category run-rate aggregation with calm horizontal bar visualization and responsive ranked cards.
+- **Restock Planning & In-App Alerts**: User-controlled actionable restock workflow seamlessly tied to active containers with zero automatic ordering or spam.
 - **Product Discovery & Barcode Lookup**: Zero-secret, manual-first catalog enrichment with native camera scanning and deterministic GS1 validation.
-- **Enterprise-Grade Data Portability**: The export and restore system adheres to relational integrity, security token stripping, active conflict resolution, and multi-tenant isolation.
+- **Enterprise-Grade Data Portability**: The export and restore system adheres to relational integrity, security token stripping, active conflict resolution, and multi-tenant isolation across all 4 formats.
 - **Search & Web Presence**: Privacy-preserving technical SEO with per-route metadata, valid robots directives, truthful Open Graph tags, and zero leaked credentials.
 - **High-Performance Delivery**: Initial load is optimized to ~514 kB total JS (146 kB gzip) with zero chunk warnings and heavy export/scanner modules isolated on-demand.
 - **PWA & Offline Resilience**: Instant static shell loading on repeat visits via a secured, versioned service worker with zero credential caching risk.
@@ -1402,7 +1466,7 @@ Nittoo is in a **mature, production-ready state** for personal essentials tracki
 
 ---
 
-## 47. Safe Next-Step Candidates
+## 48. Safe Next-Step Candidates
 
 Based strictly on what currently exists in the codebase, the following are safe, non-breaking candidates for future work:
 
@@ -1415,8 +1479,8 @@ Based strictly on what currently exists in the codebase, the following are safe,
    - Allow user selection of preferred currency symbol in Account Settings (`$`, `€`, `£`, `₹`, `৳`) while retaining numeric math.
 4. **Persistent Product Barcode Storage Evaluation (Future Stage)**:
    - When product requirements demand persistent barcode storage on the `Product` entity, carefully evaluate uniqueness semantics, multi-barcode packaging variants, and export/restore schema migrations.
-5. **PWA Background Sync & Push Notifications (Future Stages)**:
-   - When product requirements demand it, introduce background sync for offline mutation queuing and web push notifications for overdue runouts.
+5. **Web Push Notification Service Worker Integration (Future Stage)**:
+   - When external server push infrastructure is ready, subscribe client devices using standard VAPID Web Push protocol for background notifications when browser tabs are closed.
 
 
 

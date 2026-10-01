@@ -26,12 +26,19 @@ import {
   calculateProgressPercent,
 } from '../lib/prediction';
 import { calculateConfidence, getConfidenceBadgeStyles } from '../lib/confidence';
+import {
+  calculateExpectedFinishDate,
+  getRestockDisplayStatus,
+  getRestockStatusInfo,
+  getRelativeOptionLabel,
+} from '../lib/restock';
 import { FinishUsageModal } from '../components/FinishUsageModal';
 import { EditInventoryModal } from '../components/EditInventoryModal';
 import { EditCompletedCycleModal } from '../components/EditCompletedCycleModal';
 import { DeleteCompletedCycleModal } from '../components/DeleteCompletedCycleModal';
+import { PlanRestockModal } from '../components/PlanRestockModal';
 import { dataCache, areValuesEqual } from '../lib/dataCache';
-import type { ProductWithHistory, ProductWithDetails, Purchase, UsagePeriod } from '../types';
+import type { ProductWithHistory, ProductWithDetails, Purchase, UsagePeriod, RestockPlan } from '../types';
 
 export const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -76,6 +83,10 @@ export const ProductDetailPage: React.FC = () => {
   const [selectedCycleNumber, setSelectedCycleNumber] = useState<number | undefined>(undefined);
   const [selectedCycleDuration, setSelectedCycleDuration] = useState<number | undefined>(undefined);
 
+  // Modal & Restock Plan State (Stage 21)
+  const [restockPlan, setRestockPlan] = useState<RestockPlan | null>(null);
+  const [isRestockModalOpen, setIsRestockModalOpen] = useState(false);
+
   const loadData = useCallback(
     async (isSilent = false) => {
       if (!user?.id || !id) return;
@@ -96,6 +107,14 @@ export const ProductDetailPage: React.FC = () => {
           dataCache.set(user.id, `product:${id}`, data);
           setHistory((prev) => (areValuesEqual(prev, data) ? prev : data));
           setError(null);
+
+          // Fetch restock plan if an active bottle exists
+          if (data.active_usage) {
+            const plan = await db.getRestockPlanForUsagePeriod(user.id, data.active_usage.id);
+            setRestockPlan(plan);
+          } else {
+            setRestockPlan(null);
+          }
         }
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Failed to load product history';
@@ -344,6 +363,34 @@ export const ProductDetailPage: React.FC = () => {
       history.purchases.find((p) => p.id === activeUsageData.active.purchase_id) || null
     );
   }, [history, activeUsageData]);
+
+  // Expected finish date derived from active bottle & average lifespan
+  const expectedFinishDate = useMemo(() => {
+    if (!activeUsageData?.active || !summaryStats?.averageDuration || summaryStats.averageDuration <= 0) {
+      return null;
+    }
+    return calculateExpectedFinishDate(activeUsageData.active.opened_date, summaryStats.averageDuration);
+  }, [activeUsageData, summaryStats]);
+
+  const handleDismissRestock = async () => {
+    if (!user || !restockPlan) return;
+    try {
+      const updated = await db.dismissRestockPlan(user.id, restockPlan.id);
+      setRestockPlan(updated);
+    } catch (err) {
+      console.error('Failed to dismiss restock plan:', err);
+    }
+  };
+
+  const handleCompleteRestock = async () => {
+    if (!user || !restockPlan) return;
+    try {
+      const updated = await db.completeRestockPlan(user.id, restockPlan.id);
+      setRestockPlan(updated);
+    } catch (err) {
+      console.error('Failed to complete restock plan:', err);
+    }
+  };
 
   // Edit Handlers for Current Inventory
   const handleOpenEditActive = () => {
@@ -641,6 +688,152 @@ export const ProductDetailPage: React.FC = () => {
                   </p>
                 </div>
               )}
+            </div>
+
+            {/* RESTOCK PLANNING SECTION (Stage 21) */}
+            <div className="pt-3 border-t border-neutral-100/80 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+                  RESTOCK
+                </span>
+                {restockPlan && restockPlan.status === 'planned' && (
+                  <span
+                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                      getRestockStatusInfo(
+                        getRestockDisplayStatus(restockPlan, activeUsageData.active.status),
+                        restockPlan.reminder_date,
+                        restockPlan.days_before_finish,
+                        restockPlan.mode
+                      ).badgeClass
+                    }`}
+                  >
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        getRestockStatusInfo(
+                          getRestockDisplayStatus(restockPlan, activeUsageData.active.status),
+                          restockPlan.reminder_date,
+                          restockPlan.days_before_finish,
+                          restockPlan.mode
+                        ).dotClass
+                      }`}
+                    />
+                    {getRestockStatusInfo(
+                      getRestockDisplayStatus(restockPlan, activeUsageData.active.status),
+                      restockPlan.reminder_date,
+                      restockPlan.days_before_finish,
+                      restockPlan.mode
+                    ).label}
+                  </span>
+                )}
+              </div>
+
+              {/* State 1: No Plan or Finished/Dismissed */}
+              {(!restockPlan || restockPlan.status === 'dismissed' || restockPlan.status === 'completed') && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-neutral-50/70 rounded-xl p-3.5 border border-neutral-200/60">
+                  <div>
+                    {activeUsageData.avgDuration !== null && expectedFinishDate ? (
+                      <div>
+                        <span className="text-xs text-neutral-500 font-medium">Estimated finish</span>
+                        <p className="text-sm font-bold text-neutral-900">
+                          {formatDisplayDate(expectedFinishDate)}
+                        </p>
+                      </div>
+                    ) : (
+                      <div>
+                        <span className="text-xs font-semibold text-neutral-700">Restock planning</span>
+                        <p className="text-[11px] text-neutral-500">
+                          Not enough history to estimate when this product will finish.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsRestockModalOpen(true)}
+                    className="btn-press px-3.5 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-semibold transition-colors cursor-pointer self-start sm:self-auto"
+                  >
+                    {restockPlan ? 'Plan Again' : 'Plan Restock'}
+                  </button>
+                </div>
+              )}
+
+              {/* State 2: Planned (Future) */}
+              {restockPlan &&
+                restockPlan.status === 'planned' &&
+                getRestockDisplayStatus(restockPlan, activeUsageData.active.status) === 'planned' && (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-500/5 rounded-xl p-3.5 border border-emerald-500/20">
+                    <div>
+                      <span className="text-xs text-neutral-500 font-medium">Reminder</span>
+                      <p className="text-sm font-bold text-neutral-900">
+                        {formatDisplayDate(restockPlan.reminder_date)}
+                      </p>
+                      <p className="text-[11px] text-neutral-500 mt-0.5">
+                        {restockPlan.mode === 'relative' && restockPlan.days_before_finish !== null
+                          ? `${getRelativeOptionLabel(restockPlan.days_before_finish)} estimated finish`
+                          : 'Custom reminder date'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 self-start sm:self-auto">
+                      <button
+                        type="button"
+                        onClick={() => setIsRestockModalOpen(true)}
+                        className="btn-press px-3 py-1.5 rounded-lg bg-white border border-neutral-200/80 hover:bg-neutral-50 text-neutral-700 text-xs font-medium transition-colors cursor-pointer"
+                      >
+                        Change
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDismissRestock}
+                        className="btn-press px-3 py-1.5 rounded-lg bg-white border border-neutral-200/80 hover:bg-neutral-50 text-neutral-500 hover:text-neutral-700 text-xs font-medium transition-colors cursor-pointer"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+              {/* State 3: Due */}
+              {restockPlan &&
+                restockPlan.status === 'planned' &&
+                getRestockDisplayStatus(restockPlan, activeUsageData.active.status) === 'due' && (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-amber-500/10 rounded-xl p-3.5 border border-amber-500/30">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                        <span className="text-xs font-bold text-amber-800">
+                          Restock reminder due
+                        </span>
+                      </div>
+                      <p className="text-xs text-neutral-600 mt-0.5">
+                        Reminder was scheduled for {formatDisplayDate(restockPlan.reminder_date)}
+                        {expectedFinishDate && ` · Estimated finish: ${formatDisplayDate(expectedFinishDate)}`}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+                      <button
+                        type="button"
+                        onClick={handleAddInventory}
+                        className="btn-press px-3.5 py-1.5 rounded-xl bg-[#2D6A4F] hover:bg-[#24563F] text-white text-xs font-semibold transition-colors cursor-pointer"
+                      >
+                        Log Purchase
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCompleteRestock}
+                        className="btn-press px-3 py-1.5 rounded-xl bg-white border border-neutral-200/80 hover:bg-neutral-50 text-neutral-700 text-xs font-medium transition-colors cursor-pointer"
+                      >
+                        Complete
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDismissRestock}
+                        className="btn-press px-3 py-1.5 rounded-xl bg-white border border-neutral-200/80 hover:bg-neutral-50 text-neutral-500 text-xs font-medium transition-colors cursor-pointer"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  </div>
+                )}
             </div>
           </div>
         </div>
@@ -1085,6 +1278,25 @@ export const ProductDetailPage: React.FC = () => {
         cycleNumber={selectedCycleNumber}
         durationDays={selectedCycleDuration}
       />
+
+      {/* Stage 21: Plan Restock Modal */}
+      {history.active_usage && (
+        <PlanRestockModal
+          isOpen={isRestockModalOpen}
+          onClose={() => setIsRestockModalOpen(false)}
+          product={{
+            ...history.product,
+            active_usage: history.active_usage,
+            finished_periods: history.finished_periods,
+            latest_purchase: activePurchase || history.purchases[0] || null,
+          }}
+          existingPlan={restockPlan}
+          onSaved={(saved) => {
+            setRestockPlan(saved);
+            loadData(true);
+          }}
+        />
+      )}
     </div>
   );
 };

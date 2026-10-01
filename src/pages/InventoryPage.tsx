@@ -10,6 +10,7 @@ import { useAuth } from '../hooks/useAuth';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { db } from '../lib/dataSource';
 import { getTodayUTC, formatDisplayDate } from '../lib/dateUtils';
+import { isReminderDue } from '../lib/restock';
 import { getPredictionMetrics } from '../hooks/usePrediction';
 import { EditInventoryModal } from '../components/EditInventoryModal';
 import { dataCache, areValuesEqual } from '../lib/dataCache';
@@ -343,6 +344,33 @@ export const InventoryPage: React.FC = () => {
                               <span className="text-neutral-300">•</span>
                               <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-700 font-semibold text-[11px]">
                                 {backups} backup{backups > 1 ? 's' : ''}
+                              </span>
+                            </>
+                          )}
+
+                          {prod.restock_plan && prod.restock_plan.status === 'planned' && (
+                            <>
+                              <span className="text-neutral-300">•</span>
+                              <span
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                                  isReminderDue(prod.restock_plan.reminder_date)
+                                    ? 'bg-amber-500/10 text-amber-700 border border-amber-500/20'
+                                    : 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20'
+                                }`}
+                              >
+                                <span
+                                  className={`w-1.5 h-1.5 rounded-full ${
+                                    isReminderDue(prod.restock_plan.reminder_date)
+                                      ? 'bg-amber-500 animate-pulse'
+                                      : 'bg-emerald-500'
+                                  }`}
+                                />
+                                <span>
+                                  {isReminderDue(prod.restock_plan.reminder_date)
+                                    ? 'Restock due'
+                                    : 'Restock planned'}{' '}
+                                  · {formatDisplayDate(prod.restock_plan.reminder_date)}
+                                </span>
                               </span>
                             </>
                           )}

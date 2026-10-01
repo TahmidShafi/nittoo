@@ -29,6 +29,9 @@ export function normalizeBarcode(input: string | null | undefined): string {
  * then computes (10 - (sum % 10)) % 10.
  */
 export function calculateGs1CheckDigit(digitsWithoutCheck: string): number {
+  if (!digitsWithoutCheck || !/^\d+$/.test(digitsWithoutCheck)) {
+    return -1;
+  }
   let sum = 0;
   let weight = 3;
   for (let i = digitsWithoutCheck.length - 1; i >= 0; i--) {
@@ -36,8 +39,7 @@ export function calculateGs1CheckDigit(digitsWithoutCheck: string): number {
     sum += digit * weight;
     weight = weight === 3 ? 1 : 3;
   }
-  const remainder = sum % 10;
-  return remainder === 0 ? 0 : 10 - remainder;
+  return (10 - (sum % 10)) % 10;
 }
 
 /**
@@ -98,7 +100,7 @@ export function validateBarcode(input: string | null | undefined): BarcodeValida
       valid: false,
       normalized,
       format,
-      error: `Invalid check digit for ${format} barcode. Please verify the numbers on the packaging.`,
+      error: `Invalid check digit for ${format} barcode. Check the number and try again.`,
     };
   }
 

@@ -8,6 +8,9 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { db } from '../lib/dataSource';
+import { formatDisplayDate } from '../lib/dateUtils';
+import { calculateAverageLifespan } from '../lib/prediction';
+import { isReminderDue, calculateExpectedFinishDate } from '../lib/restock';
 import { getPredictionMetrics } from '../hooks/usePrediction';
 import { ProductCard } from '../components/ProductCard';
 import { FinishUsageModal } from '../components/FinishUsageModal';
@@ -214,6 +217,14 @@ export const DashboardPage: React.FC = () => {
     });
   }, [sortedProducts, selectedCategory, searchQuery]);
 
+  // Due restock reminders (Stage 21)
+  const dueRestockProducts = useMemo(() => {
+    return products.filter((p) => {
+      if (!p.restock_plan || p.restock_plan.status !== 'planned') return false;
+      return isReminderDue(p.restock_plan.reminder_date);
+    });
+  }, [products]);
+
   const handleOpenFinishModal = (product: ProductWithDetails) => {
     setModalProduct(product);
     setIsModalOpen(true);
@@ -280,6 +291,64 @@ export const DashboardPage: React.FC = () => {
           >
             Retry Loading
           </button>
+        </div>
+      )}
+
+      {/* Due Restock Reminders (Stage 21) - Only rendered when due items exist */}
+      {!loading && !error && dueRestockProducts.length > 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/25 rounded-2xl p-5 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800">
+                Restock Reminders
+              </span>
+            </div>
+            <span className="text-xs font-semibold text-amber-800 bg-amber-100/70 px-2.5 py-0.5 rounded-full">
+              {dueRestockProducts.length} due
+            </span>
+          </div>
+
+          <div className="divide-y divide-amber-200/40">
+            {dueRestockProducts.map((p) => {
+              const avgLifespan = calculateAverageLifespan(p.finished_periods || []);
+              const expectedFinish =
+                p.active_usage && avgLifespan !== null && avgLifespan > 0
+                  ? calculateExpectedFinishDate(p.active_usage.opened_date, avgLifespan)
+                  : null;
+
+              return (
+                <div
+                  key={p.id}
+                  className="py-3 first:pt-1 last:pb-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                >
+                  <div>
+                    <h4 className="text-sm font-bold text-neutral-900">{p.name}</h4>
+                    <p className="text-xs text-neutral-600 mt-0.5">
+                      {expectedFinish ? (
+                        <>
+                          <span>Estimated finish: {formatDisplayDate(expectedFinish)}</span>
+                          <span className="text-neutral-400 mx-1.5">•</span>
+                        </>
+                      ) : null}
+                      <span className="text-amber-800 font-medium">
+                        Reminder due today
+                      </span>
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-start sm:self-auto">
+                    <Link
+                      to={`/product/${p.id}`}
+                      className="btn-press px-3.5 py-1.5 rounded-xl bg-white border border-amber-300 hover:bg-amber-50 text-neutral-800 text-xs font-semibold transition-colors cursor-pointer"
+                    >
+                      View
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 

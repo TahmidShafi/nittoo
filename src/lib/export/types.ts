@@ -89,6 +89,18 @@ export interface ExportAnalyticsItem {
   confidence_label: string;
 }
 
+export interface ExportRestockPlanItem {
+  id: string;
+  product_id: string;
+  product_name: string;
+  usage_period_id: string;
+  mode: 'relative' | 'custom';
+  days_before_finish: number | null;
+  reminder_date: string;
+  status: 'planned' | 'completed' | 'dismissed';
+  created_at: string;
+}
+
 export interface NittooExportData {
   version: string;
   exported_at: string;
@@ -103,4 +115,5 @@ export interface NittooExportData {
   inventory: ExportInventoryItem[];
   analytics: ExportAnalyticsItem[];
   insights: string[];
+  restock_plans?: ExportRestockPlanItem[];
 }

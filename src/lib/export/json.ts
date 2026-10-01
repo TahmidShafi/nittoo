@@ -22,6 +22,7 @@ export function generateJsonBackup(data: NittooExportData): string {
     inventory: data.inventory,
     analytics: data.analytics,
     insights: data.insights,
+    restock_plans: data.restock_plans || [],
   };
 
   return JSON.stringify(sanitizedBackup, null, 2);

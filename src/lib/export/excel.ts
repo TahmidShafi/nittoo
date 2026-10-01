@@ -271,6 +271,45 @@ export function generateExcelWorkbook(data: NittooExportData): Uint8Array {
   ];
   XLSX.utils.book_append_sheet(wb, wsAnalytics, 'Analytics');
 
+  // ----------------------------------------------------------------------------
+  // 7. Restock Plans Sheet (Stage 21)
+  // ----------------------------------------------------------------------------
+  const restockRows: (string | number | null)[][] = [
+    [
+      'Plan ID',
+      'Product Name',
+      'Mode',
+      'Days Before Finish',
+      'Reminder Date',
+      'Status',
+      'Created At',
+    ],
+  ];
+
+  for (const rp of data.restock_plans || []) {
+    restockRows.push([
+      rp.id,
+      rp.product_name,
+      rp.mode,
+      rp.days_before_finish !== null ? rp.days_before_finish : 'N/A',
+      rp.reminder_date,
+      rp.status,
+      rp.created_at,
+    ]);
+  }
+
+  const wsRestock = XLSX.utils.aoa_to_sheet(restockRows);
+  wsRestock['!cols'] = [
+    { wch: 28 },
+    { wch: 32 },
+    { wch: 14 },
+    { wch: 20 },
+    { wch: 16 },
+    { wch: 16 },
+    { wch: 24 },
+  ];
+  XLSX.utils.book_append_sheet(wb, wsRestock, 'Restock Plans');
+
   // Generate binary output buffer
   const raw = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
   return new Uint8Array(raw);

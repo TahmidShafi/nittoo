@@ -273,6 +273,7 @@ export function validateBackupFile(
     inventory: parsed.inventory || [],
     analytics: parsed.analytics || [],
     insights: parsed.insights || [],
+    restock_plans: parsed.restock_plans || [],
   };
 
   return {

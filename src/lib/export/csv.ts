@@ -204,6 +204,35 @@ export async function generateCsvZip(data: NittooExportData): Promise<Uint8Array
   }
   zip.file('analytics.csv', rowsToCsv(analyticsRows));
 
+  // 7. restock-plans.csv (Stage 21)
+  const restockRows: (string | number | null)[][] = [
+    [
+      'Plan ID',
+      'Product ID',
+      'Product Name',
+      'Usage Period ID',
+      'Mode',
+      'Days Before Finish',
+      'Reminder Date',
+      'Status',
+      'Created At',
+    ],
+  ];
+  for (const rp of data.restock_plans || []) {
+    restockRows.push([
+      rp.id,
+      rp.product_id,
+      rp.product_name,
+      rp.usage_period_id,
+      rp.mode,
+      rp.days_before_finish,
+      rp.reminder_date,
+      rp.status,
+      rp.created_at,
+    ]);
+  }
+  zip.file('restock-plans.csv', rowsToCsv(restockRows));
+
   const zipBuffer = await zip.generateAsync({
     type: 'uint8array',
     compression: 'DEFLATE',

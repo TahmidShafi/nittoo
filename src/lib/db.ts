@@ -5,17 +5,22 @@
 
 import { supabase } from './supabase';
 import { getTodayUTC } from './dateUtils';
+import { isValidISODate } from './restock/plan';
+import { dataCache } from './dataCache';
 import type {
   IDataSource,
   Product,
   Purchase,
   UsagePeriod,
+  RestockPlan,
   CreateProductInput,
   CreatePurchaseInput,
   StartUsagePeriodInput,
   UpdateProductInput,
   UpdatePurchaseInput,
   UpdateUsagePeriodInput,
+  CreateRestockPlanInput,
+  UpdateRestockPlanInput,
   ProductWithDetails,
   ProductWithHistory,
   UserInventory,
@@ -227,6 +232,17 @@ export class SupabaseDatabase implements IDataSource {
       .single();
 
     if (error) throw new Error(`Failed to finish usage period: ${error.message}`);
+
+    // Update any planned restock plan for this usage period to completed (Stage 21)
+    await client
+      .from('restock_plans')
+      .update({
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+      })
+      .eq('usage_period_id', usagePeriodId)
+      .eq('status', 'planned');
+
     return data as UsagePeriod;
   }
 
@@ -547,7 +563,7 @@ export class SupabaseDatabase implements IDataSource {
 
     const productIds = products.map((p) => p.id);
 
-    const [{ data: purchases }, { data: allPeriods }] = await Promise.all([
+    const [{ data: purchases }, { data: allPeriods }, { data: restockPlans }] = await Promise.all([
       client
         .from('purchases')
         .select('*')
@@ -558,6 +574,11 @@ export class SupabaseDatabase implements IDataSource {
         .select('*')
         .in('product_id', productIds)
         .order('opened_date', { ascending: false }),
+      client
+        .from('restock_plans')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'planned'),
     ]);
 
     const activePeriodMap = new Map<string, UsagePeriod>();
@@ -570,6 +591,11 @@ export class SupabaseDatabase implements IDataSource {
         list.push(u as UsagePeriod);
         finishedPeriodsMap.set(u.product_id, list);
       }
+    });
+
+    const restockPlanMap = new Map<string, RestockPlan>();
+    (restockPlans || []).forEach((rp) => {
+      restockPlanMap.set(rp.usage_period_id, rp as RestockPlan);
     });
 
     const purchaseByIdMap = new Map<string, Purchase>();
@@ -597,6 +623,7 @@ export class SupabaseDatabase implements IDataSource {
         const activePurchase = activeUsage
           ? purchaseByIdMap.get(activeUsage.purchase_id) || latestPurchaseMap.get(p.id) || null
           : null;
+        const restockPlan = activeUsage ? restockPlanMap.get(activeUsage.id) || null : null;
         return {
           ...p,
           active_usage: activeUsage,
@@ -605,6 +632,7 @@ export class SupabaseDatabase implements IDataSource {
           finished_count: finishedList.length,
           finished_periods: finishedList,
           unopened_count: unopenedCountMap.get(p.id) || 0,
+          restock_plan: restockPlan,
         };
       });
   }
@@ -1146,6 +1174,214 @@ export class SupabaseDatabase implements IDataSource {
     const { error } = await client.from('products').delete().eq('user_id', userId);
     if (error) throw new Error(`Failed to reset user data: ${error.message}`);
   }
+
+  // ----------------------------------------------------------------------------
+  // Restock Planning Implementation (Stage 21)
+  // ----------------------------------------------------------------------------
+
+  async createRestockPlan(
+    userId: string,
+    input: CreateRestockPlanInput
+  ): Promise<RestockPlan> {
+    const client = this.getClient();
+    if (!userId) throw new Error('User ID is required');
+    if (!input.product_id) throw new Error('Product ID is required');
+    if (!input.usage_period_id) throw new Error('Usage period ID is required');
+    if (!input.reminder_date || !isValidISODate(input.reminder_date)) {
+      throw new Error(`Invalid reminder date: "${input.reminder_date}". Must be a valid YYYY-MM-DD date.`);
+    }
+
+    // Verify product ownership
+    const { data: product, error: prodErr } = await client
+      .from('products')
+      .select('id, user_id')
+      .eq('id', input.product_id)
+      .eq('user_id', userId)
+      .single();
+
+    if (prodErr || !product) {
+      throw new Error('Unauthorized or product does not exist');
+    }
+
+    // Verify usage period belongs to product and is active
+    const { data: usagePeriod, error: usageErr } = await client
+      .from('usage_periods')
+      .select('id, product_id, status')
+      .eq('id', input.usage_period_id)
+      .single();
+
+    if (usageErr || !usagePeriod || usagePeriod.product_id !== input.product_id) {
+      throw new Error('Usage period does not belong to specified product');
+    }
+    if (usagePeriod.status !== 'active') {
+      throw new Error('Restock plan can only be attached to an active usage period');
+    }
+
+    // Check if an active planned plan already exists (prevent duplicate)
+    const { data: existingPlan } = await client
+      .from('restock_plans')
+      .select('*')
+      .eq('usage_period_id', input.usage_period_id)
+      .eq('status', 'planned')
+      .maybeSingle();
+
+    if (existingPlan) {
+      const { data: updated, error: updErr } = await client
+        .from('restock_plans')
+        .update({
+          mode: input.mode,
+          days_before_finish: input.mode === 'relative' ? (input.days_before_finish ?? null) : null,
+          reminder_date: input.reminder_date,
+        })
+        .eq('id', existingPlan.id)
+        .select('*')
+        .single();
+
+      if (updErr || !updated) {
+        throw new Error(`Failed to update existing restock plan: ${updErr?.message}`);
+      }
+      dataCache.invalidateProduct(userId, input.product_id);
+      return updated as RestockPlan;
+    }
+
+    const { data, error } = await client
+      .from('restock_plans')
+      .insert({
+        user_id: userId,
+        product_id: input.product_id,
+        usage_period_id: input.usage_period_id,
+        mode: input.mode,
+        days_before_finish: input.mode === 'relative' ? (input.days_before_finish ?? null) : null,
+        reminder_date: input.reminder_date,
+        status: 'planned',
+      })
+      .select('*')
+      .single();
+
+    if (error || !data) {
+      throw new Error(`Failed to create restock plan: ${error?.message}`);
+    }
+
+    dataCache.invalidateProduct(userId, input.product_id);
+    return data as RestockPlan;
+  }
+
+  async getRestockPlans(userId: string): Promise<RestockPlan[]> {
+    const client = this.getClient();
+    if (!userId) return [];
+
+    const { data, error } = await client
+      .from('restock_plans')
+      .select('*')
+      .eq('user_id', userId)
+      .order('reminder_date', { ascending: true });
+
+    if (error) {
+      console.warn('Failed to fetch restock plans:', error.message);
+      return [];
+    }
+    return (data || []) as RestockPlan[];
+  }
+
+  async getRestockPlanForUsagePeriod(
+    userId: string,
+    usagePeriodId: string
+  ): Promise<RestockPlan | null> {
+    const client = this.getClient();
+    if (!userId || !usagePeriodId) return null;
+
+    const { data, error } = await client
+      .from('restock_plans')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('usage_period_id', usagePeriodId)
+      .order('created_at', { ascending: false });
+
+    if (error || !data || data.length === 0) return null;
+    const plans = data as RestockPlan[];
+    return plans.find((p) => p.status === 'planned') || plans[0];
+  }
+
+  async updateRestockPlan(
+    userId: string,
+    planId: string,
+    input: UpdateRestockPlanInput
+  ): Promise<RestockPlan> {
+    const client = this.getClient();
+    if (!userId) throw new Error('User ID is required');
+    if (!planId) throw new Error('Plan ID is required');
+
+    if (input.reminder_date && !isValidISODate(input.reminder_date)) {
+      throw new Error(`Invalid reminder date: "${input.reminder_date}"`);
+    }
+
+    const payload: Record<string, any> = {};
+    if (input.mode !== undefined) payload.mode = input.mode;
+    if (input.mode === 'custom') {
+      payload.days_before_finish = null;
+    } else if (input.days_before_finish !== undefined) {
+      payload.days_before_finish = input.days_before_finish;
+    }
+    if (input.reminder_date !== undefined) payload.reminder_date = input.reminder_date;
+    if (input.status !== undefined) {
+      payload.status = input.status;
+      if (input.status === 'completed') {
+        payload.completed_at = new Date().toISOString();
+      }
+    }
+
+    const { data, error } = await client
+      .from('restock_plans')
+      .update(payload)
+      .eq('id', planId)
+      .eq('user_id', userId)
+      .select('*')
+      .single();
+
+    if (error || !data) {
+      throw new Error(`Failed to update restock plan: ${error?.message}`);
+    }
+
+    const plan = data as RestockPlan;
+    dataCache.invalidateProduct(userId, plan.product_id);
+    return plan;
+  }
+
+  async deleteRestockPlan(userId: string, planId: string): Promise<void> {
+    const client = this.getClient();
+    if (!userId) throw new Error('User ID is required');
+    if (!planId) throw new Error('Plan ID is required');
+
+    const { data: plan } = await client
+      .from('restock_plans')
+      .select('product_id')
+      .eq('id', planId)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    const { error } = await client
+      .from('restock_plans')
+      .delete()
+      .eq('id', planId)
+      .eq('user_id', userId);
+
+    if (error) {
+      throw new Error(`Failed to delete restock plan: ${error.message}`);
+    }
+
+    if (plan?.product_id) {
+      dataCache.invalidateProduct(userId, plan.product_id);
+    }
+  }
+
+  async completeRestockPlan(userId: string, planId: string): Promise<RestockPlan> {
+    return this.updateRestockPlan(userId, planId, { status: 'completed' });
+  }
+
+  async dismissRestockPlan(userId: string, planId: string): Promise<RestockPlan> {
+    return this.updateRestockPlan(userId, planId, { status: 'dismissed' });
+  }
 }
 
+// Singleton for Supabase
 export const realDb = new SupabaseDatabase();

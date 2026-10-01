@@ -93,6 +93,41 @@ export const db: IDataSource = {
     await rawDb.resetUserData(userId, isDeletingAccount);
     dataCache.clearUser(userId);
   },
+
+  // Restock Planning (Stage 21)
+  createRestockPlan: async (userId, input) => {
+    const res = await rawDb.createRestockPlan(userId, input);
+    dataCache.invalidateProduct(userId, input.product_id);
+    return res;
+  },
+
+  getRestockPlans: (userId) => rawDb.getRestockPlans(userId),
+
+  getRestockPlanForUsagePeriod: (userId, usagePeriodId) =>
+    rawDb.getRestockPlanForUsagePeriod(userId, usagePeriodId),
+
+  updateRestockPlan: async (userId, planId, input) => {
+    const res = await rawDb.updateRestockPlan(userId, planId, input);
+    dataCache.invalidateProduct(userId, res.product_id);
+    return res;
+  },
+
+  deleteRestockPlan: async (userId, planId) => {
+    await rawDb.deleteRestockPlan(userId, planId);
+    dataCache.invalidateProduct(userId);
+  },
+
+  completeRestockPlan: async (userId, planId) => {
+    const res = await rawDb.completeRestockPlan(userId, planId);
+    dataCache.invalidateProduct(userId, res.product_id);
+    return res;
+  },
+
+  dismissRestockPlan: async (userId, planId) => {
+    const res = await rawDb.dismissRestockPlan(userId, planId);
+    dataCache.invalidateProduct(userId, res.product_id);
+    return res;
+  },
 };
 
 export { isSupabaseConfigured };

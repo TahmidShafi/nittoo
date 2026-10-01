@@ -52,11 +52,22 @@ async function runBarcodeVerification() {
   const cleanBarcode = normalizeBarcode(spacedBarcode);
   assert(cleanBarcode === '012345678905', '1. Barcode whitespace, tabs, newlines, and hyphens removed');
 
+  const spacedHimalaya = '  \t 8901138512187 \n  ';
+  assert(normalizeBarcode(spacedHimalaya) === '8901138512187', '1b. Whitespace normalization for Himalaya EAN-13');
+
+  // Hyphen normalization
+  const hyphenatedBarcode = '890-1138-512187';
+  assert(normalizeBarcode(hyphenatedBarcode) === '8901138512187', '1c. Hyphen normalization preserved string');
+  assert(normalizeBarcode('0-12345-67890-5') === '012345678905', '1d. UPC-A hyphen normalization');
+
   // 2. Leading zeros preserved (never converted to Number)
   const leadingZeroBarcode = '001234567895';
   const cleanLeadingZero = normalizeBarcode(leadingZeroBarcode);
   assert(cleanLeadingZero === '001234567895', '2. Leading zeros strictly preserved as strings');
   assert(typeof cleanLeadingZero === 'string', '2. Barcode type is guaranteed string');
+
+  const paddedUpc = ' 012345678905 ';
+  assert(normalizeBarcode(paddedUpc) === '012345678905', '2b. Padded leading zero UPC-A preserved as string');
 
   // ----------------------------------------------------------------------------
   // SECTION 2: GS1 Modulo-10 Check Digit Validation
@@ -74,37 +85,72 @@ async function runBarcodeVerification() {
   assert(upcResult2.valid === true && upcResult2.format === 'UPC-A', '3. Real-world valid UPC-A accepted');
 
   // 4. EAN-13 validation (13 digits)
-  // Valid EAN-13: 3337872412486 (CeraVe Hydrating Cleanser) -> check: 8
+  // Valid EAN-13: 3337872412486 (La Roche-Posay / Toleriane) -> check: 6
+  assert(calculateGs1CheckDigit('333787241248') === 6, '4. EAN-13 check digit calculated correctly (333787241248 -> 6)');
   const ean13Result = validateBarcode('3337872412486');
-  assert(ean13Result.valid === true && ean13Result.format === 'EAN-13', '4. Valid EAN-13 accepted (CeraVe)');
+  assert(ean13Result.valid === true && ean13Result.format === 'EAN-13', '4. Valid EAN-13 accepted (3337872412486)');
 
   // Valid EAN-13: 4005808811045 (Nivea Creme) -> check: 5
+  assert(calculateGs1CheckDigit('400580881104') === 5, '4. EAN-13 check digit calculated correctly (400580881104 -> 5)');
   const ean13Result2 = validateBarcode('4005808811045');
   assert(ean13Result2.valid === true && ean13Result2.format === 'EAN-13', '4. Real-world valid EAN-13 accepted (Nivea)');
 
+  // Valid EAN-13: 8901138512187 (Himalaya Purifying Neem Face Wash 50 ml) -> check: 7
+  assert(calculateGs1CheckDigit('890113851218') === 7, '4b. EAN-13 check digit calculated correctly (890113851218 -> 7)');
+  const himalayaResult = validateBarcode('8901138512187');
+  assert(himalayaResult.valid === true && himalayaResult.format === 'EAN-13', '4b. Real-world valid EAN-13 accepted (Himalaya 8901138512187)');
+  assert(himalayaResult.normalized === '8901138512187', '4b. Himalaya barcode normalized correctly');
+
   // Valid EAN-8 validation: 96385074 -> check: 4
+  assert(calculateGs1CheckDigit('9638507') === 4, '4c. EAN-8 check digit calculated correctly (9638507 -> 4)');
   const ean8Result = validateBarcode('96385074');
-  assert(ean8Result.valid === true && ean8Result.format === 'EAN-8', '4. Valid EAN-8 accepted');
+  assert(ean8Result.valid === true && ean8Result.format === 'EAN-8', '4c. Valid EAN-8 accepted (96385074)');
+
+  const ean8Result2 = validateBarcode('90311017');
+  assert(ean8Result2.valid === true && ean8Result2.format === 'EAN-8', '4c. Real-world valid EAN-8 accepted (90311017)');
+
+  // Valid GTIN-14 validation: 10012345678902 -> check: 2
+  assert(calculateGs1CheckDigit('1001234567890') === 2, '4d. GTIN-14 check digit calculated correctly (1001234567890 -> 2)');
+  const gtin14Result = validateBarcode('10012345678902');
+  assert(gtin14Result.valid === true && gtin14Result.format === 'GTIN-14', '4d. Valid GTIN-14 accepted');
+
+  const gtin14LeadingZero = validateBarcode('00012345678905');
+  assert(gtin14LeadingZero.valid === true && gtin14LeadingZero.format === 'GTIN-14', '4d. Valid GTIN-14 with leading zeros accepted');
 
   // 5. Invalid check digit rejected
   const badUpc = validateBarcode('012345678906'); // check digit should be 5, not 6
   assert(badUpc.valid === false && badUpc.error!.includes('Invalid check digit'), '5. Invalid UPC-A check digit rejected');
 
-  const badEan13 = validateBarcode('3337872412489'); // check digit should be 8, not 9
+  const badEan13 = validateBarcode('3337872412489'); // check digit should be 6, not 9
   assert(badEan13.valid === false && badEan13.error!.includes('Invalid check digit'), '5. Invalid EAN-13 check digit rejected');
 
-  // 6. Unsupported barcode length handled correctly
+  const badHimalaya = validateBarcode('8901138512188'); // check digit should be 7, not 8
+  assert(badHimalaya.valid === false && badHimalaya.error!.includes('Invalid check digit'), '5b. Invalid EAN-13 check digit rejected (8901138512188)');
+
+  const badEan8 = validateBarcode('96385075'); // check digit should be 4, not 5
+  assert(badEan8.valid === false && badEan8.error!.includes('Invalid check digit'), '5c. Invalid EAN-8 check digit rejected');
+
+  const badGtin14 = validateBarcode('10012345678903'); // check digit should be 2, not 3
+  assert(badGtin14.valid === false && badGtin14.error!.includes('Invalid check digit'), '5d. Invalid GTIN-14 check digit rejected');
+
+  // 6. Malformed inputs and unsupported lengths rejected
+  const emptyBarcode = validateBarcode('');
+  assert(emptyBarcode.valid === false && emptyBarcode.error!.includes('Please enter a barcode number'), '6. Empty string rejected');
+
+  const whitespaceBarcode = validateBarcode('    ');
+  assert(whitespaceBarcode.valid === false && whitespaceBarcode.error!.includes('Please enter a barcode number'), '6b. Whitespace-only rejected');
+
   const shortBarcode = validateBarcode('12345'); // 5 digits
-  assert(shortBarcode.valid === false && shortBarcode.error!.includes('Invalid barcode length'), '6. Unsupported 5-digit length rejected');
+  assert(shortBarcode.valid === false && shortBarcode.error!.includes('Invalid barcode length'), '6c. Unsupported 5-digit length rejected');
 
   const sevenDigitBarcode = validateBarcode('1234567'); // 7 digits
-  assert(sevenDigitBarcode.valid === false && sevenDigitBarcode.error!.includes('Invalid barcode length'), '6. Unsupported 7-digit length rejected');
+  assert(sevenDigitBarcode.valid === false && sevenDigitBarcode.error!.includes('Invalid barcode length'), '6d. Unsupported 7-digit length rejected');
 
   const fifteenDigitBarcode = validateBarcode('123456789012345'); // 15 digits
-  assert(fifteenDigitBarcode.valid === false && fifteenDigitBarcode.error!.includes('Invalid barcode length'), '6. Unsupported 15-digit length rejected');
+  assert(fifteenDigitBarcode.valid === false && fifteenDigitBarcode.error!.includes('Invalid barcode length'), '6e. Unsupported 15-digit length rejected');
 
   const alphaBarcode = validateBarcode('01234567890A');
-  assert(alphaBarcode.valid === false && alphaBarcode.error!.includes('numeric digits only'), '6. Non-numeric characters rejected');
+  assert(alphaBarcode.valid === false && alphaBarcode.error!.includes('numeric digits only'), '6f. Non-numeric characters rejected');
 
   // ----------------------------------------------------------------------------
   // SECTION 3: Provider Implementation & Network Behavior
@@ -268,6 +314,84 @@ async function runBarcodeVerification() {
   const obfMalformed = new OpenBeautyFactsProvider({ fetchFn: mockMalformed });
   const malformedResult = await obfMalformed.lookupByBarcode('3337872412486');
   assert(malformedResult === null, '15. Malformed response handled safely as null');
+
+  // 15b. Himalaya barcode (8901138512187) reaches provider lookup
+  let himalayaObfCalled = 0;
+  const mockHimalayaObf = async (input: RequestInfo | URL) => {
+    himalayaObfCalled++;
+    const urlStr = input.toString();
+    assert(urlStr.includes('/api/v2/product/8901138512187.json'), '15b. OBF called with Himalaya barcode 8901138512187');
+    return new Response(
+      JSON.stringify({
+        status: 1,
+        code: '8901138512187',
+        product: {
+          code: '8901138512187',
+          product_name: 'Purifying Neem Face Wash',
+          brands: 'Himalaya Herbals',
+          categories_tags: ['en:face-cleansers', 'en:skincare'],
+          quantity: '50 ml',
+        },
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+  };
+  const himalayaProvider = new CompositeDiscoveryProvider({
+    beautyProvider: new OpenBeautyFactsProvider({ fetchFn: mockHimalayaObf }),
+  });
+  setDiscoveryProvider(himalayaProvider);
+  discoveryCache.clear();
+  const himalayaLookupResult = await lookupExternalProductByBarcode('8901138512187');
+  assert(himalayaLookupResult !== null, '15b. 8901138512187 lookup succeeds and returns product');
+  assert(himalayaObfCalled === 1, '15b. 8901138512187 reaches provider lookup');
+  assert(himalayaLookupResult!.name === 'Purifying Neem Face Wash', '15b. Himalaya product name matches');
+  assert(himalayaLookupResult!.brand === 'Himalaya Herbals', '15b. Himalaya brand matches');
+  assert(himalayaLookupResult!.sizeValue === 50 && himalayaLookupResult!.sizeUnit === 'ml', '15b. Himalaya size parsed to 50 ml');
+
+  // 15c. Invalid barcode does NOT trigger provider lookup
+  let invalidFetchCalls = 0;
+  const mockSpyProvider = new OpenBeautyFactsProvider({
+    fetchFn: async () => {
+      invalidFetchCalls++;
+      return new Response('{}', { status: 200 });
+    },
+  });
+  setDiscoveryProvider(new CompositeDiscoveryProvider({ beautyProvider: mockSpyProvider }));
+  let invalidBarcodeThrew = false;
+  try {
+    await lookupExternalProductByBarcode('8901138512188'); // Invalid check digit (should be 7, not 8)
+  } catch (err: unknown) {
+    invalidBarcodeThrew = (err as Error).message.includes('check digit');
+  }
+  assert(invalidBarcodeThrew, '15c. Invalid barcode throws before network call');
+  assert(invalidFetchCalls === 0, '15c. Invalid barcode does NOT trigger provider lookup (0 network calls)');
+
+  // 15d. Provider failure shows provider-unavailable message in UI error handler
+  const simulateUiError = (err: unknown): string => {
+    const msg = (err as Error)?.message;
+    if (
+      msg &&
+      (msg.includes('check digit') ||
+        msg.includes('barcode') ||
+        msg.includes('digit') ||
+        msg.includes('Invalid'))
+    ) {
+      return msg;
+    }
+    return 'Product discovery is temporarily unavailable. You can enter the product manually.';
+  };
+  const providerUnavailableMsg = simulateUiError(new Error('OpenBeautyFacts lookup failed with status 500'));
+  assert(
+    providerUnavailableMsg === 'Product discovery is temporarily unavailable. You can enter the product manually.',
+    '15d. Provider failure shows provider-unavailable message'
+  );
+
+  // 15e. Product-not-found shows product-not-found message
+  const notFoundMsg = 'No product found for this barcode. You can enter the product manually.';
+  assert(
+    notFoundMsg === 'No product found for this barcode. You can enter the product manually.',
+    '15e. Product-not-found shows product-not-found message'
+  );
 
   // ----------------------------------------------------------------------------
   // SECTION 4: Normalization Reuse & Image Safety

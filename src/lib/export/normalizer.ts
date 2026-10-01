@@ -15,6 +15,7 @@ import type {
   ExportInventoryItem,
   ExportAnalyticsItem,
   ExportCategoryBreakdown,
+  ExportRestockPlanItem,
 } from './types';
 import {
   calculateAverageLifespan,
@@ -279,7 +280,21 @@ export async function buildExportData(
     }
   }
 
-  // 8. Construct Unified Summary
+  // 8. Restock Plans (Stage 21)
+  const rawPlans = rawExport.restock_plans || [];
+  const exportRestockPlans: ExportRestockPlanItem[] = rawPlans.map((rp) => ({
+    id: rp.id,
+    product_id: rp.product_id,
+    product_name: productMap.get(rp.product_id)?.name || 'Unknown Product',
+    usage_period_id: rp.usage_period_id,
+    mode: rp.mode,
+    days_before_finish: rp.days_before_finish ?? null,
+    reminder_date: rp.reminder_date,
+    status: rp.status,
+    created_at: rp.created_at,
+  }));
+
+  // 9. Construct Unified Summary
   const summary: ExportSummary = {
     total_products: products.length,
     total_purchases: purchases.length,
@@ -306,5 +321,6 @@ export async function buildExportData(
     inventory: exportInventory,
     analytics: exportAnalytics,
     insights,
+    restock_plans: exportRestockPlans,
   };
 }

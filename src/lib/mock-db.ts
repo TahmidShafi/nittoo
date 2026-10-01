@@ -4,17 +4,22 @@
 // ==============================================================================
 
 import { getTodayUTC } from './dateUtils';
+import { isValidISODate } from './restock/plan';
+import { dataCache } from './dataCache';
 import type {
   IDataSource,
   Product,
   Purchase,
   UsagePeriod,
+  RestockPlan,
   CreateProductInput,
   CreatePurchaseInput,
   StartUsagePeriodInput,
   UpdateProductInput,
   UpdatePurchaseInput,
   UpdateUsagePeriodInput,
+  CreateRestockPlanInput,
+  UpdateRestockPlanInput,
   ProductWithDetails,
   ProductWithHistory,
   UserInventory,
@@ -82,6 +87,7 @@ interface StoredData {
   products: Product[];
   purchases: Purchase[];
   usage_periods: UsagePeriod[];
+  restock_plans?: RestockPlan[];
 }
 
 const STORAGE_KEY = 'nittoo_mock_database_v1';
@@ -101,13 +107,17 @@ export class MockDatabase implements IDataSource {
   private getData(): StoredData {
     const raw = this.adapter.getItem(STORAGE_KEY);
     if (!raw) {
-      const initial: StoredData = { products: [], purchases: [], usage_periods: [] };
+      const initial: StoredData = { products: [], purchases: [], usage_periods: [], restock_plans: [] };
       return initial;
     }
     try {
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      if (!parsed.restock_plans) {
+        parsed.restock_plans = [];
+      }
+      return parsed;
     } catch {
-      return { products: [], purchases: [], usage_periods: [] };
+      return { products: [], purchases: [], usage_periods: [], restock_plans: [] };
     }
   }
 
@@ -346,6 +356,35 @@ export class MockDatabase implements IDataSource {
       },
     ];
 
+    // 5. Deterministic Restock Plans (Stage 21)
+    // CeraVe: planned in future (14 days before expected finish 2026-10-31 -> 2026-10-17)
+    const ceraveRestockPlan: RestockPlan = {
+      id: 'plan-cerave-1',
+      user_id: DEFAULT_MOCK_USER_ID,
+      product_id: ceraveProduct.id,
+      usage_period_id: 'use-cerave-3',
+      mode: 'relative',
+      days_before_finish: 14,
+      reminder_date: '2026-10-17',
+      status: 'planned',
+      created_at: seedTime,
+    };
+
+    // Sensodyne: reminder due (expected finish 2026-08-31, reminder 2026-08-17 <= today)
+    const sensodyneRestockPlan: RestockPlan = {
+      id: 'plan-sensodyne-1',
+      user_id: DEFAULT_MOCK_USER_ID,
+      product_id: sensodyneProduct.id,
+      usage_period_id: 'use-sensodyne-2',
+      mode: 'relative',
+      days_before_finish: 14,
+      reminder_date: '2026-08-17',
+      status: 'planned',
+      created_at: seedTime,
+    };
+
+    // Olaplex: 0 finished cycles -> NO automatic restock plan
+
     const initialData: StoredData = {
       products: [
         ceraveProduct,
@@ -366,6 +405,10 @@ export class MockDatabase implements IDataSource {
         ...olaplexUsage,
         ...sensodyneUsage,
         ...unopenedProductBackupUsage,
+      ],
+      restock_plans: [
+        ceraveRestockPlan,
+        sensodyneRestockPlan,
       ],
     };
 
@@ -507,6 +550,21 @@ export class MockDatabase implements IDataSource {
     };
 
     data.usage_periods[periodIndex] = updatedPeriod;
+
+    // Invalidate/complete any planned restock plan for this usage period (Stage 21)
+    if (data.restock_plans) {
+      data.restock_plans = data.restock_plans.map((rp) => {
+        if (rp.usage_period_id === usagePeriodId && rp.status === 'planned') {
+          return {
+            ...rp,
+            status: 'completed',
+            completed_at: new Date().toISOString(),
+          };
+        }
+        return rp;
+      });
+    }
+
     this.saveData(data);
     return updatedPeriod;
   }
@@ -702,6 +760,9 @@ export class MockDatabase implements IDataSource {
     }
 
     data.usage_periods.splice(periodIndex, 1);
+    if (data.restock_plans) {
+      data.restock_plans = data.restock_plans.filter((rp) => rp.usage_period_id !== usagePeriodId);
+    }
     this.saveData(data);
     return period;
   }
@@ -739,6 +800,11 @@ export class MockDatabase implements IDataSource {
         const activePurchase =
           data.purchases.find((pu) => pu.id === activeUsage.purchase_id) || latestPurchase || null;
 
+        const restockPlan =
+          (data.restock_plans || []).find(
+            (rp) => rp.usage_period_id === activeUsage.id && rp.status === 'planned'
+          ) || null;
+
         results.push({
           ...product,
           active_usage: activeUsage,
@@ -747,6 +813,7 @@ export class MockDatabase implements IDataSource {
           finished_count: finishedPeriods.length,
           finished_periods: finishedPeriods,
           unopened_count: unopenedCount,
+          restock_plan: restockPlan,
         });
       }
     }
@@ -882,6 +949,8 @@ export class MockDatabase implements IDataSource {
     const userPurchases = data.purchases.filter((pu) => userProductIds.has(pu.product_id));
     const userUsagePeriods = data.usage_periods.filter((u) => userProductIds.has(u.product_id));
 
+    const userRestockPlans = (data.restock_plans || []).filter((rp) => rp.user_id === userId);
+
     return {
       exported_at: new Date().toISOString(),
       user: {
@@ -896,6 +965,7 @@ export class MockDatabase implements IDataSource {
       products: userProducts,
       purchases: userPurchases,
       usage_periods: userUsagePeriods,
+      restock_plans: userRestockPlans,
     };
   }
 
@@ -1091,6 +1161,9 @@ export class MockDatabase implements IDataSource {
     data.products = data.products.filter((p) => p.user_id !== userId);
     data.purchases = data.purchases.filter((pu) => !userProductIds.has(pu.product_id));
     data.usage_periods = data.usage_periods.filter((u) => !userProductIds.has(u.product_id));
+    if (data.restock_plans) {
+      data.restock_plans = data.restock_plans.filter((rp) => rp.user_id !== userId);
+    }
 
     this.saveData(data);
 
@@ -1098,6 +1171,174 @@ export class MockDatabase implements IDataSource {
     if (userId === DEFAULT_MOCK_USER_ID && !isDeletingAccount) {
       this.seedDefaultData();
     }
+  }
+
+  // ----------------------------------------------------------------------------
+  // Restock Planning Implementation (Stage 21)
+  // ----------------------------------------------------------------------------
+
+  async createRestockPlan(
+    userId: string,
+    input: CreateRestockPlanInput
+  ): Promise<RestockPlan> {
+    if (!userId) throw new Error('User ID is required');
+    if (!input.product_id) throw new Error('Product ID is required');
+    if (!input.usage_period_id) throw new Error('Usage period ID is required');
+    if (!input.reminder_date || !isValidISODate(input.reminder_date)) {
+      throw new Error(`Invalid reminder date: "${input.reminder_date}". Must be a valid YYYY-MM-DD date.`);
+    }
+
+    const data = this.getData();
+    const product = data.products.find((p) => p.id === input.product_id);
+    if (!product || product.user_id !== userId) {
+      throw new Error('Unauthorized: You do not own this product');
+    }
+
+    const usagePeriod = data.usage_periods.find((u) => u.id === input.usage_period_id);
+    if (!usagePeriod || usagePeriod.product_id !== product.id) {
+      throw new Error('Usage period does not belong to specified product');
+    }
+    if (usagePeriod.status !== 'active') {
+      throw new Error('Restock plan can only be attached to an active usage period');
+    }
+
+    if (!data.restock_plans) {
+      data.restock_plans = [];
+    }
+
+    // Check if a planned plan already exists for this usage period (Prevent duplicates)
+    const existingIndex = data.restock_plans.findIndex(
+      (rp) => rp.usage_period_id === input.usage_period_id && rp.status === 'planned'
+    );
+
+    if (existingIndex !== -1) {
+      // Update existing plan instead of creating duplicate
+      const existing = data.restock_plans[existingIndex];
+      const updatedPlan: RestockPlan = {
+        ...existing,
+        mode: input.mode,
+        days_before_finish: input.mode === 'relative' ? (input.days_before_finish ?? null) : null,
+        reminder_date: input.reminder_date,
+      };
+      data.restock_plans[existingIndex] = updatedPlan;
+      this.saveData(data);
+      dataCache.invalidateProduct(userId, input.product_id);
+      return updatedPlan;
+    }
+
+    const newPlan: RestockPlan = {
+      id: `plan-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      user_id: userId,
+      product_id: input.product_id,
+      usage_period_id: input.usage_period_id,
+      mode: input.mode,
+      days_before_finish: input.mode === 'relative' ? (input.days_before_finish ?? null) : null,
+      reminder_date: input.reminder_date,
+      status: 'planned',
+      created_at: new Date().toISOString(),
+    };
+
+    data.restock_plans.push(newPlan);
+    this.saveData(data);
+    dataCache.invalidateProduct(userId, input.product_id);
+    return newPlan;
+  }
+
+  async getRestockPlans(userId: string): Promise<RestockPlan[]> {
+    if (!userId) return [];
+    const data = this.getData();
+    return (data.restock_plans || []).filter((rp) => rp.user_id === userId);
+  }
+
+  async getRestockPlanForUsagePeriod(
+    userId: string,
+    usagePeriodId: string
+  ): Promise<RestockPlan | null> {
+    if (!userId || !usagePeriodId) return null;
+    const data = this.getData();
+    const plans = (data.restock_plans || []).filter(
+      (rp) => rp.user_id === userId && rp.usage_period_id === usagePeriodId
+    );
+    // Prefer planned plan
+    return plans.find((rp) => rp.status === 'planned') || plans[0] || null;
+  }
+
+  async updateRestockPlan(
+    userId: string,
+    planId: string,
+    input: UpdateRestockPlanInput
+  ): Promise<RestockPlan> {
+    if (!userId) throw new Error('User ID is required');
+    if (!planId) throw new Error('Plan ID is required');
+
+    const data = this.getData();
+    if (!data.restock_plans) data.restock_plans = [];
+    const planIndex = data.restock_plans.findIndex((rp) => rp.id === planId);
+    if (planIndex === -1) {
+      throw new Error('Restock plan not found');
+    }
+
+    const plan = data.restock_plans[planIndex];
+    if (plan.user_id !== userId) {
+      throw new Error('Unauthorized: You do not own this restock plan');
+    }
+
+    if (input.reminder_date && !isValidISODate(input.reminder_date)) {
+      throw new Error(`Invalid reminder date: "${input.reminder_date}"`);
+    }
+
+    const updatedPlan: RestockPlan = {
+      ...plan,
+      mode: input.mode ?? plan.mode,
+      days_before_finish:
+        input.mode === 'custom'
+          ? null
+          : input.days_before_finish !== undefined
+          ? input.days_before_finish
+          : plan.days_before_finish,
+      reminder_date: input.reminder_date ?? plan.reminder_date,
+      status: input.status ?? plan.status,
+      completed_at:
+        input.status === 'completed' && !plan.completed_at
+          ? new Date().toISOString()
+          : plan.completed_at,
+    };
+
+    data.restock_plans[planIndex] = updatedPlan;
+    this.saveData(data);
+    dataCache.invalidateProduct(userId, plan.product_id);
+    return updatedPlan;
+  }
+
+  async deleteRestockPlan(userId: string, planId: string): Promise<void> {
+    if (!userId) throw new Error('User ID is required');
+    if (!planId) throw new Error('Plan ID is required');
+
+    const data = this.getData();
+    if (!data.restock_plans) return;
+    const planIndex = data.restock_plans.findIndex((rp) => rp.id === planId);
+    if (planIndex === -1) return;
+
+    const plan = data.restock_plans[planIndex];
+    if (plan.user_id !== userId) {
+      throw new Error('Unauthorized: You do not own this restock plan');
+    }
+
+    data.restock_plans.splice(planIndex, 1);
+    this.saveData(data);
+    dataCache.invalidateProduct(userId, plan.product_id);
+  }
+
+  async completeRestockPlan(userId: string, planId: string): Promise<RestockPlan> {
+    return this.updateRestockPlan(userId, planId, {
+      status: 'completed',
+    });
+  }
+
+  async dismissRestockPlan(userId: string, planId: string): Promise<RestockPlan> {
+    return this.updateRestockPlan(userId, planId, {
+      status: 'dismissed',
+    });
   }
 }
 

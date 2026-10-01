@@ -211,3 +211,72 @@ CREATE POLICY "Users can delete usage periods of own products"
             AND products.user_id = auth.uid()
         )
     );
+
+-- ==============================================================================
+-- 4. RESTOCK PLANS TABLE (Stage 21)
+-- User-controlled restock intent and reminders tied to specific active usage periods
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.restock_plans (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    product_id UUID NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
+    usage_period_id UUID NOT NULL REFERENCES public.usage_periods(id) ON DELETE CASCADE,
+    mode TEXT NOT NULL CHECK (mode IN ('relative', 'custom')),
+    days_before_finish INTEGER CHECK (days_before_finish IS NULL OR days_before_finish >= 0),
+    reminder_date DATE NOT NULL,
+    status TEXT NOT NULL DEFAULT 'planned' CHECK (status IN ('planned', 'completed', 'dismissed')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    completed_at TIMESTAMPTZ,
+    CONSTRAINT chk_relative_days CHECK (
+        (mode = 'relative' AND days_before_finish IS NOT NULL) OR
+        (mode = 'custom')
+    )
+);
+
+-- Relational & Query Indexes
+CREATE INDEX IF NOT EXISTS idx_restock_plans_user_id ON public.restock_plans(user_id);
+CREATE INDEX IF NOT EXISTS idx_restock_plans_product_id ON public.restock_plans(product_id);
+CREATE INDEX IF NOT EXISTS idx_restock_plans_usage_period_id ON public.restock_plans(usage_period_id);
+CREATE INDEX IF NOT EXISTS idx_restock_plans_status ON public.restock_plans(status);
+CREATE INDEX IF NOT EXISTS idx_restock_plans_reminder_date ON public.restock_plans(reminder_date);
+
+-- Guarantee at most one 'planned' restock plan per active usage period
+CREATE UNIQUE INDEX IF NOT EXISTS idx_restock_plans_single_planned
+ON public.restock_plans (usage_period_id)
+WHERE status = 'planned';
+
+-- ------------------------------------------------------------------------------
+-- RESTOCK PLANS POLICIES (User Ownership & Cross-Entity Integrity)
+-- ------------------------------------------------------------------------------
+ALTER TABLE public.restock_plans ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can read own restock plans"
+    ON public.restock_plans
+    FOR SELECT
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own restock plans"
+    ON public.restock_plans
+    FOR INSERT
+    WITH CHECK (
+        auth.uid() = user_id
+        AND EXISTS (
+            SELECT 1 FROM public.products p
+            JOIN public.usage_periods u ON u.product_id = p.id
+            WHERE p.id = restock_plans.product_id
+            AND u.id = restock_plans.usage_period_id
+            AND p.user_id = auth.uid()
+        )
+    );
+
+CREATE POLICY "Users can update own restock plans"
+    ON public.restock_plans
+    FOR UPDATE
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own restock plans"
+    ON public.restock_plans
+    FOR DELETE
+    USING (auth.uid() = user_id);
+

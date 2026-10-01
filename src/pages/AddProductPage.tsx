@@ -249,7 +249,7 @@ export const AddProductPage: React.FC = () => {
     // 1. Deterministic local validation before any network call
     const validation = validateBarcode(codeToLookup);
     if (!validation.valid || !validation.normalized) {
-      setBarcodeError(validation.error || 'Enter a valid product barcode.');
+      setBarcodeError(validation.error || 'Invalid barcode. Check the number and try again.');
       setBarcodeStatus('error');
       return;
     }
@@ -267,13 +267,19 @@ export const AddProductPage: React.FC = () => {
         setBarcodeStatus('found');
       } else {
         setBarcodeStatus('not_found');
-        setBarcodeError('No product was found for this barcode. You can enter the product manually.');
+        setBarcodeError('No product found for this barcode. You can enter the product manually.');
       }
     } catch (err: unknown) {
       setIsLookingUpBarcode(false);
       setBarcodeStatus('error');
       const msg = (err as Error)?.message;
-      if (msg && msg.includes('check digit')) {
+      if (
+        msg &&
+        (msg.includes('check digit') ||
+          msg.includes('barcode') ||
+          msg.includes('digit') ||
+          msg.includes('Invalid'))
+      ) {
         setBarcodeError(msg);
       } else {
         setBarcodeError('Product discovery is temporarily unavailable. You can enter the product manually.');

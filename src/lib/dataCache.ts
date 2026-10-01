@@ -171,6 +171,7 @@ class DataCache {
     userMap.delete('inventory');
     userMap.delete('analytics');
     userMap.delete('all-products');
+    userMap.delete('restock-plans');
 
     if (productId) {
       userMap.delete(`product:${productId}`);

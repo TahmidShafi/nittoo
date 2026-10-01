@@ -59,6 +59,41 @@ export interface UsagePeriod {
 }
 
 // ------------------------------------------------------------------------------
+// Restock Planning & In-App Notification Types (Stage 21)
+// ------------------------------------------------------------------------------
+
+export type RestockPlanMode = 'relative' | 'custom';
+export type RestockPlanStatus = 'planned' | 'completed' | 'dismissed';
+
+export interface RestockPlan {
+  id: string;
+  user_id: string;
+  product_id: string;
+  usage_period_id: string;
+  mode: RestockPlanMode;
+  days_before_finish?: number | null; // e.g. 30, 21, 14, 7, 0 for relative; null for custom
+  reminder_date: string; // YYYY-MM-DD
+  status: RestockPlanStatus;
+  created_at: string;
+  completed_at?: string | null;
+}
+
+export interface CreateRestockPlanInput {
+  product_id: string;
+  usage_period_id: string;
+  mode: RestockPlanMode;
+  days_before_finish?: number | null;
+  reminder_date: string; // YYYY-MM-DD
+}
+
+export interface UpdateRestockPlanInput {
+  mode?: RestockPlanMode;
+  days_before_finish?: number | null;
+  reminder_date?: string; // YYYY-MM-DD
+  status?: RestockPlanStatus;
+}
+
+// ------------------------------------------------------------------------------
 // Input Data Types for Data Operations
 // ------------------------------------------------------------------------------
 
@@ -120,6 +155,7 @@ export interface ProductWithDetails extends Product {
   finished_count?: number;
   finished_periods?: UsagePeriod[];
   unopened_count?: number;
+  restock_plan?: RestockPlan | null;
 }
 
 export interface HistoricalUsageEntry {
@@ -183,6 +219,7 @@ export interface UserDataExport {
   products: Product[];
   purchases: Purchase[];
   usage_periods: UsagePeriod[];
+  restock_plans?: RestockPlan[];
 }
 
 export interface ImportProductItemInput {
@@ -315,5 +352,40 @@ export interface IDataSource {
     userId: string,
     isDeletingAccount?: boolean
   ): Promise<void>;
+
+  createRestockPlan(
+    userId: string,
+    input: CreateRestockPlanInput
+  ): Promise<RestockPlan>;
+
+  getRestockPlans(
+    userId: string
+  ): Promise<RestockPlan[]>;
+
+  getRestockPlanForUsagePeriod(
+    userId: string,
+    usagePeriodId: string
+  ): Promise<RestockPlan | null>;
+
+  updateRestockPlan(
+    userId: string,
+    planId: string,
+    input: UpdateRestockPlanInput
+  ): Promise<RestockPlan>;
+
+  deleteRestockPlan(
+    userId: string,
+    planId: string
+  ): Promise<void>;
+
+  completeRestockPlan(
+    userId: string,
+    planId: string
+  ): Promise<RestockPlan>;
+
+  dismissRestockPlan(
+    userId: string,
+    planId: string
+  ): Promise<RestockPlan>;
 }
 
