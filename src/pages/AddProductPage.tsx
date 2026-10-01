@@ -15,6 +15,7 @@ import {
   searchExternalProducts,
   lookupExternalProductByBarcode,
   validateBarcode,
+  BarcodeValidationError,
   MIN_SEARCH_QUERY_LENGTH,
   type DiscoveryProduct,
 } from '../lib/discovery';
@@ -272,15 +273,8 @@ export const AddProductPage: React.FC = () => {
     } catch (err: unknown) {
       setIsLookingUpBarcode(false);
       setBarcodeStatus('error');
-      const msg = (err as Error)?.message;
-      if (
-        msg &&
-        (msg.includes('check digit') ||
-          msg.includes('barcode') ||
-          msg.includes('digit') ||
-          msg.includes('Invalid'))
-      ) {
-        setBarcodeError(msg);
+      if (err instanceof BarcodeValidationError) {
+        setBarcodeError(err.message);
       } else {
         setBarcodeError('Product discovery is temporarily unavailable. You can enter the product manually.');
       }

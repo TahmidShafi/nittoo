@@ -5,6 +5,13 @@
 
 export type BarcodeFormat = 'EAN-8' | 'UPC-A' | 'EAN-13' | 'GTIN-14';
 
+export class BarcodeValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'BarcodeValidationError';
+  }
+}
+
 export interface BarcodeValidationResult {
   valid: boolean;
   normalized?: string;

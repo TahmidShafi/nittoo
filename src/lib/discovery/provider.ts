@@ -39,6 +39,13 @@ export interface OpenFactsProviderOptions {
 
 export type FetchFunction = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
+const defaultFetch: FetchFunction = (input, init) => {
+  if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
+    return window.fetch(input, init);
+  }
+  return fetch(input, init);
+};
+
 /**
  * Normalizes raw Open Beauty Facts / Open Food Facts response JSON
  * into Nittoo's provider-agnostic DiscoveryProduct model.
@@ -101,7 +108,7 @@ export class OpenBeautyFactsProvider implements IProductDiscoveryProvider {
   private productBaseUrl: string;
 
   constructor(options?: OpenFactsProviderOptions) {
-    this.fetchFn = options?.fetchFn || fetch;
+    this.fetchFn = options?.fetchFn || defaultFetch;
     this.baseUrl = options?.baseUrl || 'https://world.openbeautyfacts.org/cgi/search.pl';
     this.productBaseUrl = options?.productBaseUrl || 'https://world.openbeautyfacts.org/api/v2/product';
   }
@@ -177,7 +184,7 @@ export class OpenFoodFactsProvider implements IProductDiscoveryProvider {
   private productBaseUrl: string;
 
   constructor(options?: OpenFactsProviderOptions) {
-    this.fetchFn = options?.fetchFn || fetch;
+    this.fetchFn = options?.fetchFn || defaultFetch;
     this.baseUrl = options?.baseUrl || 'https://world.openfoodfacts.org/cgi/search.pl';
     this.productBaseUrl = options?.productBaseUrl || 'https://world.openfoodfacts.org/api/v2/product';
   }

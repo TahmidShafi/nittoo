@@ -6,7 +6,7 @@
 import type { DiscoveryProduct, DiscoverySearchOptions, IProductDiscoveryProvider } from './types';
 import { CompositeDiscoveryProvider } from './provider';
 import { discoveryCache } from './cache';
-import { validateBarcode } from './barcode';
+import { validateBarcode, BarcodeValidationError } from './barcode';
 
 export * from './types';
 export * from './normalize';
@@ -82,7 +82,7 @@ export async function lookupExternalProductByBarcode(
   // 1. Validate barcode format and GS1 check digit locally
   const validation = validateBarcode(barcode);
   if (!validation.valid || !validation.normalized) {
-    throw new Error(validation.error || 'Enter a valid product barcode.');
+    throw new BarcodeValidationError(validation.error || 'Enter a valid product barcode.');
   }
 
   const normalized = validation.normalized;
