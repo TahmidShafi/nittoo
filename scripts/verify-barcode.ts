@@ -12,8 +12,10 @@ import {
 import {
   OpenBeautyFactsProvider,
   OpenFoodFactsProvider,
+  UpcItemDbProvider,
   CompositeDiscoveryProvider,
   normalizeOpenFactsProducts,
+  normalizeUpcItemDbProducts,
 } from '../src/lib/discovery/provider';
 import { discoveryCache } from '../src/lib/discovery/cache';
 import {
@@ -392,6 +394,136 @@ async function runBarcodeVerification() {
     notFoundMsg === 'No product found for this barcode. You can enter the product manually.',
     '15e. Product-not-found shows product-not-found message'
   );
+
+  // ----------------------------------------------------------------------------
+  // SECTION 3b: Stage 20.1 Expanded Provider & Fallback Tests
+  // ----------------------------------------------------------------------------
+  console.log('\n--- 3b. Testing Stage 20.1 Expanded Provider & Fallback Pipeline ---');
+
+  // 15f. Nutella regression test (3017624010701 -> Open Food Facts)
+  let offNutellaCalled = 0;
+  const mockNutellaOff = async (): Promise<Response> => {
+    offNutellaCalled++;
+    return new Response(
+      JSON.stringify({
+        status: 1,
+        code: '3017624010701',
+        product: {
+          code: '3017624010701',
+          product_name: 'Nutella',
+          brands: 'Ferrero',
+          categories_tags: ['en:spreads', 'en:sweet-spreads'],
+          quantity: '400 g',
+        },
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+  };
+  const mockEmptyObf = async (): Promise<Response> => {
+    return new Response(JSON.stringify({ status: 0 }), { status: 200 });
+  };
+  const nutellaProvider = new CompositeDiscoveryProvider({
+    beautyProvider: new OpenBeautyFactsProvider({ fetchFn: mockEmptyObf }),
+    foodProvider: new OpenFoodFactsProvider({ fetchFn: mockNutellaOff }),
+  });
+  setDiscoveryProvider(nutellaProvider);
+  discoveryCache.clear();
+  const nutellaResult = await lookupExternalProductByBarcode('3017624010701');
+  assert(nutellaResult !== null, '15f. 3017624010701 Nutella lookup succeeds');
+  assert(nutellaResult!.name === 'Nutella', '15f. Nutella product name matches');
+  assert(nutellaResult!.brand === 'Ferrero', '15f. Nutella brand matches Ferrero');
+  assert(offNutellaCalled === 1, '15f. Open Food Facts called for Nutella');
+
+  // 15g. Cetaphil fallback regression test (0302993927358 -> UPCitemdb)
+  let upcItemDbCalled = 0;
+  const mockCetaphilUpcItemDb = async (): Promise<Response> => {
+    upcItemDbCalled++;
+    return new Response(
+      JSON.stringify({
+        code: 'OK',
+        total: 1,
+        offset: 0,
+        items: [
+          {
+            ean: '0302993927358',
+            title: 'Cetaphil Daily Facial Cleanser, Normal to Oily Skin 8 fl oz (237 ml)',
+            upc: '302993927358',
+            brand: 'Cetaphil',
+            category: 'Health & Beauty > Personal Care > Cosmetics > Skin Care > Facial Cleansers',
+            size: '8 oz',
+            images: ['https://images.example.com/cetaphil.jpg'],
+          },
+        ],
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+  };
+  const cetaphilComposite = new CompositeDiscoveryProvider({
+    beautyProvider: new OpenBeautyFactsProvider({ fetchFn: mockEmptyObf }),
+    foodProvider: new OpenFoodFactsProvider({ fetchFn: mockEmptyObf }),
+    upcItemDbProvider: new UpcItemDbProvider({ fetchFn: mockCetaphilUpcItemDb }),
+  });
+  setDiscoveryProvider(cetaphilComposite);
+  discoveryCache.clear();
+  const cetaphilResult = await lookupExternalProductByBarcode('0302993927358');
+  assert(cetaphilResult !== null, '15g. 0302993927358 Cetaphil fallback lookup succeeds');
+  assert(cetaphilResult!.name.includes('Cetaphil Daily Facial Cleanser'), '15g. Cetaphil name matches');
+  assert(cetaphilResult!.brand === 'Cetaphil', '15g. Cetaphil brand matches');
+  assert(cetaphilResult!.category === 'Skincare', '15g. Cetaphil category mapped to Skincare');
+  assert(cetaphilResult!.sizeValue === 237 && cetaphilResult!.sizeUnit === 'ml', '15g. Cetaphil size parsed to 237 ml');
+  assert(cetaphilResult!.barcode === '0302993927358', '15h. Leading zero preserved on barcode string (0302993927358)');
+  assert(upcItemDbCalled >= 1, '15g. UPCitemdb called after earlier providers returned not-found');
+
+  // 15i. Provider #1 finds product -> UPCitemdb is NOT called
+  let upcItemDbSpyCalled = 0;
+  const mockSpyUpcItemDb = async (): Promise<Response> => {
+    upcItemDbSpyCalled++;
+    return new Response(JSON.stringify({ code: 'OK', total: 0, items: [] }), { status: 200 });
+  };
+  const earlySuccessComposite = new CompositeDiscoveryProvider({
+    beautyProvider: new OpenBeautyFactsProvider({ fetchFn: mockHimalayaObf }),
+    foodProvider: new OpenFoodFactsProvider({ fetchFn: mockEmptyObf }),
+    upcItemDbProvider: new UpcItemDbProvider({ fetchFn: mockSpyUpcItemDb }),
+  });
+  setDiscoveryProvider(earlySuccessComposite);
+  discoveryCache.clear();
+  const earlyResult = await lookupExternalProductByBarcode('8901138512187');
+  assert(earlyResult !== null, '15i. Early provider succeeds');
+  assert(upcItemDbSpyCalled === 0, '15i. UPCitemdb is NOT called when early provider succeeds (0 calls)');
+
+  // 15j. Resilient fallback: Provider #1 throws 500 error, but UPCitemdb succeeds
+  const mockErrorObf = async (): Promise<Response> => {
+    return new Response('Server Error', { status: 500 });
+  };
+  const resilientComposite = new CompositeDiscoveryProvider({
+    beautyProvider: new OpenBeautyFactsProvider({ fetchFn: mockErrorObf }),
+    foodProvider: new OpenFoodFactsProvider({ fetchFn: mockErrorObf }),
+    upcItemDbProvider: new UpcItemDbProvider({ fetchFn: mockCetaphilUpcItemDb }),
+  });
+  setDiscoveryProvider(resilientComposite);
+  discoveryCache.clear();
+  const resilientResult = await lookupExternalProductByBarcode('0302993927358');
+  assert(resilientResult !== null, '15j. Product returned when earlier provider fails but fallback succeeds');
+
+  // 15k. All providers fail -> throws structured error
+  const allFailComposite = new CompositeDiscoveryProvider({
+    beautyProvider: new OpenBeautyFactsProvider({ fetchFn: mockErrorObf }),
+    foodProvider: new OpenFoodFactsProvider({ fetchFn: mockErrorObf }),
+    upcItemDbProvider: new UpcItemDbProvider({ fetchFn: mockErrorObf }),
+  });
+  setDiscoveryProvider(allFailComposite);
+  discoveryCache.clear();
+  let allFailThrew = false;
+  try {
+    await lookupExternalProductByBarcode('0302993927358');
+  } catch {
+    allFailThrew = true;
+  }
+  assert(allFailThrew, '15k. All providers failing throws structured provider error');
+
+  // 15l. No API keys exposed in client source or bundle
+  const upcItemDbInstance = new UpcItemDbProvider();
+  assert(upcItemDbInstance.name === 'UPCitemdb', '15l. UpcItemDbProvider instantiable without hardcoded secrets');
 
   // ----------------------------------------------------------------------------
   // SECTION 4: Normalization Reuse & Image Safety

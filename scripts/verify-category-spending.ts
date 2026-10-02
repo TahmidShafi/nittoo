@@ -19,7 +19,7 @@ import {
 } from '../src/lib/analytics';
 import { dataCache } from '../src/lib/dataCache';
 import { buildExportData } from '../src/lib/export/normalizer';
-import type { ProductWithHistory } from '../types';
+import type { ProductWithHistory } from '../src/types';
 
 function assert(condition: boolean, message: string) {
   if (!condition) {

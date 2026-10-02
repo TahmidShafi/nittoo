@@ -37,14 +37,42 @@ export interface OpenFactsProviderOptions {
   productBaseUrl?: string;
 }
 
-export type FetchFunction = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+export type FetchInput = string | URL | any;
+export type FetchFunction = (input: FetchInput, init?: any) => Promise<Response>;
 
 const defaultFetch: FetchFunction = (input, init) => {
-  if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
-    return window.fetch(input, init);
-  }
   return fetch(input, init);
 };
+
+export const DEFAULT_PROVIDER_TIMEOUT_MS = 7000;
+
+export async function fetchWithTimeout(
+  fetchFn: FetchFunction,
+  url: FetchInput,
+  init?: any,
+  timeoutMs = DEFAULT_PROVIDER_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  let signal = controller.signal;
+  if (init?.signal) {
+    if (init.signal.aborted) {
+      controller.abort();
+    } else {
+      init.signal.addEventListener('abort', () => controller.abort());
+    }
+  }
+
+  try {
+    const res = await fetchFn(url, { ...init, signal });
+    clearTimeout(timeoutId);
+    return res;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    throw err;
+  }
+}
 
 /**
  * Normalizes raw Open Beauty Facts / Open Food Facts response JSON
@@ -126,7 +154,7 @@ export class OpenBeautyFactsProvider implements IProductDiscoveryProvider {
       Accept: 'application/json',
     };
 
-    const response = await this.fetchFn(url, {
+    const response = await fetchWithTimeout(this.fetchFn, url, {
       method: 'GET',
       headers,
       signal: options?.signal,
@@ -149,7 +177,7 @@ export class OpenBeautyFactsProvider implements IProductDiscoveryProvider {
       Accept: 'application/json',
     };
 
-    const response = await this.fetchFn(url, {
+    const response = await fetchWithTimeout(this.fetchFn, url, {
       method: 'GET',
       headers,
       signal: options?.signal,
@@ -202,7 +230,7 @@ export class OpenFoodFactsProvider implements IProductDiscoveryProvider {
       Accept: 'application/json',
     };
 
-    const response = await this.fetchFn(url, {
+    const response = await fetchWithTimeout(this.fetchFn, url, {
       method: 'GET',
       headers,
       signal: options?.signal,
@@ -225,7 +253,7 @@ export class OpenFoodFactsProvider implements IProductDiscoveryProvider {
       Accept: 'application/json',
     };
 
-    const response = await this.fetchFn(url, {
+    const response = await fetchWithTimeout(this.fetchFn, url, {
       method: 'GET',
       headers,
       signal: options?.signal,
@@ -249,22 +277,219 @@ export class OpenFoodFactsProvider implements IProductDiscoveryProvider {
   }
 }
 
+export interface RawUpcItemDbItem {
+  ean?: string;
+  title?: string;
+  description?: string;
+  upc?: string;
+  brand?: string;
+  model?: string;
+  color?: string;
+  size?: string;
+  dimension?: string;
+  weight?: string;
+  category?: string;
+  lowest_recorded_price?: number;
+  highest_recorded_price?: number;
+  images?: string[];
+}
+
+export interface RawUpcItemDbResponse {
+  code?: string;
+  total?: number;
+  offset?: number;
+  message?: string;
+  items?: RawUpcItemDbItem[];
+}
+
+export interface UpcItemDbProviderOptions {
+  fetchFn?: FetchFunction;
+  baseUrl?: string;
+  endpoint?: string;
+}
+
+/**
+ * Normalizes raw UPCitemdb response items into Nittoo's provider-agnostic DiscoveryProduct model.
+ * Preserves the exact requested barcode (including leading zeros).
+ */
+export function normalizeUpcItemDbProducts(
+  rawItems: RawUpcItemDbItem[] | undefined,
+  source: string,
+  requestedBarcode: string
+): DiscoveryProduct[] {
+  if (!Array.isArray(rawItems)) return [];
+  const results: DiscoveryProduct[] = [];
+
+  for (const item of rawItems) {
+    if (!item || typeof item !== 'object') continue;
+    const name = normalizeText(item.title);
+    if (!name) continue;
+
+    const brand = normalizeText(item.brand) || undefined;
+    const rawCategory = item.category ? normalizeText(item.category) : undefined;
+    const category = mapCategory(item.category);
+
+    const parsedSizeFromRaw = parseSize(item.size);
+    const parsedSizeFromTitle = parseSize(item.title);
+    const sizeValue = parsedSizeFromRaw.sizeValue ?? parsedSizeFromTitle.sizeValue;
+    const sizeUnit = parsedSizeFromRaw.sizeUnit ?? parsedSizeFromTitle.sizeUnit;
+    const rawSize = item.size ? normalizeText(item.size) : undefined;
+
+    const firstImage = Array.isArray(item.images) && item.images.length > 0 ? item.images[0] : undefined;
+    const imageUrl = sanitizeImageUrl(firstImage);
+
+    // Strictly preserve original requested barcode string (including leading zeros)
+    const barcode = requestedBarcode || (item.ean ? normalizeText(item.ean) : undefined) || (item.upc ? normalizeText(item.upc) : undefined);
+    const externalId = item.ean || item.upc || `${source}-${results.length}-${name.toLowerCase()}`;
+
+    results.push({
+      externalId,
+      source,
+      name,
+      brand,
+      category,
+      rawCategory,
+      sizeValue,
+      sizeUnit,
+      rawSize,
+      imageUrl,
+      barcode,
+    });
+  }
+
+  return results;
+}
+
+/**
+ * UPCitemdb Provider
+ * Commercial CPG barcode database fallback.
+ * Uses Nittoo's server-side proxy endpoint (/api/discovery/barcode) in browser environments
+ * to avoid CORS restrictions while keeping API credentials strictly server-side.
+ */
+export class UpcItemDbProvider implements IProductDiscoveryProvider {
+  readonly name = 'UPCitemdb';
+  private fetchFn: FetchFunction;
+  private endpoint: string;
+
+  constructor(options?: UpcItemDbProviderOptions) {
+    this.fetchFn = options?.fetchFn || defaultFetch;
+    this.endpoint = options?.endpoint || options?.baseUrl || '/api/discovery/barcode';
+  }
+
+  async search(_query: string, _options?: DiscoverySearchOptions): Promise<DiscoveryProduct[]> {
+    return [];
+  }
+
+  private async fetchUpc(code: string, signal?: AbortSignal): Promise<RawUpcItemDbResponse | null> {
+    const url = `${this.endpoint}?upc=${encodeURIComponent(code)}`;
+    const headers: Record<string, string> = {
+      Accept: 'application/json',
+    };
+
+    const response = await fetchWithTimeout(this.fetchFn, url, {
+      method: 'GET',
+      headers,
+      signal,
+    });
+
+    if (response.status === 404) {
+      return null;
+    }
+
+    if (!response.ok) {
+      throw new Error(`UPCitemdb lookup failed with status ${response.status}`);
+    }
+
+    const data = (await response.json()) as RawUpcItemDbResponse;
+    return data;
+  }
+
+  async lookupByBarcode(barcode: string, options?: DiscoverySearchOptions): Promise<DiscoveryProduct | null> {
+    const cleanBarcode = barcode.trim();
+    if (!cleanBarcode) return null;
+
+    // Use Nittoo server endpoint if configured with /api path
+    if (this.endpoint.startsWith('/api/') || this.endpoint.includes('/api/discovery/barcode')) {
+      const response = await fetchWithTimeout(this.fetchFn, this.endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ barcode: cleanBarcode }),
+        signal: options?.signal,
+      });
+
+      if (response.status === 404) {
+        return null;
+      }
+
+      if (!response.ok) {
+        throw new Error(`UPCitemdb server lookup failed with status ${response.status}`);
+      }
+
+      const data = (await response.json()) as { product?: DiscoveryProduct | null; items?: RawUpcItemDbItem[] } | null;
+      if (data && typeof data === 'object' && 'product' in data) {
+        return (data.product as DiscoveryProduct) ?? null;
+      }
+      if (data && typeof data === 'object' && Array.isArray(data.items)) {
+        const normalized = normalizeUpcItemDbProducts(data.items, 'upcitemdb', cleanBarcode);
+        return normalized[0] || null;
+      }
+      return null;
+    }
+
+    // Direct endpoint (used when custom baseUrl is specified or for backward compatibility)
+    let data = await this.fetchUpc(cleanBarcode, options?.signal);
+
+    // If 13-digit barcode starting with 0 yielded no results, also check 12-digit UPC
+    if (
+      (!data || data.total === 0 || !data.items || data.items.length === 0) &&
+      cleanBarcode.length === 13 &&
+      cleanBarcode.startsWith('0')
+    ) {
+      const upc12 = cleanBarcode.slice(1);
+      const fallbackData = await this.fetchUpc(upc12, options?.signal);
+      if (fallbackData && fallbackData.total && fallbackData.total > 0 && fallbackData.items && fallbackData.items.length > 0) {
+        data = fallbackData;
+      }
+    }
+
+    if (!data || data.total === 0 || !data.items || data.items.length === 0) {
+      return null;
+    }
+
+    const normalized = normalizeUpcItemDbProducts(data.items, 'upcitemdb', cleanBarcode);
+    return normalized[0] || null;
+  }
+}
+
+export interface CompositeDiscoveryProviderOptions {
+  beautyProvider?: IProductDiscoveryProvider;
+  foodProvider?: IProductDiscoveryProvider;
+  upcItemDbProvider?: IProductDiscoveryProvider;
+}
+
 /**
  * Composite Provider
  * Searches Open Beauty Facts first. If results are sparse (< 3),
  * queries Open Food Facts to support supplements & grocery consumables.
+ * For barcode lookups: executes sequential fallback (Open Beauty Facts -> Open Food Facts -> UPCitemdb).
  */
 export class CompositeDiscoveryProvider implements IProductDiscoveryProvider {
   readonly name = 'CompositeProvider';
   private beautyProvider: IProductDiscoveryProvider;
   private foodProvider: IProductDiscoveryProvider;
+  private upcItemDbProvider?: IProductDiscoveryProvider;
 
-  constructor(options?: {
-    beautyProvider?: IProductDiscoveryProvider;
-    foodProvider?: IProductDiscoveryProvider;
-  }) {
+  constructor(options?: CompositeDiscoveryProviderOptions) {
     this.beautyProvider = options?.beautyProvider || new OpenBeautyFactsProvider();
     this.foodProvider = options?.foodProvider || new OpenFoodFactsProvider();
+    if (options && (options.beautyProvider || options.foodProvider) && options.upcItemDbProvider === undefined) {
+      this.upcItemDbProvider = undefined;
+    } else {
+      this.upcItemDbProvider = options?.upcItemDbProvider || new UpcItemDbProvider();
+    }
   }
 
   async search(query: string, options?: DiscoverySearchOptions): Promise<DiscoveryProduct[]> {
@@ -305,35 +530,35 @@ export class CompositeDiscoveryProvider implements IProductDiscoveryProvider {
     const cleanBarcode = barcode.trim();
     if (!cleanBarcode) return null;
 
-    let beautyResult: DiscoveryProduct | null = null;
-    let beautyError: unknown = null;
+    const providers: IProductDiscoveryProvider[] = [
+      this.beautyProvider,
+      this.foodProvider,
+      ...(this.upcItemDbProvider ? [this.upcItemDbProvider] : []),
+    ];
 
-    try {
-      beautyResult = await this.beautyProvider.lookupByBarcode(cleanBarcode, options);
-    } catch (err) {
-      beautyError = err;
-    }
+    let lastError: unknown = null;
+    let notFoundCount = 0;
 
-    // If beauty provider found the product, return immediately without calling food provider
-    if (beautyResult) {
-      return beautyResult;
-    }
-
-    // Try food provider fallback if beauty returned null or threw an error
-    try {
-      const foodResult = await this.foodProvider.lookupByBarcode(cleanBarcode, options);
-      if (foodResult) {
-        return foodResult;
+    for (const provider of providers) {
+      try {
+        const result = await provider.lookupByBarcode(cleanBarcode, options);
+        if (result) {
+          return result;
+        }
+        notFoundCount++;
+      } catch (err) {
+        lastError = err;
       }
-    } catch (foodErr) {
-      if (beautyError) {
-        throw beautyError;
-      }
-      throw foodErr;
     }
 
-    if (beautyError) {
-      throw beautyError;
+    // If every provider legitimately searched and reported not found, return null
+    if (notFoundCount === providers.length) {
+      return null;
+    }
+
+    // If an error occurred on any provider and no result was found, propagate the error
+    if (lastError) {
+      throw lastError;
     }
 
     return null;

@@ -37,7 +37,8 @@
     "verify:category": "tsx scripts/verify-category-spending.ts",
     "verify:discovery": "tsx scripts/verify-product-discovery.ts",
     "verify:barcode": "tsx scripts/verify-barcode.ts",
-    "verify:restock": "tsx scripts/verify-restock.ts"
+    "verify:restock": "tsx scripts/verify-restock.ts",
+    "verify:chrome": "tsx scripts/verify-chrome-live.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
