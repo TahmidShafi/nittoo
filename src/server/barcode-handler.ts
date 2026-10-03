@@ -111,10 +111,10 @@ export async function handleBarcodeApiRequest(
 
   if (req.method === 'GET') {
     const parsedUrl = new URL(req.url || '', 'http://localhost');
-    barcode = parsedUrl.searchParams.get('barcode') || (req.query?.barcode as string) || '';
+    barcode = parsedUrl.searchParams.get('barcode') || parsedUrl.searchParams.get('upc') || (req.query?.barcode as string) || (req.query?.upc as string) || '';
   } else if (req.method === 'POST') {
     if (req.body && typeof req.body === 'object') {
-      barcode = req.body.barcode || '';
+      barcode = req.body.barcode || req.body.upc || '';
     } else {
       // Buffer request stream
       const chunks: Buffer[] = [];
@@ -125,7 +125,7 @@ export async function handleBarcodeApiRequest(
       if (rawBody) {
         try {
           const parsed = JSON.parse(rawBody);
-          barcode = parsed.barcode || '';
+          barcode = parsed.barcode || parsed.upc || '';
         } catch {
           res.statusCode = 400;
           res.setHeader('Content-Type', 'application/json');

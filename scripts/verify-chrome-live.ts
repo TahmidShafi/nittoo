@@ -254,7 +254,16 @@ async function run() {
 
     // Helper to wait until lookup finishes
     const waitForLookupFinish = async () => {
-      for (let i = 0; i < 30; i++) {
+      // First wait for lookup to START (button changes to "Finding...")
+      for (let i = 0; i < 20; i++) {
+        const isFinding = await client.eval(`
+          Boolean(Array.from(document.querySelectorAll('button')).find(b => b.textContent?.includes('Finding...')))
+        `);
+        if (isFinding) break;
+        await sleep(100);
+      }
+      // Then wait for lookup to FINISH
+      for (let i = 0; i < 50; i++) {
         await sleep(300);
         const isFinding = await client.eval(`
           Boolean(Array.from(document.querySelectorAll('button')).find(b => b.textContent?.includes('Finding...')))
@@ -320,6 +329,32 @@ async function run() {
     }
     if (!cetaphilState.fullSnippet.includes('Cetaphil')) {
       throw new Error('FAILURE: Cetaphil was not found in the browser UI!');
+    }
+
+    // ----------------------------------------------------------------------------
+    // TEST CASE D2: 8904006302507 (Wild Stone Fallback -> Server Endpoint)
+    // ----------------------------------------------------------------------------
+    console.log('\n=================================================================');
+    console.log('TEST CASE D2: 8904006302507 (Wild Stone Code Steel via Server Endpoint)');
+    console.log('=================================================================');
+    await runLookup('8904006302507');
+    await waitForLookupFinish();
+
+    const wildStoneState = await getLookupState();
+    console.log('Wild Stone UI State:', JSON.stringify(wildStoneState, null, 2));
+
+    console.log('\nRecorded Browser Network Requests for 8904006302507:');
+    for (const req of client.networkRequests) {
+      console.log(`  [${req.method}] ${req.url} -> ${req.status ?? 'pending'}`);
+    }
+
+    const wildStoneServerCalls = client.networkRequests.filter(r => r.url.includes('/api/discovery/barcode'));
+    console.log('\nVerification checks for Wild Stone:');
+    console.log(`  ✓ Browser called Nittoo Server Endpoint: ${wildStoneServerCalls.length > 0}`);
+    console.log(`  ✓ Wild Stone product found in UI: ${wildStoneState.fullSnippet.includes('Wild Stone')}`);
+
+    if (!wildStoneState.fullSnippet.includes('Wild Stone')) {
+      throw new Error('FAILURE: Wild Stone was not found in the browser UI!');
     }
 
     // ----------------------------------------------------------------------------

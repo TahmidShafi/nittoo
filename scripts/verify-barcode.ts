@@ -474,6 +474,47 @@ async function runBarcodeVerification() {
   assert(cetaphilResult!.barcode === '0302993927358', '15h. Leading zero preserved on barcode string (0302993927358)');
   assert(upcItemDbCalled >= 1, '15g. UPCitemdb called after earlier providers returned not-found');
 
+  // 15h2. Wild Stone Code Steel fallback regression test (8904006302507 -> UPCitemdb)
+  let wildStoneUpcCalled = 0;
+  const mockWildStoneUpcItemDb = async (): Promise<Response> => {
+    wildStoneUpcCalled++;
+    return new Response(
+      JSON.stringify({
+        code: 'OK',
+        total: 1,
+        offset: 0,
+        items: [
+          {
+            ean: '8904006302507',
+            title: 'Wild Stone Code Steel Long Lasting Deodorant Body Spray For Men 120ml /4.05 Oz',
+            brand: 'Wild Stone',
+            category: 'Health & Beauty > Personal Care > Deodorant & Anti-Perspirant',
+            lowest_recorded_price: 10.75,
+            highest_recorded_price: 11.83,
+            images: [],
+            offers: [],
+          },
+        ],
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+  };
+  const wildStoneComposite = new CompositeDiscoveryProvider({
+    beautyProvider: new OpenBeautyFactsProvider({ fetchFn: mockEmptyObf }),
+    foodProvider: new OpenFoodFactsProvider({ fetchFn: mockEmptyObf }),
+    upcItemDbProvider: new UpcItemDbProvider({ fetchFn: mockWildStoneUpcItemDb }),
+  });
+  setDiscoveryProvider(wildStoneComposite);
+  discoveryCache.clear();
+  const wildStoneResult = await lookupExternalProductByBarcode('8904006302507');
+  assert(wildStoneResult !== null, '15h2. 8904006302507 Wild Stone fallback lookup succeeds');
+  assert(wildStoneResult!.name.includes('Wild Stone Code Steel'), '15h2. Wild Stone name matches');
+  assert(wildStoneResult!.brand === 'Wild Stone', '15h2. Wild Stone brand matches');
+  assert(wildStoneResult!.category === 'Personal Hygiene', '15h2. Wild Stone category mapped to Personal Hygiene');
+  assert(wildStoneResult!.sizeValue === 120 && wildStoneResult!.sizeUnit === 'ml', '15h2. Wild Stone size parsed to 120 ml');
+  assert(wildStoneResult!.barcode === '8904006302507', '15h2. 8904006302507 barcode strictly preserved');
+  assert(wildStoneUpcCalled >= 1, '15h2. UPCitemdb called for Wild Stone after earlier providers returned not-found');
+
   // 15i. Provider #1 finds product -> UPCitemdb is NOT called
   let upcItemDbSpyCalled = 0;
   const mockSpyUpcItemDb = async (): Promise<Response> => {
