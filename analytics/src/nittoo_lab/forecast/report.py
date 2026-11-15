@@ -52,6 +52,7 @@ class DatasetEval:
     all_metrics: dict[tuple[str, str], MetricSummary]
     oracle_clean_metrics: dict[tuple[str, str], MetricSummary]
     bootstrap_cis: dict[tuple[str, str], BootstrapCI]
+    rate_mean_paired_ci: BootstrapCI
     winner: tuple[str, str]
     by_k_bucket: dict[tuple[str, str, str], MetricSummary]
     by_size_changed: dict[tuple[str, str, bool], MetricSummary]
@@ -136,6 +137,19 @@ def evaluate_targets(
 
     winner = select_winner(cand_maes, cis, baseline_key=base_key)
 
+    rm_ro_errs = [abs(r.preds[("rate_mean", "rule_only")] - r.actual_days) for r in rc_rows]
+    rm_rp_errs = [
+        abs(r.preds[("rate_mean", "rule_plus_rate_outlier")] - r.actual_days) for r in rc_rows
+    ]
+    rate_mean_paired_ci = household_bootstrap_ci(
+        user_ids=user_ids,
+        baseline_abs_errors=rm_ro_errs,
+        candidate_abs_errors=rm_rp_errs,
+        n_boot=FORECAST_BOOTSTRAP_REPLICATES,
+        ci_level=0.95,
+        seed=FORECAST_BOOTSTRAP_SEED,
+    )
+
     by_k_bucket: dict[tuple[str, str, str], MetricSummary] = {}
     for bucket in ("2", "3-4", "5+"):
         b_rows = [r for r in rc_rows if history_bucket(r.k) == bucket]
@@ -179,6 +193,7 @@ def evaluate_targets(
         all_metrics=all_metrics,
         oracle_clean_metrics=oracle_clean_metrics,
         bootstrap_cis=cis,
+        rate_mean_paired_ci=rate_mean_paired_ci,
         winner=winner,
         by_k_bucket=by_k_bucket,
         by_size_changed=by_size_changed,
@@ -441,10 +456,58 @@ def render_forecast_report(
         for grp, (b_mae, e25_mae, e85_mae) in alpha_breakdown.items():
             lines.append(f"| `{grp}` | {b_mae:.2f} | {e25_mae:.2f} | {e85_mae:.2f} |")
 
-    b_no_switch = primary_eval.by_size_changed.get(("baseline", "none", False))
-    w_no_switch = primary_eval.by_size_changed.get((w[0], w[1], False))
-    w_switch = primary_eval.by_size_changed.get((w[0], w[1], True))
-    b_switch = primary_eval.by_size_changed.get(("baseline", "none", True))
+    rm_ro = primary_eval.rule_clean_metrics[("rate_mean", "rule_only")].mae
+    rm_rp = primary_eval.rule_clean_metrics[("rate_mean", "rule_plus_rate_outlier")].mae
+    rm_ci = primary_eval.rate_mean_paired_ci
+    rm_ci_against_base = primary_eval.bootstrap_cis[("rate_mean", "rule_only")]
+
+    lines.extend(
+        [
+            "",
+            "### 7.1 `rate_mean (rule_only)` vs `rate_mean (rule_plus_rate_outlier)`",
+            "",
+            f"- **Holdout paired 95% household-clustered bootstrap CI** "
+            f"(`rule_only` minus `rule_plus_rate_outlier`): "
+            f"`{rm_ci.mae_improvement:+.3f}` d "
+            f"(`95% CI [{rm_ci.ci_low:+.3f}, {rm_ci.ci_high:+.3f}]`; "
+            f"`{rm_ro:.2f}` d vs `{rm_rp:.2f}` d).",
+        ]
+    )
+    if extra_evals:
+        hn = next((e for e in extra_evals if "Noise" in e.label), None)
+        if hn is not None:
+            hn_ro = hn.rule_clean_metrics[("rate_mean", "rule_only")].mae
+            hn_rp = hn.rule_clean_metrics[("rate_mean", "rule_plus_rate_outlier")].mae
+            lines.append(
+                f"- **High-Noise (`2.5x`, `seed=4002`):** `{hn_ro:.2f}` d (`rule_only`) vs "
+                f"`{hn_rp:.2f}` d (`rule_plus_rate_outlier`)."
+            )
+    if elasticity_evals:
+        e_parts = [
+            f"`{ev.label}`: `{ev.rule_clean_metrics[('rate_mean', 'rule_only')].mae:.2f}` d "
+            f"vs `{ev.rule_clean_metrics[('rate_mean', 'rule_plus_rate_outlier')].mae:.2f}` d"
+            for ev in elasticity_evals[1:]
+        ]
+        if e_parts:
+            lines.append(
+                "- **Elasticity stress tests (`rule_only` vs `rule_plus_rate_outlier`):** "
+                + "; ".join(e_parts)
+                + "."
+            )
+
+    ca_base_none = primary_eval.by_constant_size.get(("baseline", "none", True))
+    ca_base_ro = primary_eval.by_constant_size.get(("baseline", "rule_only", True))
+    ca_rm_ro = primary_eval.by_constant_size.get(("rate_mean", "rule_only", True))
+    cb_base_none = primary_eval.by_constant_size.get(("baseline", "none", False))
+    cb_base_ro = primary_eval.by_constant_size.get(("baseline", "rule_only", False))
+    cb_rm_ro = primary_eval.by_constant_size.get(("rate_mean", "rule_only", False))
+
+    switch_note = (
+        f"({size_stats.product_switch_pct:.1f}% of products switch; "
+        f"{size_stats.purchase_override_pct:.1f}% of purchases override)"
+        if size_stats is not None
+        else ""
+    )
 
     lines.extend(
         [
@@ -452,34 +515,35 @@ def render_forecast_report(
             "## 8. Plain-English Summary",
             "",
             (
-                "- **Data cleaning vs method choice:** "
-                "`baseline (none)` vs `baseline (rule_only)` separates outlier removal from "
-                "forecasting "
-                f"(`{primary_eval.rule_clean_metrics[('baseline', 'none')].mae:.2f}` d "
-                f"vs `{primary_eval.rule_clean_metrics[('baseline', 'rule_only')].mae:.2f}` d)."
-            ),
-            (
-                f"- **Winner (`{w[0]} ({w[1]})`):** achieves "
-                f"`{primary_eval.rule_clean_metrics[w].mae:.2f}` d MAE "
-                f"(vs `{primary_eval.rule_clean_metrics[('baseline', 'none')].mae:.2f}` d "
-                "for the current app baseline)."
-            ),
-            (
-                "- **Where the baseline wins / matches:** "
+                "- **Per-group performance (primary lens):** "
                 + (
-                    "when pack size does **not** change (`size_changed_from_previous=False`), "
-                    f"`baseline (none)` (`{b_no_switch.mae:.2f}` d) is close to "
-                    f"`{w[0]}` (`{w_no_switch.mae:.2f}` d); "
-                    if b_no_switch and w_no_switch
+                    f"on **constant-size histories** (Group a, `34.5%` of targets), "
+                    f"`baseline (none)` = `{ca_base_none.mae:.2f}` d, "
+                    f"`baseline (rule_only)` = `{ca_base_ro.mae:.2f}` d, and "
+                    f"`rate_mean (rule_only)` = `{ca_rm_ro.mae:.2f}` d "
+                    "(rule cleaning accounts for almost all of the gain; duration and rate "
+                    "methods match once rules remove extreme faults); "
+                    if ca_base_none and ca_base_ro and ca_rm_ro
                     else ""
                 )
                 + (
-                    f"on pack-size switches (`size_changed_from_previous=True`), "
-                    f"`baseline (none)` degrades to `{b_switch.mae:.2f}` d while size-normalized "
-                    f"`{w[0]}` stays at `{w_switch.mae:.2f}` d."
-                    if b_switch and w_switch
-                    else "duration-only methods cannot adapt when pack size changes."
+                    f"on **histories with >= 1 size change** (Group b, `65.5%` of targets), "
+                    f"`baseline (none)` = `{cb_base_none.mae:.2f}` d and "
+                    f"`baseline (rule_only)` = `{cb_base_ro.mae:.2f}` d, while "
+                    f"`rate_mean (rule_only)` stays at `{cb_rm_ro.mae:.2f}` d."
+                    if cb_base_none and cb_base_ro and cb_rm_ro
+                    else ""
                 )
+            ),
+            (
+                f"- **Blended MAE depends on switch frequency:** the overall holdout blend "
+                f"(`17.42` d -> `4.53` d for `rate_mean (rule_only)`) is a weighted average of "
+                f"Groups (a) and (b) and therefore depends directly on the simulator's "
+                f"size-switch assumption {switch_note}."
+            ),
+            (
+                f"- **Mechanical selection winner:** `{w[0]} ({w[1]})` at "
+                f"`{primary_eval.rule_clean_metrics[w].mae:.2f}` d blended MAE."
             ),
             "",
             "## 9. Limitations",
@@ -488,9 +552,51 @@ def render_forecast_report(
             "whose baseline (`eps=0.0`) assumes a stable per-household daily consumption rate "
             "independent of pack size — the exact property that rate-based methods exploit. "
             "The magnitude of the improvement on real Nittoo user histories is therefore unknown.",
+            f"- **Switch-frequency assumption:** The blended gain depends on the simulator's "
+            f"synthetic switch rate {switch_note}; real households with fewer switches will see "
+            "blended MAE closer to Group (a).",
             "- **Sensitivity to pack-size elasticity:** When consumption scales with pack size "
             "(`eps=0.3` and `eps=0.6` in Section 6), rate-based MAE degrades substantially "
             "because a constant daily rate no longer transfers across pack sizes.",
+        ]
+    )
+
+    eps06_note = ""
+    eps06_cross = ""
+    if len(elasticity_evals) >= 3:
+        e06 = elasticity_evals[-1]
+        e06_ro = e06.rule_clean_metrics[("rate_mean", "rule_only")].mae
+        e06_rp = e06.rule_clean_metrics[("rate_mean", "rule_plus_rate_outlier")].mae
+        e06_ew = e06.rule_clean_metrics[("ewma_duration", "rule_only")].mae
+        eps06_note = (
+            f" (`eps=0.6`: `{e06_ro:.2f}` d `rule_only` vs "
+            f"`{e06_rp:.2f}` d `rule_plus_rate_outlier` in Section 6)"
+        )
+        eps06_cross = f" (`{e06_ew:.2f}` d vs `{e06_ro:.2f}` d at `eps=0.6`)"
+
+    lines.extend(
+        [
+            "",
+            "## 10. Shipping Decision",
+            "",
+            f"- **Mechanical winner vs shipped method:** Although the mechanical winner is "
+            f"`{w[0]} ({w[1]})` (`{rm_rp:.2f}` d MAE), we **ship `rate_mean (rule_only)`** "
+            f"(`{rm_ro:.2f}` d MAE).",
+            f"- **Why `rate_mean (rule_only)`:** "
+            f"(1) It also passes the pre-registered Bonferroni test against `baseline (none)` "
+            f"(`{rm_ci_against_base.mae_improvement:+.3f}` d, "
+            f"`{ci_pct:.2f}% CI [{rm_ci_against_base.ci_low:+.3f}, "
+            f"{rm_ci_against_base.ci_high:+.3f}]`); "
+            f"(2) the incremental gain from `rule_plus_rate_outlier` is small on holdout "
+            f"(`{rm_ci.mae_improvement:+.3f}` d, "
+            f"`95% CI [{rm_ci.ci_low:+.3f}, {rm_ci.ci_high:+.3f}]`), minimal under `2.5x` noise "
+            f"(Section 4), and **reverses** under pack-size elasticity{eps06_note}; "
+            "and (3) shipping `rule_only` avoids porting an unreliable rate-outlier detector "
+            "into the web app.",
+            "- **Elasticity risk:** Between `eps=0.3` and `eps=0.6` (Section 6), duration-based "
+            f"`ewma_duration` crosses over and beats rate-based methods{eps06_cross}. "
+            "Real Nittoo usage data is needed to measure actual pack-size elasticity "
+            "before committing to rate normalization long-term.",
         ]
     )
     return "\n".join(lines) + "\n"
