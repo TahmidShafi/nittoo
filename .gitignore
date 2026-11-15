@@ -28,3 +28,6 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+docs/CONTEXT_AUDIT.md
+supabase/.temp/
