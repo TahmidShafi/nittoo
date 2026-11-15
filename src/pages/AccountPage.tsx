@@ -40,7 +40,7 @@ export const AccountPage: React.FC = () => {
     try {
       const { filename } = await exportUserDataAs('json', user.id, user.email, db);
       setSuccessMessage(`Backup ready. Downloaded ${filename}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Backup download failed:', err);
       setErrorMessage("Couldn't generate the JSON backup. Please try again.");
     } finally {

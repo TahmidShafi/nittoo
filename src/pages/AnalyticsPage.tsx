@@ -444,10 +444,10 @@ export const AnalyticsPage: React.FC = () => {
                     tickLine={false}
                   />
                   <Tooltip
-                    formatter={(value: any, _name: any, item: any) => {
+                    formatter={(value, _name, item) => {
                       const payload = item?.payload as CategorySpending | undefined;
                       return [
-                        `${value}% · ৳${payload?.monthlyCost.toLocaleString() ?? 0}/mo (${payload?.productCount ?? 0} item${payload?.productCount === 1 ? '' : 's'})`,
+                        `${value ?? 0}% · ৳${payload?.monthlyCost.toLocaleString() ?? 0}/mo (${payload?.productCount ?? 0} item${payload?.productCount === 1 ? '' : 's'})`,
                         'Share of Monthly Run Rate',
                       ];
                     }}
