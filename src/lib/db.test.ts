@@ -2,8 +2,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 type QueryResult = { data?: unknown; error?: { message: string } | null };
 
-const { tableQueues, mockSupabase } = vi.hoisted(() => {
+type RecordedCall = {
+  table: string;
+  op: 'select' | 'insert' | 'update' | 'delete' | 'upsert';
+  eqs: [string, unknown][];
+  payload?: unknown;
+};
+
+const { tableQueues, recordedCalls, mockSupabase } = vi.hoisted(() => {
   const queues = new Map<string, { data?: unknown; error?: { message: string } | null }[]>();
+  const calls: RecordedCall[] = [];
 
   function nextResponse(table: string) {
     const queue = queues.get(table);
@@ -14,20 +22,34 @@ const { tableQueues, mockSupabase } = vi.hoisted(() => {
   }
 
   function createBuilder(table: string) {
+    const call: RecordedCall = { table, op: 'select', eqs: [] };
+    calls.push(call);
     const builder: Record<string, unknown> = {};
-    const chainMethods = [
-      'select',
-      'insert',
-      'update',
-      'delete',
-      'upsert',
-      'eq',
-      'neq',
-      'in',
-      'order',
-      'limit',
-    ];
-    for (const method of chainMethods) {
+    builder.select = () => builder;
+    builder.insert = (payload: unknown) => {
+      call.op = 'insert';
+      call.payload = payload;
+      return builder;
+    };
+    builder.update = (payload: unknown) => {
+      call.op = 'update';
+      call.payload = payload;
+      return builder;
+    };
+    builder.delete = () => {
+      call.op = 'delete';
+      return builder;
+    };
+    builder.upsert = (payload: unknown) => {
+      call.op = 'upsert';
+      call.payload = payload;
+      return builder;
+    };
+    builder.eq = (col: string, val: unknown) => {
+      call.eqs.push([col, val]);
+      return builder;
+    };
+    for (const method of ['neq', 'in', 'order', 'limit']) {
       builder[method] = () => builder;
     }
     builder.single = () => Promise.resolve(nextResponse(table));
@@ -41,6 +63,7 @@ const { tableQueues, mockSupabase } = vi.hoisted(() => {
 
   return {
     tableQueues: queues,
+    recordedCalls: calls,
     mockSupabase: {
       from: (table: string) => createBuilder(table),
     },
@@ -66,6 +89,7 @@ describe('SupabaseDatabase (mocked Supabase client)', () => {
 
   beforeEach(() => {
     tableQueues.clear();
+    recordedCalls.length = 0;
     db = new SupabaseDatabase();
   });
 
@@ -305,9 +329,18 @@ describe('SupabaseDatabase (mocked Supabase client)', () => {
     expect(exported.products).toHaveLength(1);
     expect(exported.purchases).toHaveLength(2);
 
-    // resetUserData
+    // resetUserData: verifies user_id scoping on delete AND error propagation
+    recordedCalls.length = 0;
     pushResponse('products', { data: null, error: null });
-    await expect(db.resetUserData(userId)).resolves.toBeUndefined();
+    await db.resetUserData(userId);
+    expect(recordedCalls).toContainEqual({
+      table: 'products',
+      op: 'delete',
+      eqs: [['user_id', userId]],
+    });
+
+    pushResponse('products', { data: null, error: { message: 'delete failed' } });
+    await expect(db.resetUserData(userId)).rejects.toThrow('Failed to reset user data: delete failed');
   });
 
   it('handles restock plan CRUD and importUserData', async () => {
@@ -353,8 +386,23 @@ describe('SupabaseDatabase (mocked Supabase client)', () => {
     pushResponse('restock_plans', { data: { ...planRow, status: 'dismissed' }, error: null });
     expect((await db.dismissRestockPlan(userId, 'rp-1')).status).toBe('dismissed');
 
+    recordedCalls.length = 0;
+    pushResponse('restock_plans', { data: { product_id: 'prod-1' }, error: null });
     pushResponse('restock_plans', { data: null, error: null });
-    await expect(db.deleteRestockPlan(userId, 'rp-1')).resolves.toBeUndefined();
+    await db.deleteRestockPlan(userId, 'rp-1');
+    expect(recordedCalls).toContainEqual({
+      table: 'restock_plans',
+      op: 'delete',
+      eqs: [
+        ['id', 'rp-1'],
+        ['user_id', userId],
+      ],
+    });
+    pushResponse('restock_plans', { data: { product_id: 'prod-1' }, error: null });
+    pushResponse('restock_plans', { data: null, error: { message: 'rls blocked' } });
+    await expect(db.deleteRestockPlan(userId, 'rp-1')).rejects.toThrow(
+      'Failed to delete restock plan: rls blocked'
+    );
 
     // importUserData (merge_skip_conflicts with 1 product)
     pushResponse('products', { data: [], error: null });

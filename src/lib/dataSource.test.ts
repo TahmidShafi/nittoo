@@ -100,7 +100,9 @@ describe('dataSource proxy & demo mode routing', () => {
     const dismissedPlan = await db.dismissRestockPlan(userId, plan.id);
     expect(dismissedPlan.status).toBe('dismissed');
 
+    dataCache.set(userId, 'dashboard', [{ stale: true }]);
     await db.deleteRestockPlan(userId, plan.id);
+    expect(dataCache.get(userId, 'dashboard')).toBeNull();
     expect(await db.getRestockPlans(userId)).toHaveLength(0);
 
     const finished = await db.finishUsagePeriod(userId, usage.id, '2026-04-20');
@@ -124,8 +126,15 @@ describe('dataSource proxy & demo mode routing', () => {
     });
     expect(importRes.success).toBe(true);
 
-    await db.deleteUsagePeriod(userId, usage.id);
+    dataCache.set(userId, `product:${product.id}`, { cached: true });
+    const deletedUsage = await db.deleteUsagePeriod(userId, usage.id);
+    expect(deletedUsage.id).toBe(usage.id);
+    expect(dataCache.get(userId, `product:${product.id}`)).toBeNull();
+    expect((await db.getProductHistory(product.id, userId))?.finished_periods).toHaveLength(0);
+
+    dataCache.set(userId, 'dashboard', [{ stale: true }]);
     await db.resetUserData(userId);
+    expect(dataCache.get(userId, 'dashboard')).toBeNull();
     expect(await db.getAllUserProducts(userId)).toHaveLength(0);
   });
 });
