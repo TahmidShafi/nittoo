@@ -5,8 +5,14 @@
 
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
-import { DEFAULT_MOCK_USER_ID } from '../lib/mock-db';
-import { db } from '../lib/dataSource';
+import { DEFAULT_MOCK_USER_ID, mockDb } from '../lib/mock-db';
+import {
+  db,
+  DEMO_USER_ID,
+  isDemoSessionActive,
+  setDemoModeActive,
+} from '../lib/dataSource';
+import { buildDemoSeedData } from '../lib/demo/seed';
 import { dataCache } from '../lib/dataCache';
 
 export interface AuthUser {
@@ -27,9 +33,12 @@ export interface UpdateEmailResult {
 export interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
+  isDemoMode: boolean;
   signIn: (email: string, password?: string) => Promise<void>;
   signUp: (email: string, password?: string) => Promise<SignUpResult>;
   signOut: () => Promise<void>;
+  enterDemoMode: () => Promise<void>;
+  exitDemoMode: () => Promise<void>;
   sendMagicLink: (email: string) => Promise<void>;
   requestPasswordReset: (email: string) => Promise<void>;
   resetPassword: (newPassword: string) => Promise<void>;
@@ -66,6 +75,7 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(() => isDemoSessionActive());
 
   // ----------------------------------------------------------------------------
   // Session Restoration & Listener
@@ -75,6 +85,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let authSubscription: { unsubscribe: () => void } | null = null;
 
     async function initializeAuth() {
+      if (isDemoSessionActive()) {
+        try {
+          const existingProducts = await mockDb.getAllUserProducts(DEMO_USER_ID);
+          if (existingProducts.length === 0) {
+            mockDb.seedDemoUser(DEMO_USER_ID, buildDemoSeedData(DEMO_USER_ID));
+          }
+          if (mounted) {
+            setIsDemoMode(true);
+            setUser({
+              id: DEMO_USER_ID,
+              email: 'demo@nittoo.local',
+              created_at: new Date().toISOString(),
+            });
+          }
+        } catch (err) {
+          console.error('Failed to restore demo session:', err);
+        } finally {
+          if (mounted) setLoading(false);
+        }
+        return;
+      }
+
       if (isSupabaseConfigured && supabase) {
         try {
           const { data: { session }, error } = await supabase.auth.getSession();
@@ -173,12 +205,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   // ----------------------------------------------------------------------------
+  // Demo Mode (Runtime Session Switch — Works Even When Supabase Is Configured)
+  // ----------------------------------------------------------------------------
+  const enterDemoMode = useCallback(async () => {
+    setDemoModeActive(true);
+    mockDb.seedDemoUser(DEMO_USER_ID, buildDemoSeedData(DEMO_USER_ID));
+    const demoUser: AuthUser = {
+      id: DEMO_USER_ID,
+      email: 'demo@nittoo.local',
+      created_at: new Date().toISOString(),
+    };
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(MOCK_SESSION_KEY, JSON.stringify({ user: demoUser }));
+    }
+    dataCache.clearAll();
+    setIsDemoMode(true);
+    setUser(demoUser);
+  }, []);
+
+  const exitDemoMode = useCallback(async () => {
+    await mockDb.resetUserData(DEMO_USER_ID, true);
+    setDemoModeActive(false);
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.removeItem(MOCK_SESSION_KEY);
+    }
+    dataCache.clearAll();
+    setIsDemoMode(false);
+    setUser(null);
+  }, []);
+
+  // ----------------------------------------------------------------------------
   // Sign In
   // ----------------------------------------------------------------------------
   const signIn = useCallback(async (email: string, password?: string) => {
     const trimmedEmail = email.trim();
     if (!trimmedEmail || !trimmedEmail.includes('@')) {
       throw new Error('Please enter a valid email address');
+    }
+
+    if (isDemoSessionActive()) {
+      setDemoModeActive(false);
+      setIsDemoMode(false);
     }
 
     if (isSupabaseConfigured && supabase) {
@@ -269,6 +336,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Sign Out
   // ----------------------------------------------------------------------------
   const signOut = useCallback(async () => {
+    if (isDemoSessionActive()) {
+      await exitDemoMode();
+      return;
+    }
     if (user?.id) {
       dataCache.clearUser(user.id);
     }
@@ -282,7 +353,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
     setUser(null);
-  }, [user?.id]);
+  }, [user?.id, exitDemoMode]);
 
   // ----------------------------------------------------------------------------
   // Magic Link
@@ -445,6 +516,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ----------------------------------------------------------------------------
   const deleteAccount = useCallback(async () => {
     if (!user) return;
+    if (isDemoSessionActive()) {
+      await exitDemoMode();
+      return;
+    }
     let deletedSuccessfully = false;
     try {
       // 1. Permanently delete all user data (products, purchases, usage periods, restock plans)
@@ -477,9 +552,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const value: AuthContextType = {
     user,
     loading,
+    isDemoMode,
     signIn,
     signUp,
     signOut,
+    enterDemoMode,
+    exitDemoMode,
     sendMagicLink,
     requestPasswordReset,
     resetPassword,

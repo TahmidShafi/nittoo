@@ -26,7 +26,7 @@ export const LoginPage: React.FC = () => {
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const { signIn, sendMagicLink } = useAuth();
+  const { signIn, sendMagicLink, enterDemoMode } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -69,6 +69,20 @@ export const LoginPage: React.FC = () => {
       navigate(redirectPath, { replace: true });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Demo sign in failed';
+      setError(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleTryDemo = async () => {
+    setError(null);
+    setSubmitting(true);
+    try {
+      await enterDemoMode();
+      navigate('/dashboard', { replace: true });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to start demo mode';
       setError(msg);
     } finally {
       setSubmitting(false);
@@ -210,18 +224,32 @@ export const LoginPage: React.FC = () => {
             </form>
           )}
 
-          {/* Demo Quick Sign-in Button (Shown in Mock Mode) */}
-          {isMockMode && !magicLinkSent && (
-            <div className="mt-4 pt-4 border-t border-neutral-100">
+          {/* Try the Demo Button (Always Available — Runtime Mock Sandbox) */}
+          {!magicLinkSent && (
+            <div className="mt-4 pt-4 border-t border-neutral-100 space-y-2">
               <button
                 type="button"
-                onClick={handleDemoSignIn}
+                onClick={handleTryDemo}
                 disabled={submitting}
-                className="btn-press w-full py-2 px-3.5 rounded-xl border border-[#2D6A4F]/25 bg-[#EBF4F0]/60 hover:bg-[#EBF4F0] text-[#2D6A4F] text-xs font-semibold transition-colors disabled:opacity-60 flex items-center justify-center gap-1.5"
+                className="btn-press w-full py-2.5 px-3.5 rounded-xl border border-[#2D6A4F]/30 bg-[#EBF4F0]/70 hover:bg-[#EBF4F0] text-[#2D6A4F] text-xs font-semibold transition-colors disabled:opacity-60 flex items-center justify-center gap-1.5"
               >
-                <span>⚡</span>
-                <span>Sign in as Demo User (demo-user@nittoo.local)</span>
+                <span>Try the demo</span>
+                <span className="text-[11px] font-normal text-[#2D6A4F]/80">
+                  (12 sample products, no sign-up)
+                </span>
               </button>
+
+              {isMockMode && (
+                <button
+                  type="button"
+                  onClick={handleDemoSignIn}
+                  disabled={submitting}
+                  className="btn-press w-full py-2 px-3.5 rounded-xl border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 text-neutral-700 text-xs font-medium transition-colors disabled:opacity-60 flex items-center justify-center gap-1.5"
+                >
+                  <span>⚡</span>
+                  <span>Sign in as Demo User (demo-user@nittoo.local)</span>
+                </button>
+              )}
             </div>
           )}
 

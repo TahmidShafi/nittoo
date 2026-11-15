@@ -12,7 +12,15 @@ import {
   MockDatabase,
   InMemoryStorageAdapter,
   DEFAULT_MOCK_USER_ID,
+  mockDb,
 } from '../src/lib/mock-db';
+import {
+  DEMO_USER_ID,
+  getActiveDataSource,
+  setDemoModeActive,
+  isDemoSessionActive,
+} from '../src/lib/dataSource';
+import { buildDemoSeedData } from '../src/lib/demo/seed';
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -137,6 +145,70 @@ async function runAuthVerification() {
   assert(seedProducts.length === 3, 'Demo user (demo-user@nittoo.local) has access to 3 seeded essentials');
   const activeSeedProducts = await db.getActiveProducts(DEFAULT_MOCK_USER_ID);
   assert(activeSeedProducts.length === 3, 'All 3 seeded essentials have active periods on demo dashboard');
+
+  // ----------------------------------------------------------------------------
+  // 6. RUNTIME DEMO MODE SEEDING & ADAPTER SWITCHING
+  // ----------------------------------------------------------------------------
+  console.log('\n--- 6. Verifying Runtime Demo Mode Seed & DataSource Switching ---');
+  const demoBundle = buildDemoSeedData(DEMO_USER_ID, '2026-11-15');
+  assert(demoBundle.products.length === 12, 'buildDemoSeedData creates 12 sample products');
+  assert(
+    demoBundle.purchases.length > demoBundle.products.length,
+    'buildDemoSeedData creates 12-18 months of purchases'
+  );
+  assert(
+    demoBundle.usage_periods.some((u) => u.finished_date !== null),
+    'buildDemoSeedData includes finished usage cycles'
+  );
+  assert(
+    demoBundle.restock_plans.length >= 1,
+    'buildDemoSeedData includes at least one restock plan'
+  );
+  assert(
+    demoBundle.purchases.every((p) => p.currency === 'BDT'),
+    'buildDemoSeedData uses BDT prices'
+  );
+
+  db.seedDemoUser(DEMO_USER_ID, demoBundle);
+  const demoProducts = await db.getAllUserProducts(DEMO_USER_ID);
+  assert(demoProducts.length === 12, 'seedDemoUser stores 12 products for DEMO_USER_ID');
+
+  const demoInventory = await db.getUserInventory(DEMO_USER_ID);
+  assert(
+    demoInventory.unopened.length >= 1,
+    'Demo inventory includes at least one unopened backup bottle'
+  );
+
+  await db.resetUserData(DEMO_USER_ID, true);
+  const clearedDemoProducts = await db.getAllUserProducts(DEMO_USER_ID);
+  assert(clearedDemoProducts.length === 0, 'Exiting demo mode clears demo user data');
+
+  // Verify runtime adapter selection in browser-like environment
+  const originalWindow = (globalThis as { window?: unknown }).window;
+  const mockStore = new Map<string, string>();
+  (globalThis as { window?: unknown }).window = {
+    localStorage: {
+      getItem: (k: string) => mockStore.get(k) ?? null,
+      setItem: (k: string, v: string) => mockStore.set(k, v),
+      removeItem: (k: string) => mockStore.delete(k),
+    },
+  };
+  try {
+    setDemoModeActive(true);
+    assert(isDemoSessionActive() === true, 'setDemoModeActive(true) activates demo session');
+    assert(
+      getActiveDataSource() === mockDb,
+      'getActiveDataSource() selects mockDb at runtime when demo mode is active'
+    );
+    setDemoModeActive(false);
+    assert(isDemoSessionActive() === false, 'setDemoModeActive(false) deactivates demo session');
+  } finally {
+    if (originalWindow === undefined) {
+      delete (globalThis as { window?: unknown }).window;
+    } else {
+      (globalThis as { window?: unknown }).window = originalWindow;
+    }
+  }
 
   console.log('\n=================================================================');
   console.log('✅ ALL STAGE 2 AUTHENTICATION VERIFICATION CHECKS PASSED!');

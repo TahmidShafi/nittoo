@@ -16,7 +16,7 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user, signOut, isDemoMode, exitDemoMode } = useAuth();
 
   const handleSignOut = async () => {
     try {
@@ -24,6 +24,24 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       navigate('/login');
     } catch (err) {
       console.error('Sign out error:', err);
+    }
+  };
+
+  const handleExitDemo = async () => {
+    try {
+      await exitDemoMode();
+      navigate('/login');
+    } catch (err) {
+      console.error('Exit demo error:', err);
+    }
+  };
+
+  const handleDemoSignUp = async () => {
+    try {
+      await exitDemoMode();
+      navigate('/signup');
+    } catch (err) {
+      console.error('Sign up navigation error:', err);
     }
   };
 
@@ -82,6 +100,34 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FBFBFB] text-[#111827]">
+      {/* Persistent Demo Mode Banner */}
+      {isDemoMode && (
+        <div
+          role="status"
+          className="bg-[#2D6A4F] text-white text-xs px-4 py-2 border-b border-[#23533D]"
+        >
+          <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-2">
+            <p className="font-medium">
+              Demo — sample data stored only in this browser.{' '}
+              <button
+                type="button"
+                onClick={handleDemoSignUp}
+                className="underline font-semibold hover:text-emerald-100 cursor-pointer"
+              >
+                Sign up to save your own.
+              </button>
+            </p>
+            <button
+              type="button"
+              onClick={handleExitDemo}
+              className="btn-press px-2.5 py-1 rounded-md bg-white/15 hover:bg-white/25 text-white font-semibold transition-colors cursor-pointer"
+            >
+              Exit demo
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Desktop & Mobile Top Header */}
       <header className="sticky top-0 z-30 border-b border-neutral-200/70 bg-white/90 backdrop-blur-md transition-colors">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">

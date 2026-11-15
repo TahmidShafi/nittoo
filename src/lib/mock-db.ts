@@ -1234,6 +1234,38 @@ export class MockDatabase implements IDataSource {
     }
   }
 
+  /**
+   * Seeds or replaces a specific user's data with a pre-built demo bundle.
+   * Keeps other users' records in localStorage intact.
+   */
+  seedDemoUser(
+    userId: string,
+    bundle: {
+      products: Product[];
+      purchases: Purchase[];
+      usage_periods: UsagePeriod[];
+      restock_plans: RestockPlan[];
+    }
+  ): void {
+    if (!userId) return;
+    const data = this.getData();
+    const existingProductIds = new Set(
+      data.products.filter((p) => p.user_id === userId).map((p) => p.id)
+    );
+
+    data.products = data.products.filter((p) => p.user_id !== userId);
+    data.purchases = data.purchases.filter((pu) => !existingProductIds.has(pu.product_id));
+    data.usage_periods = data.usage_periods.filter((u) => !existingProductIds.has(u.product_id));
+    data.restock_plans = (data.restock_plans || []).filter((rp) => rp.user_id !== userId);
+
+    data.products.push(...bundle.products);
+    data.purchases.push(...bundle.purchases);
+    data.usage_periods.push(...bundle.usage_periods);
+    data.restock_plans.push(...bundle.restock_plans);
+
+    this.saveData(data);
+  }
+
   // ----------------------------------------------------------------------------
   // Restock Planning Implementation (Stage 21)
   // ----------------------------------------------------------------------------
