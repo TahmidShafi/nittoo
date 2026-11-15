@@ -711,7 +711,10 @@ export const ProductDetailPage: React.FC = () => {
                   </div>
                   {activeUsageData.runOutRange && (
                     <p className="text-xs font-medium text-neutral-600">
-                      {formatRunOutRange(activeUsageData.runOutRange)}
+                      {formatRunOutRange(activeUsageData.runOutRange, {
+                        expectedFinishDate,
+                        isOverdue: activeUsageData.isOverdue,
+                      })}
                     </p>
                   )}
                   <p className="text-xs text-neutral-500 flex items-center gap-1.5 flex-wrap">
@@ -732,7 +735,10 @@ export const ProductDetailPage: React.FC = () => {
                   </div>
                   {activeUsageData.runOutRange && (
                     <p className="text-xs font-medium text-neutral-600">
-                      {formatRunOutRange(activeUsageData.runOutRange)}
+                      {formatRunOutRange(activeUsageData.runOutRange, {
+                        expectedFinishDate,
+                        isOverdue: activeUsageData.isOverdue,
+                      })}
                     </p>
                   )}
                   <p className="text-xs text-neutral-400 italic">

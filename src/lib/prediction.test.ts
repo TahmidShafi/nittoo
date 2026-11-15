@@ -207,6 +207,20 @@ describe('prediction', () => {
       const pastMax = addDays(range!.maxDate, 1);
       expect(calculateRunOutRange('2026-01-01', 40, 2, pastMax)).toBeNull();
     });
+
+    it('formats overdue-within-range copy using the point-estimate expected finish date', () => {
+      const expectedFinishDate = addDays('2026-01-01', 40); // 2026-02-10
+      const range = calculateRunOutRange('2026-01-01', 40, 2, '2026-02-12');
+      expect(range).not.toBeNull();
+
+      const text = formatRunOutRange(range!, {
+        expectedFinishDate,
+        isOverdue: true,
+        referenceDate: '2026-02-12',
+      });
+      expect(text).toMatch(/^Was expected Feb 10 · may last until /);
+      expect(text).not.toContain('Runs out between');
+    });
   });
 
   describe('Python/TypeScript parity (analytics/fixtures/forecast_parity.json)', () => {

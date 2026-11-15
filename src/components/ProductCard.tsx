@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom';
 import { usePrediction } from '../hooks/usePrediction';
 import { calculateConfidence } from '../lib/confidence';
 import { formatRunOutRange, getEffectiveSize } from '../lib/prediction';
+import { calculateExpectedFinishDate } from '../lib/restock';
 import type { ProductWithDetails } from '../types';
 
 interface ProductCardProps {
@@ -36,6 +37,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   const latestPurchase = product.latest_purchase;
   const confidence = calculateConfidence(validCompletedCycles);
+  const expectedFinishDate =
+    product.active_usage && averageLifespan !== null && averageLifespan > 0
+      ? calculateExpectedFinishDate(product.active_usage.opened_date, averageLifespan)
+      : null;
 
   return (
     <div className="h-full bg-white border border-neutral-200/80 rounded-2xl p-5 shadow-xs card-interactive hover:border-[#2D6A4F]/40 flex flex-col justify-between group">
@@ -124,7 +129,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 className="text-neutral-600 font-medium text-xs cursor-help"
                 title={`${confidence.label} • ${confidence.supportingText}`}
               >
-                {averageLifespan}-day avg · {validCompletedCycles} {validCompletedCycles === 1 ? 'cycle' : 'cycles'}
+                ~{Math.round(averageLifespan)}-day expected · {validCompletedCycles} {validCompletedCycles === 1 ? 'cycle' : 'cycles'}
               </span>
             ) : (
               <span className="text-neutral-400 italic text-[11px]">No history yet</span>
@@ -133,7 +138,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
           {runOutRange && (
             <p className="text-[11px] text-neutral-500 font-medium">
-              {formatRunOutRange(runOutRange)}
+              {formatRunOutRange(runOutRange, { expectedFinishDate, isOverdue })}
             </p>
           )}
 

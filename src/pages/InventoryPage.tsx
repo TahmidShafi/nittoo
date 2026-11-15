@@ -345,7 +345,7 @@ export const InventoryPage: React.FC = () => {
                           {metrics.averageLifespan !== null && (
                             <>
                               <span className="text-neutral-300">•</span>
-                              <span>{metrics.averageLifespan}-day avg</span>
+                              <span>~{Math.round(metrics.averageLifespan)}-day expected</span>
                             </>
                           )}
 

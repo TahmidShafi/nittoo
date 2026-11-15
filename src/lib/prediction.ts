@@ -166,13 +166,32 @@ export function calculateRunOutRange(
   return { minDate, maxDate, lowDays, highDays, bucket };
 }
 
-export function formatRunOutRange(range: RunOutRange): string {
+export interface FormatRunOutRangeOptions {
+  expectedFinishDate?: string | null;
+  isOverdue?: boolean;
+  referenceDate?: string;
+}
+
+export function formatRunOutRange(
+  range: RunOutRange,
+  options?: FormatRunOutRangeOptions
+): string {
   const fmt = (iso: string) =>
     new Intl.DateTimeFormat('en-US', {
       month: 'short',
       day: 'numeric',
       timeZone: 'UTC',
     }).format(new Date(`${iso}T00:00:00Z`));
+
+  const today = options?.referenceDate ?? getTodayLocal();
+  if (
+    options?.isOverdue &&
+    options.expectedFinishDate &&
+    today <= range.maxDate
+  ) {
+    return `Was expected ${fmt(options.expectedFinishDate)} · may last until ${fmt(range.maxDate)}`;
+  }
+
   return `Runs out between ${fmt(range.minDate)} and ${fmt(range.maxDate)}`;
 }
 

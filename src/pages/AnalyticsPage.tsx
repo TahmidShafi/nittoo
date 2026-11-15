@@ -547,7 +547,7 @@ export const AnalyticsPage: React.FC = () => {
                       {item.product.name}
                     </Link>
                     <span className="text-[11px] text-neutral-400">
-                      Avg: {Math.round(item.averageLifespan)}d · ~৳{Math.round(item.monthlyCost)}/mo
+                      Expected: ~{Math.round(item.averageLifespan)}d · ~৳{Math.round(item.monthlyCost)}/mo
                     </span>
                   </div>
                   <span className="font-bold text-[#2D6A4F] shrink-0 text-sm">
@@ -595,7 +595,7 @@ export const AnalyticsPage: React.FC = () => {
                       {item.product.name}
                     </Link>
                     <span className="text-[11px] text-neutral-400">
-                      Avg: {Math.round(item.averageLifespan)}d · ~৳{Math.round(item.monthlyCost)}/mo
+                      Expected: ~{Math.round(item.averageLifespan)}d · ~৳{Math.round(item.monthlyCost)}/mo
                     </span>
                   </div>
                   <span className="font-bold text-status-attention-text shrink-0 text-sm">
