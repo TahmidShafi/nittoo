@@ -9,7 +9,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { db } from '../lib/dataSource';
-import { getTodayUTC } from '../lib/dateUtils';
+import { getTodayLocal } from '../lib/dateUtils';
 import { PRODUCT_CATEGORIES, type Product, type ProductCategory, type SizeUnit } from '../types';
 import {
   searchExternalProducts,
@@ -28,7 +28,7 @@ export const AddProductPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const today = getTodayUTC();
+  const today = getTodayLocal();
 
   const preselectedId =
     (location.state as { preselectedProductId?: string })?.preselectedProductId ||

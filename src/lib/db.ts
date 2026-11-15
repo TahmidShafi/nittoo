@@ -4,7 +4,7 @@
 // ==============================================================================
 
 import { supabase } from './supabase';
-import { getTodayUTC } from './dateUtils';
+import { getTodayLocal } from './dateUtils';
 import { isValidISODate } from './restock/plan';
 import { dataCache } from './dataCache';
 import type {
@@ -390,7 +390,7 @@ export class SupabaseDatabase implements IDataSource {
       throw new Error('Opened date is required');
     }
 
-    const today = getTodayUTC();
+    const today = getTodayLocal();
     if (input.opened_date > today) {
       throw new Error('Opened date cannot be in the future');
     }

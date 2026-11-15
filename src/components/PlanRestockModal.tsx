@@ -7,7 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { db } from '../lib/dataSource';
-import { getTodayUTC, formatDisplayDate } from '../lib/dateUtils';
+import { getTodayLocal, formatDisplayDate } from '../lib/dateUtils';
 import { calculateAverageLifespan } from '../lib/prediction';
 import { calculateConfidence, getConfidenceBadgeStyles } from '../lib/confidence';
 import {
@@ -41,7 +41,7 @@ export const PlanRestockModal: React.FC<PlanRestockModalProps> = ({
   onSaved,
 }) => {
   const { user } = useAuth();
-  const today = getTodayUTC();
+  const today = getTodayLocal();
 
   // Prediction calculations from canonical engine
   const activeUsage = product?.active_usage || null;

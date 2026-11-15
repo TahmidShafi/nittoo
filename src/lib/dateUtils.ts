@@ -29,6 +29,26 @@ export function getTodayUTC(): string {
 }
 
 /**
+ * Returns today's LOCAL calendar date as a YYYY-MM-DD string.
+ * Optionally accepts a specific Date and IANA timeZone (e.g. 'Asia/Dhaka') for deterministic testing.
+ */
+export function getTodayLocal(now: Date = new Date(), timeZone?: string): string {
+  if (timeZone) {
+    // 'en-CA' formats deterministically as YYYY-MM-DD
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(now);
+  }
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
  * Calculates the exact integer days between two YYYY-MM-DD dates (inclusive or exclusive based on calendar day difference)
  * Example: 2026-06-01 to 2026-06-02 = 1 day
  */
@@ -39,10 +59,10 @@ export function getDaysBetween(startDateStr: string, endDateStr: string): number
 }
 
 /**
- * Calculates days used from opened_date to reference date (default: today UTC).
+ * Calculates days used from opened_date to reference date (default: today local calendar date).
  * Minimum return is 0 days.
  */
-export function getDaysUsed(openedDateStr: string, referenceDateStr: string = getTodayUTC()): number {
+export function getDaysUsed(openedDateStr: string, referenceDateStr: string = getTodayLocal()): number {
   const diff = getDaysBetween(openedDateStr, referenceDateStr);
   return Math.max(0, diff);
 }

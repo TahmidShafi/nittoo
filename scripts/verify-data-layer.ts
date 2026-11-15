@@ -18,7 +18,7 @@ import {
   calculateProgressPercent,
   calculateMonthlyConsumptionCost,
 } from '../src/lib/prediction';
-import { getDaysBetween } from '../src/lib/dateUtils';
+import { getDaysBetween, getTodayLocal, getDaysUsed } from '../src/lib/dateUtils';
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -236,6 +236,23 @@ async function runVerification() {
   assert(calculatePredictedRemainingDays(60, 25) === 35, 'calculatePredictedRemainingDays computes 35 days remaining');
   assert(calculatePredictedRemainingDays(null, 25) === null, 'calculatePredictedRemainingDays returns null when no avg lifespan');
   assert(calculateMonthlyConsumptionCost(1250, 62) === Math.round((1250 / 62) * 30), 'calculateMonthlyConsumptionCost computes estimated monthly spend');
+
+  // Timezone test: 02:00 local time in Asia/Dhaka (UTC+6) is 20:00 UTC the previous day
+  console.log('\n--- 5. Verifying Local Calendar Date (Asia/Dhaka 02:00) ---');
+  const dhaka2am = new Date('2026-11-14T20:00:00.000Z');
+  const dhakaToday = getTodayLocal(dhaka2am, 'Asia/Dhaka');
+  assert(
+    dhakaToday === '2026-11-15',
+    `getTodayLocal at 02:00 Asia/Dhaka (20:00Z prev day) returns 2026-11-15 (got ${dhakaToday})`
+  );
+  assert(
+    getDaysUsed('2026-11-14', dhakaToday) === 1,
+    'getDaysUsed from 2026-11-14 to 2026-11-15 (Asia/Dhaka 02:00) is 1 day'
+  );
+  assert(
+    getDaysBetween('2026-11-15', '2026-11-15') === 0,
+    'getDaysBetween same calendar date remains pure (0 days)'
+  );
 
   console.log('\n=================================================================');
   console.log('✅ ALL STAGE 1 VERIFICATION CHECKS PASSED SUCCESSFULLY!');
