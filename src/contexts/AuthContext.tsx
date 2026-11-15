@@ -441,26 +441,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user?.id]);
 
   // ----------------------------------------------------------------------------
-  // Delete Account (Stage 13 / Account Settings)
+  // Delete Account (Stage 13 / Account Settings + Edge Function auth.users delete)
   // ----------------------------------------------------------------------------
   const deleteAccount = useCallback(async () => {
     if (!user) return;
+    let deletedSuccessfully = false;
     try {
-      // 1. Permanently delete all user data (products, purchases, usage periods)
+      // 1. Permanently delete all user data (products, purchases, usage periods, restock plans)
       await db.resetUserData(user.id, true);
       dataCache.clearUser(user.id);
 
-      // 2. Global sign-out / session clear
+      // 2. Delete auth.users record via Supabase Edge Function & sign out
       if (isSupabaseConfigured && supabase) {
+        const { error: fnError } = await supabase.functions.invoke('delete-account', {
+          method: 'POST',
+        });
+        if (fnError) {
+          throw new Error(fnError.message || 'Failed to delete authentication account.');
+        }
         await supabase.auth.signOut({ scope: 'global' });
       } else {
         if (typeof window !== 'undefined' && window.localStorage) {
           window.localStorage.removeItem(MOCK_SESSION_KEY);
         }
       }
+      deletedSuccessfully = true;
     } finally {
       dataCache.clearUser(user.id);
-      setUser(null);
+      if (deletedSuccessfully) {
+        setUser(null);
+      }
     }
   }, [user]);
 
