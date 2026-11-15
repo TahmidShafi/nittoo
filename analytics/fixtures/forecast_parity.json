@@ -1,0 +1,226 @@
+{
+  "cases": [
+    {
+      "name": "constant_size_k2",
+      "active_size_value": 200.0,
+      "active_size_unit": "ml",
+      "current_days_used": 10,
+      "cycles": [
+        {
+          "duration_days": 30,
+          "effective_size_value": 200.0,
+          "effective_size_unit": "ml"
+        },
+        {
+          "duration_days": 34,
+          "effective_size_value": 200.0,
+          "effective_size_unit": "ml"
+        }
+      ],
+      "expected": {
+        "valid_cycle_count": 2,
+        "predicted_lifespan": 31.9,
+        "predicted_remaining_days": 22,
+        "range_low_days": 27,
+        "range_high_days": 37,
+        "history_bucket": "2"
+      }
+    },
+    {
+      "name": "size_switch_k3",
+      "active_size_value": 473.0,
+      "active_size_unit": "ml",
+      "current_days_used": 20,
+      "cycles": [
+        {
+          "duration_days": 40,
+          "effective_size_value": 236.0,
+          "effective_size_unit": "ml"
+        },
+        {
+          "duration_days": 42,
+          "effective_size_value": 236.0,
+          "effective_size_unit": "ml"
+        },
+        {
+          "duration_days": 38,
+          "effective_size_value": 236.0,
+          "effective_size_unit": "ml"
+        }
+      ],
+      "expected": {
+        "valid_cycle_count": 3,
+        "predicted_lifespan": 80.0,
+        "predicted_remaining_days": 60,
+        "range_low_days": 69,
+        "range_high_days": 93,
+        "history_bucket": "3-4"
+      }
+    },
+    {
+      "name": "rule_exclusions_k5",
+      "active_size_value": 500.0,
+      "active_size_unit": "ml",
+      "current_days_used": 5,
+      "cycles": [
+        {
+          "duration_days": 0,
+          "effective_size_value": 500.0,
+          "effective_size_unit": "ml"
+        },
+        {
+          "duration_days": 1000,
+          "effective_size_value": 500.0,
+          "effective_size_unit": "ml"
+        },
+        {
+          "duration_days": 25,
+          "effective_size_value": 500.0,
+          "effective_size_unit": "ml"
+        },
+        {
+          "duration_days": 28,
+          "effective_size_value": 500.0,
+          "effective_size_unit": "ml"
+        },
+        {
+          "duration_days": 30,
+          "effective_size_value": 500.0,
+          "effective_size_unit": "ml"
+        },
+        {
+          "duration_days": 26,
+          "effective_size_value": 500.0,
+          "effective_size_unit": "ml"
+        },
+        {
+          "duration_days": 29,
+          "effective_size_value": 500.0,
+          "effective_size_unit": "ml"
+        }
+      ],
+      "expected": {
+        "valid_cycle_count": 5,
+        "predicted_lifespan": 27.5,
+        "predicted_remaining_days": 23,
+        "range_low_days": 24,
+        "range_high_days": 32,
+        "history_bucket": "5+"
+      }
+    },
+    {
+      "name": "mixed_known_unknown_sizes",
+      "active_size_value": 400.0,
+      "active_size_unit": "ml",
+      "current_days_used": 0,
+      "cycles": [
+        {
+          "duration_days": 90,
+          "effective_size_value": null,
+          "effective_size_unit": null
+        },
+        {
+          "duration_days": 20,
+          "effective_size_value": 200.0,
+          "effective_size_unit": "ml"
+        },
+        {
+          "duration_days": 25,
+          "effective_size_value": 200.0,
+          "effective_size_unit": "ml"
+        }
+      ],
+      "expected": {
+        "valid_cycle_count": 3,
+        "predicted_lifespan": 44.4,
+        "predicted_remaining_days": 44,
+        "range_low_days": 38,
+        "range_high_days": 52,
+        "history_bucket": "3-4"
+      }
+    },
+    {
+      "name": "unit_mismatch_exclusion",
+      "active_size_value": 300.0,
+      "active_size_unit": "ml",
+      "current_days_used": 12,
+      "cycles": [
+        {
+          "duration_days": 10,
+          "effective_size_value": 100.0,
+          "effective_size_unit": "g"
+        },
+        {
+          "duration_days": 30,
+          "effective_size_value": 150.0,
+          "effective_size_unit": "ml"
+        },
+        {
+          "duration_days": 30,
+          "effective_size_value": 150.0,
+          "effective_size_unit": "ml"
+        }
+      ],
+      "expected": {
+        "valid_cycle_count": 3,
+        "predicted_lifespan": 60.0,
+        "predicted_remaining_days": 48,
+        "range_low_days": 52,
+        "range_high_days": 70,
+        "history_bucket": "3-4"
+      }
+    },
+    {
+      "name": "no_known_size_fallback_half_up",
+      "active_size_value": null,
+      "active_size_unit": null,
+      "current_days_used": 0,
+      "cycles": [
+        {
+          "duration_days": 10,
+          "effective_size_value": null,
+          "effective_size_unit": null
+        },
+        {
+          "duration_days": 11,
+          "effective_size_value": null,
+          "effective_size_unit": null
+        }
+      ],
+      "expected": {
+        "valid_cycle_count": 2,
+        "predicted_lifespan": 10.5,
+        "predicted_remaining_days": 11,
+        "range_low_days": 9,
+        "range_high_days": 12,
+        "history_bucket": "2"
+      }
+    },
+    {
+      "name": "no_valid_cycles",
+      "active_size_value": 200.0,
+      "active_size_unit": "ml",
+      "current_days_used": 3,
+      "cycles": [
+        {
+          "duration_days": 0,
+          "effective_size_value": 200.0,
+          "effective_size_unit": "ml"
+        },
+        {
+          "duration_days": 1050,
+          "effective_size_value": 200.0,
+          "effective_size_unit": "ml"
+        }
+      ],
+      "expected": {
+        "valid_cycle_count": 0,
+        "predicted_lifespan": null,
+        "predicted_remaining_days": null,
+        "range_low_days": null,
+        "range_high_days": null,
+        "history_bucket": null
+      }
+    }
+  ]
+}
