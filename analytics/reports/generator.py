@@ -10,8 +10,18 @@ import duckdb
 
 ANALYTICS_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DB_PATH = ANALYTICS_ROOT / "data" / "nittoo.duckdb"
+DEFAULT_FAULTS_MANIFEST_PATH = ANALYTICS_ROOT / "data" / "ground_truth" / "injected_faults.json"
 DEFAULT_RUN_RESULTS_PATH = ANALYTICS_ROOT / "dbt" / "target" / "run_results.json"
 DEFAULT_REPORT_PATH = ANALYTICS_ROOT / "reports" / "data_quality.md"
+
+
+@dataclass(frozen=True)
+class FaultRecallRow:
+    fault_type: str
+    injected: int
+    rejected_at_contract: int
+    flagged_in_dbt: int
+    recall_pct: float
 
 
 @dataclass(frozen=True)
@@ -19,6 +29,7 @@ class ReportResult:
     report_path: Path
     layer_counts: dict[str, dict[str, int]]
     rejects_by_reason: dict[str, int]
+    fault_recall: list[FaultRecallRow]
     dbt_tests_total: int
     dbt_tests_passed: int
     dbt_tests_warned: int
@@ -88,18 +99,92 @@ def _collect_dbt_tests(run_results_path: Path) -> list[dict[str, object]]:
     return tests
 
 
+def _collect_dbt_flag_counts(con: duckdb.DuckDBPyConnection) -> dict[str, int]:
+    zero_day = 0
+    outlier = 0
+    dup_purchases = 0
+    tables = {
+        (r[0], r[1])
+        for r in con.execute(
+            "SELECT table_schema, table_name FROM information_schema.tables"
+        ).fetchall()
+    }
+    if ("main_marts", "fact_consumption_cycle") in tables:
+        row = con.execute(
+            """
+            SELECT
+                COALESCE(SUM(CASE WHEN is_zero_day THEN 1 ELSE 0 END), 0),
+                COALESCE(SUM(CASE WHEN is_duration_outlier THEN 1 ELSE 0 END), 0)
+            FROM main_marts.fact_consumption_cycle
+            """
+        ).fetchone()
+        zero_day = int(row[0])
+        outlier = int(row[1])
+    if ("main_staging", "stg_purchase_duplicates") in tables:
+        dup_purchases = int(
+            con.execute("SELECT COUNT(*) FROM main_staging.stg_purchase_duplicates").fetchone()[0]
+        )
+    return {
+        "zero_day_cycle": zero_day,
+        "outlier_1000_day": outlier,
+        "duplicate_purchase": dup_purchases,
+    }
+
+
+def _compute_fault_recall(
+    faults_manifest_path: Path,
+    rejects_by_reason: dict[str, int],
+    dbt_flags: dict[str, int],
+) -> list[FaultRecallRow]:
+    if not faults_manifest_path.exists():
+        return []
+    manifest = json.loads(faults_manifest_path.read_text(encoding="utf-8"))
+    counts: dict[str, int] = {str(k): int(v) for k, v in manifest.get("counts", {}).items()}
+
+    mapping: list[tuple[str, str | None, str | None]] = [
+        ("finished_before_opened", "FINISHED_BEFORE_OPENED", None),
+        ("zero_day_cycle", None, "zero_day_cycle"),
+        ("outlier_1000_day", None, "outlier_1000_day"),
+        ("duplicate_purchase", None, "duplicate_purchase"),
+    ]
+    rows: list[FaultRecallRow] = []
+    for fault_type, reject_code, dbt_key in mapping:
+        injected = counts.get(fault_type, 0)
+        rejected = rejects_by_reason.get(reject_code, 0) if reject_code else 0
+        flagged = dbt_flags.get(dbt_key, 0) if dbt_key else 0
+        detected = rejected + flagged
+        recall = round(100.0 * min(detected, injected) / injected, 1) if injected > 0 else 100.0
+        rows.append(
+            FaultRecallRow(
+                fault_type=fault_type,
+                injected=injected,
+                rejected_at_contract=rejected,
+                flagged_in_dbt=flagged,
+                recall_pct=recall,
+            )
+        )
+    return rows
+
+
 def generate_data_quality_report(
     db_path: Path = DEFAULT_DB_PATH,
     run_results_path: Path = DEFAULT_RUN_RESULTS_PATH,
     report_path: Path = DEFAULT_REPORT_PATH,
+    faults_manifest_path: Path | None = None,
 ) -> ReportResult:
     t0 = time.perf_counter()
+    if faults_manifest_path is None:
+        candidate = db_path.parent / "ground_truth" / "injected_faults.json"
+        faults_manifest_path = candidate if candidate.exists() else DEFAULT_FAULTS_MANIFEST_PATH
     con = duckdb.connect(str(db_path), read_only=True)
     try:
         layer_counts = _collect_layer_counts(con)
         rejects_by_reason = _collect_rejects(con)
+        dbt_flags = _collect_dbt_flag_counts(con)
     finally:
         con.close()
+
+    fault_recall = _compute_fault_recall(faults_manifest_path, rejects_by_reason, dbt_flags)
 
     dbt_tests = _collect_dbt_tests(run_results_path)
     tests_total = len(dbt_tests)
@@ -142,7 +227,29 @@ def generate_data_quality_report(
     lines.extend(
         [
             "",
-            "## 3. dbt Test Summary",
+            "## 3. Fault-Detection Recall (Ground Truth vs Detected)",
+            "",
+        ]
+    )
+    if fault_recall:
+        lines.extend(
+            [
+                "| Fault Type | Injected | Rejected at Contract | Flagged in dbt | Recall (%) |",
+                "| :--- | ---: | ---: | ---: | ---: |",
+            ]
+        )
+        for row in fault_recall:
+            lines.append(
+                f"| `{row.fault_type}` | {row.injected:,} | {row.rejected_at_contract:,} "
+                f"| {row.flagged_in_dbt:,} | {row.recall_pct:.1f}% |"
+            )
+    else:
+        lines.append("_No injected-faults manifest found._")
+
+    lines.extend(
+        [
+            "",
+            "## 4. dbt Test Summary",
             "",
             f"- **Total tests:** {tests_total}",
             f"- **Passed:** {tests_passed}",
@@ -171,6 +278,7 @@ def generate_data_quality_report(
         report_path=report_path,
         layer_counts=layer_counts,
         rejects_by_reason=rejects_by_reason,
+        fault_recall=fault_recall,
         dbt_tests_total=tests_total,
         dbt_tests_passed=tests_passed,
         dbt_tests_warned=tests_warned,

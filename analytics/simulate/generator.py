@@ -14,6 +14,7 @@ from simulate.archetypes import ARCHETYPES, ProductArchetype
 ANALYTICS_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_EXPORTS_DIR = ANALYTICS_ROOT / "data" / "raw" / "exports"
 DEFAULT_GROUND_TRUTH_PATH = ANALYTICS_ROOT / "data" / "ground_truth" / "true_rates.json"
+DEFAULT_FAULTS_MANIFEST_PATH = ANALYTICS_ROOT / "data" / "ground_truth" / "injected_faults.json"
 
 VENDOR_PRICE_FACTOR: dict[str, float] = {
     "Shwapno": 0.99,
@@ -41,6 +42,7 @@ class SimulationStats:
     elapsed_seconds: float
     exports_dir: Path
     ground_truth_path: Path
+    faults_manifest_path: Path
 
 
 def _seasonality_multiplier(seasonality: str, month: int) -> float:
@@ -87,15 +89,20 @@ def simulate_households(
     seed: int = 42,
     exports_dir: Path = DEFAULT_EXPORTS_DIR,
     ground_truth_path: Path = DEFAULT_GROUND_TRUTH_PATH,
+    faults_manifest_path: Path | None = None,
     reference_date: date = date(2026, 11, 15),
 ) -> SimulationStats:
     t0 = time.perf_counter()
     rng = np.random.default_rng(seed)
 
+    if faults_manifest_path is None:
+        faults_manifest_path = ground_truth_path.parent / "injected_faults.json"
+
     exports_dir.mkdir(parents=True, exist_ok=True)
     for old_file in exports_dir.glob("hh_*.json"):
         old_file.unlink()
     ground_truth_path.parent.mkdir(parents=True, exist_ok=True)
+    faults_manifest_path.parent.mkdir(parents=True, exist_ok=True)
 
     window_days = months * 30
     start_date = reference_date - timedelta(days=window_days)
@@ -111,6 +118,7 @@ def simulate_households(
         "finished_before_opened": 0,
     }
     ground_truth_records: list[dict[str, object]] = []
+    fault_records: list[dict[str, object]] = []
 
     for h_idx in range(1, households + 1):
         hh_id = f"hh_{h_idx:04d}"
@@ -182,6 +190,15 @@ def simulate_households(
                 if rng.random() < 0.005:
                     purchases.append(dict(pur_row))
                     fault_counts["duplicate_purchase"] += 1
+                    fault_records.append(
+                        {
+                            "fault_type": "duplicate_purchase",
+                            "entity_type": "purchase",
+                            "record_id": pur_id,
+                            "source_file": f"{hh_id}.json",
+                            "household_id": hh_id,
+                        }
+                    )
 
                 opened_date = cursor_date
                 season_mult = _seasonality_multiplier(tpl.seasonality, opened_date.month)
@@ -201,14 +218,41 @@ def simulate_households(
                         finished_date = opened_date
                         days_used = 0
                         fault_counts["zero_day_cycle"] += 1
+                        fault_records.append(
+                            {
+                                "fault_type": "zero_day_cycle",
+                                "entity_type": "usage_period",
+                                "record_id": use_id,
+                                "source_file": f"{hh_id}.json",
+                                "household_id": hh_id,
+                            }
+                        )
                     elif fault_roll < 0.010:
                         finished_date = opened_date + timedelta(days=1050)
                         days_used = 1050
                         fault_counts["outlier_1000_day"] += 1
+                        fault_records.append(
+                            {
+                                "fault_type": "outlier_1000_day",
+                                "entity_type": "usage_period",
+                                "record_id": use_id,
+                                "source_file": f"{hh_id}.json",
+                                "household_id": hh_id,
+                            }
+                        )
                     elif fault_roll < 0.015:
                         finished_date = opened_date - timedelta(days=5)
                         days_used = 0
                         fault_counts["finished_before_opened"] += 1
+                        fault_records.append(
+                            {
+                                "fault_type": "finished_before_opened",
+                                "entity_type": "usage_period",
+                                "record_id": use_id,
+                                "source_file": f"{hh_id}.json",
+                                "household_id": hh_id,
+                            }
+                        )
                     else:
                         completed_durations.append(days_used)
 
@@ -410,6 +454,21 @@ def simulate_households(
         encoding="utf-8",
     )
 
+    faults_manifest_path.write_text(
+        json.dumps(
+            {
+                "seed": seed,
+                "households": households,
+                "months": months,
+                "reference_date": reference_date.isoformat(),
+                "counts": fault_counts,
+                "faults": fault_records,
+            },
+            separators=(",", ":"),
+        ),
+        encoding="utf-8",
+    )
+
     elapsed = round(time.perf_counter() - t0, 3)
     return SimulationStats(
         households=households,
@@ -423,6 +482,7 @@ def simulate_households(
         elapsed_seconds=elapsed,
         exports_dir=exports_dir,
         ground_truth_path=ground_truth_path,
+        faults_manifest_path=faults_manifest_path,
     )
 
 
