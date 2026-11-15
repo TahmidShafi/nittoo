@@ -226,7 +226,11 @@ async function run() {
     const vercelConfig = JSON.parse(fs.readFileSync(vercelJsonPath, 'utf-8'));
     assert(Array.isArray(vercelConfig.rewrites), 'vercel.json must have rewrites');
     assert(
-      vercelConfig.rewrites.some((r: any) => r.source === '/(.*)' && r.destination === '/index.html'),
+      vercelConfig.rewrites.some(
+        (r: any) =>
+          (r.source === '/(.*)' || r.source === '/((?!api/).*)') &&
+          r.destination === '/index.html'
+      ),
       'vercel.json must rewrite all SPA routes to /index.html'
     );
   });

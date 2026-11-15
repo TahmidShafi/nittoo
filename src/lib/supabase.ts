@@ -6,8 +6,11 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const viteUrl = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_SUPABASE_URL : undefined;
-const viteKey = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_SUPABASE_ANON_KEY : undefined;
+const metaEnv = typeof import.meta !== 'undefined'
+  ? (import.meta as unknown as { env?: Record<string, string | undefined> }).env
+  : undefined;
+const viteUrl = metaEnv?.VITE_SUPABASE_URL;
+const viteKey = metaEnv?.VITE_SUPABASE_ANON_KEY;
 
 const nodeUrl = typeof process !== 'undefined' && process.env ? process.env.VITE_SUPABASE_URL : undefined;
 const nodeKey = typeof process !== 'undefined' && process.env ? process.env.VITE_SUPABASE_ANON_KEY : undefined;

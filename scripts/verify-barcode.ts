@@ -17,6 +17,9 @@ import {
   normalizeOpenFactsProducts,
   normalizeUpcItemDbProducts,
 } from '../src/lib/discovery/provider';
+import * as fs from 'fs';
+import * as path from 'path';
+import { getCorsHeaders, isAllowedOrigin, verifySupabaseAccessToken } from '../src/server/barcode-core';
 import { discoveryCache } from '../src/lib/discovery/cache';
 import {
   lookupExternalProductByBarcode,
@@ -869,8 +872,26 @@ async function runBarcodeVerification() {
   assert(permissionDenied, '37. Permission denial handled as NotAllowedError');
   assert(manualEntryAvailable, '37. Manual entry remains 100% available when camera is denied');
 
+  // 38. Barcode proxy CORS restricts origins (no wildcard *)
+  assert(isAllowedOrigin('http://localhost:5173'), '38a. Allows localhost dev origin');
+  assert(isAllowedOrigin('https://nittoo.vercel.app'), '38b. Allows production origin');
+  assert(!isAllowedOrigin('https://evil.example.com'), '38c. Rejects arbitrary third-party origin');
+  const corsEvil = getCorsHeaders('https://evil.example.com');
+  assert(corsEvil['Access-Control-Allow-Origin'] !== '*', '38d. Never emits wildcard Access-Control-Allow-Origin');
+
+  // 39. Barcode proxy requires Bearer token
+  const missingToken = await verifySupabaseAccessToken(undefined, 'https://example.supabase.co', 'anon');
+  assert(!missingToken.valid, '39. Rejects missing Authorization Bearer token');
+
+  // 40. Edge function has zero Node-only Buffer / IncomingMessage and imports shared barcode-core
+  const edgeSrc = fs.readFileSync(path.resolve(process.cwd(), 'api/discovery/barcode.ts'), 'utf-8');
+  assert(
+    !edgeSrc.includes('Buffer.concat') && !edgeSrc.includes('Buffer.from') && !edgeSrc.includes('ServerResponse') && edgeSrc.includes('barcode-core'),
+    '40. api/discovery/barcode.ts is pure Edge runtime sharing barcode-core without Node-only APIs'
+  );
+
   console.log('\n=================================================================');
-  console.log('✅ ALL 37 BARCODE VERIFICATION TESTS PASSED SUCCESSFULLY');
+  console.log('✅ ALL 40 BARCODE VERIFICATION TESTS PASSED SUCCESSFULLY');
   console.log('=================================================================\n');
 }
 
