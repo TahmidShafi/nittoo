@@ -1,5 +1,5 @@
 -- ==============================================================================
--- Nittoo Supabase Database Schema
+-- Nittoo Supabase Database Schema (Generated Snapshot of supabase/migrations/)
 -- Personal Essentials Tracker: Products, Purchases, Usage Periods & RLS Policies
 --
 -- LIFECYCLE ARCHITECTURE:
@@ -22,8 +22,9 @@ CREATE TABLE IF NOT EXISTS public.products (
     category TEXT NOT NULL,
     brand TEXT,
     size_value NUMERIC CHECK (size_value IS NULL OR size_value > 0),
-    size_unit TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    size_unit TEXT CHECK (size_unit IS NULL OR size_unit IN ('ml', 'g', 'count')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- Index for querying products by user
@@ -37,7 +38,8 @@ CREATE TABLE IF NOT EXISTS public.purchases (
     price NUMERIC NOT NULL CHECK (price >= 0),
     currency TEXT NOT NULL DEFAULT 'BDT',
     store_vendor TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- Index for linked product purchases
@@ -47,11 +49,12 @@ CREATE INDEX IF NOT EXISTS idx_purchases_product_id ON public.purchases(product_
 CREATE TABLE IF NOT EXISTS public.usage_periods (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     product_id UUID NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
-    purchase_id UUID NOT NULL REFERENCES public.purchases(id) ON DELETE CASCADE,
+    purchase_id UUID NOT NULL UNIQUE REFERENCES public.purchases(id) ON DELETE CASCADE,
     opened_date DATE NOT NULL,
     finished_date DATE,
     status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'finished')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT chk_finished_date_valid CHECK (finished_date IS NULL OR finished_date >= opened_date)
 );
 
@@ -195,9 +198,11 @@ CREATE POLICY "Users can update usage periods of own products"
     )
     WITH CHECK (
         EXISTS (
-            SELECT 1 FROM public.products
-            WHERE products.id = usage_periods.product_id
-            AND products.user_id = auth.uid()
+            SELECT 1 FROM public.products p
+            JOIN public.purchases pu ON pu.product_id = p.id
+            WHERE p.id = usage_periods.product_id
+            AND pu.id = usage_periods.purchase_id
+            AND p.user_id = auth.uid()
         )
     );
 
@@ -226,6 +231,7 @@ CREATE TABLE IF NOT EXISTS public.restock_plans (
     reminder_date DATE NOT NULL,
     status TEXT NOT NULL DEFAULT 'planned' CHECK (status IN ('planned', 'completed', 'dismissed')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     completed_at TIMESTAMPTZ,
     CONSTRAINT chk_relative_days CHECK (
         (mode = 'relative' AND days_before_finish IS NOT NULL) OR
@@ -279,4 +285,37 @@ CREATE POLICY "Users can delete own restock plans"
     ON public.restock_plans
     FOR DELETE
     USING (auth.uid() = user_id);
+
+-- ==============================================================================
+-- AUDIT TRIGGERS (updated_at)
+-- ==============================================================================
+CREATE OR REPLACE FUNCTION public.set_updated_at()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_products_set_updated_at
+    BEFORE UPDATE ON public.products
+    FOR EACH ROW
+    EXECUTE FUNCTION public.set_updated_at();
+
+CREATE TRIGGER trg_purchases_set_updated_at
+    BEFORE UPDATE ON public.purchases
+    FOR EACH ROW
+    EXECUTE FUNCTION public.set_updated_at();
+
+CREATE TRIGGER trg_usage_periods_set_updated_at
+    BEFORE UPDATE ON public.usage_periods
+    FOR EACH ROW
+    EXECUTE FUNCTION public.set_updated_at();
+
+CREATE TRIGGER trg_restock_plans_set_updated_at
+    BEFORE UPDATE ON public.restock_plans
+    FOR EACH ROW
+    EXECUTE FUNCTION public.set_updated_at();
 

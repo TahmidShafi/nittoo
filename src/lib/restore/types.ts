@@ -4,7 +4,7 @@
 // ==============================================================================
 
 import type { NittooExportData } from '../export/types';
-import type { ImportExecutionResult } from '../../types';
+import type { ImportExecutionResult, ImportRestockPlanItemInput } from '../../types';
 
 export interface BackupValidationSuccess {
   valid: true;
@@ -49,6 +49,7 @@ export interface ImportPlanSummary {
   activeUsageCount: number;
   unopenedPurchasesCount: number;
   activeConflictsCount: number;
+  newRestockPlansCount?: number;
   estimatedMonthlyConsumption: number | null;
   invalidRecordsCount: number;
 }
@@ -88,6 +89,7 @@ export interface ImportPlan {
     status: 'active' | 'finished';
     created_at?: string;
   }[];
+  restockPlansToCreate: ImportRestockPlanItemInput[];
   activeConflicts: ActiveUsageConflict[];
   possibleProductMatches: PossibleProductMatch[];
   warnings: string[];

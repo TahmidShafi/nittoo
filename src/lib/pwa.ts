@@ -24,11 +24,7 @@ export function registerServiceWorker(): void {
             if (installingWorker) {
               installingWorker.onstatechange = () => {
                 if (installingWorker.state === 'installed') {
-                  if (navigator.serviceWorker.controller) {
-                    console.log('[Nittoo PWA] New update available.');
-                  } else {
-                    console.log('[Nittoo PWA] App shell and assets cached for offline use.');
-                  }
+                  // Service worker installed or updated
                 }
               };
             }

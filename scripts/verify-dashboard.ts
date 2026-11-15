@@ -198,6 +198,66 @@ async function runDashboardVerification() {
   assert(calculateAverageLifespan([]) === null, 'calculateAverageLifespan returns null for empty array');
   assert(calculateMonthlyConsumptionCost(1000, 0) === null, 'calculateMonthlyConsumptionCost returns null for 0 lifespan');
 
+  // ----------------------------------------------------------------------------
+  // 6. ACTIVE PURCHASE PRICE ISOLATION (unopened backup must not alter active card)
+  // ----------------------------------------------------------------------------
+  console.log('\n--- 6. Verifying Active Purchase Price Isolation ---');
+  const activeCardWithBackup: ProductWithDetails = {
+    id: 'prod-active-price-test',
+    user_id: DEFAULT_MOCK_USER_ID,
+    name: 'Active Price Test Cleanser',
+    category: 'Skincare',
+    size_value: 100,
+    size_unit: 'ml',
+    created_at: '2026-01-01T00:00:00Z',
+    active_usage: {
+      id: 'usage-active-1',
+      product_id: 'prod-active-price-test',
+      purchase_id: 'pur-active-500',
+      opened_date: '2026-08-20',
+      finished_date: null,
+      status: 'active',
+      created_at: '2026-08-20T00:00:00Z',
+    },
+    active_purchase: {
+      id: 'pur-active-500',
+      product_id: 'prod-active-price-test',
+      purchase_date: '2026-08-19',
+      price: 500,
+      currency: 'BDT',
+      created_at: '2026-08-19T00:00:00Z',
+    },
+    latest_purchase: {
+      id: 'pur-backup-650',
+      product_id: 'prod-active-price-test',
+      purchase_date: '2026-09-01',
+      price: 650,
+      currency: 'BDT',
+      created_at: '2026-09-01T00:00:00Z',
+    },
+    finished_periods: [
+      {
+        id: 'usage-fin-1',
+        product_id: 'prod-active-price-test',
+        purchase_id: 'pur-old',
+        opened_date: '2026-06-01',
+        finished_date: '2026-07-21', // 50 days
+        status: 'finished',
+        created_at: '2026-06-01T00:00:00Z',
+      },
+    ],
+  };
+
+  const activeMetrics = getPredictionMetrics(activeCardWithBackup, referenceDate);
+  assert(
+    activeMetrics.costPerDay === 10,
+    `Active card uses active bottle ৳500 (costPerDay = 10, got ${activeMetrics.costPerDay}), not unopened backup ৳650`
+  );
+  assert(
+    activeMetrics.pricePerUnit === 5,
+    `Active card uses active bottle ৳500 (pricePerUnit = 5, got ${activeMetrics.pricePerUnit}), not unopened backup ৳650`
+  );
+
   console.log('\n=================================================================');
   console.log('✅ ALL STAGE 4 DASHBOARD VERIFICATION CHECKS PASSED!');
   console.log('=================================================================');

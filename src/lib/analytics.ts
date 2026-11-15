@@ -1,6 +1,15 @@
 // ==============================================================================
 // Nittoo Analytics Engine (Stage 6)
 // Pure, Node-testable calculations for cross-product consumption analytics
+//
+// PRICE BASIS RULE:
+// - Current-cost metrics (calculateEstimatedMonthlyConsumption,
+//   getCostEfficiencyRankings, getCostComparisonChartData, getCategorySpending)
+//   use the ACTIVE purchase's price (matching usePrediction) when an active
+//   usage period is linked, falling back to latest_purchase only when no active
+//   usage exists. An unopened backup bottle never inflates current run-rate.
+// - Forward-looking estimates (getUpcomingPurchases) use
+//   calculateEstimatedNextPrice (historical average purchase price).
 // ==============================================================================
 
 import type { Product, UsagePeriod, ProductWithHistory } from '../types';
@@ -32,6 +41,43 @@ export interface ProductCostEfficiency {
 export interface CostComparisonChartPoint {
   name: string;
   costPerDay: number;
+}
+
+/**
+ * Returns the latest valid (>= 0) purchase price by purchase_date DESC, or null.
+ */
+export function getLatestPurchasePrice(purchases: ProductWithHistory['purchases']): number | null {
+  if (!purchases || purchases.length === 0) return null;
+  const sorted = [...purchases].sort((a, b) =>
+    b.purchase_date.localeCompare(a.purchase_date)
+  );
+  const latest = sorted[0];
+  if (!latest || typeof latest.price !== 'number' || isNaN(latest.price) || latest.price < 0) {
+    return null;
+  }
+  return latest.price;
+}
+
+/**
+ * Current-Cost Price Basis Helper (matches usePrediction):
+ * Uses the active usage period's linked purchase price when an active usage exists,
+ * falling back to getLatestPurchasePrice when no active usage is present.
+ */
+export function getActiveOrLatestPurchasePrice(item: ProductWithHistory): number | null {
+  if (item.active_usage) {
+    const activePurchase = item.purchases.find(
+      (p) => p.id === item.active_usage!.purchase_id
+    );
+    if (
+      activePurchase &&
+      typeof activePurchase.price === 'number' &&
+      !isNaN(activePurchase.price) &&
+      activePurchase.price >= 0
+    ) {
+      return activePurchase.price;
+    }
+  }
+  return getLatestPurchasePrice(item.purchases);
 }
 
 /**
@@ -106,8 +152,9 @@ export function getUpcomingPurchases(
 
 /**
  * Calculates Estimated Monthly Consumption Cost:
- * Sum of (price ÷ average finished lifespan × 30) across eligible products with completed history.
- * Returns null if no eligible products exist.
+ * Sum of (active_purchase_price ÷ average finished lifespan × 30) across ACTIVE products
+ * with completed history. Inactive products (no active_usage) are excluded.
+ * Returns null if no eligible active products exist.
  */
 export function calculateEstimatedMonthlyConsumption(
   productsWithHistory: ProductWithHistory[]
@@ -116,19 +163,15 @@ export function calculateEstimatedMonthlyConsumption(
   let eligibleCount = 0;
 
   for (const item of productsWithHistory) {
+    if (!item.active_usage) continue;
+
     const averageLifespan = calculateAverageLifespan(item.finished_periods);
     if (averageLifespan === null || averageLifespan <= 0) continue;
 
-    // Get current/latest recorded purchase price
-    const sortedPurchases = [...item.purchases].sort((a, b) =>
-      b.purchase_date.localeCompare(a.purchase_date)
-    );
-    const latestPurchase = sortedPurchases[0];
-    if (!latestPurchase || typeof latestPurchase.price !== 'number' || latestPurchase.price < 0) {
-      continue;
-    }
+    const activePrice = getActiveOrLatestPurchasePrice(item);
+    if (activePrice === null) continue;
 
-    const monthlyCost = (latestPurchase.price / averageLifespan) * 30;
+    const monthlyCost = (activePrice / averageLifespan) * 30;
     if (!isNaN(monthlyCost) && isFinite(monthlyCost)) {
       totalMonthlyCost += monthlyCost;
       eligibleCount++;
@@ -156,18 +199,13 @@ export function getCostEfficiencyRankings(
     const averageLifespan = calculateAverageLifespan(item.finished_periods);
     if (averageLifespan === null || averageLifespan <= 0) continue;
 
-    const sortedPurchases = [...item.purchases].sort((a, b) =>
-      b.purchase_date.localeCompare(a.purchase_date)
-    );
-    const latestPurchase = sortedPurchases[0];
-    if (!latestPurchase || typeof latestPurchase.price !== 'number' || latestPurchase.price < 0) {
-      continue;
-    }
+    const currentPrice = getActiveOrLatestPurchasePrice(item);
+    if (currentPrice === null) continue;
 
-    const costPerDay = calculateCostPerDay(latestPurchase.price, averageLifespan);
+    const costPerDay = calculateCostPerDay(currentPrice, averageLifespan);
     if (costPerDay === null || isNaN(costPerDay) || !isFinite(costPerDay)) continue;
 
-    const monthlyCost = (latestPurchase.price / averageLifespan) * 30;
+    const monthlyCost = (currentPrice / averageLifespan) * 30;
 
     eligible.push({
       product: item.product,
@@ -244,15 +282,10 @@ export function getCategorySpending(
     const averageLifespan = calculateAverageLifespan(item.finished_periods);
     if (averageLifespan === null || averageLifespan <= 0) continue;
 
-    const sortedPurchases = [...item.purchases].sort((a, b) =>
-      b.purchase_date.localeCompare(a.purchase_date)
-    );
-    const latestPurchase = sortedPurchases[0];
-    if (!latestPurchase || typeof latestPurchase.price !== 'number' || latestPurchase.price < 0) {
-      continue;
-    }
+    const currentPrice = getActiveOrLatestPurchasePrice(item);
+    if (currentPrice === null) continue;
 
-    const monthlyCost = (latestPurchase.price / averageLifespan) * 30;
+    const monthlyCost = (currentPrice / averageLifespan) * 30;
     if (isNaN(monthlyCost) || !isFinite(monthlyCost)) continue;
 
     totalEligibleMonthly += monthlyCost;
@@ -264,7 +297,7 @@ export function getCategorySpending(
     categoryMap.set(catName, existing);
   }
 
-  if (categoryMap.size === 0 || totalEligibleMonthly <= 0) {
+  if (categoryMap.size === 0) {
     return [];
   }
 
@@ -272,7 +305,10 @@ export function getCategorySpending(
 
   for (const [category, data] of categoryMap.entries()) {
     const roundedCost = Math.round(data.totalMonthly);
-    const percentage = Math.round((data.totalMonthly / totalEligibleMonthly) * 100);
+    const percentage =
+      totalEligibleMonthly > 0
+        ? Math.round((data.totalMonthly / totalEligibleMonthly) * 100)
+        : 0;
 
     results.push({
       category,

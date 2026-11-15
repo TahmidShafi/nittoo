@@ -36,10 +36,8 @@ export function calculateAverageLifespan(usagePeriods: UsagePeriod[]): number | 
     return sum + (duration ?? 0);
   }, 0);
 
-  // Avoid division by zero
-  if (finishedPeriods.length === 0) return null;
-
-  return Math.round((totalDays / finishedPeriods.length) * 10) / 10;
+  const avg = Math.round((totalDays / finishedPeriods.length) * 10) / 10;
+  return avg > 0 ? avg : null;
 }
 
 /**

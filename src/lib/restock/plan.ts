@@ -5,7 +5,7 @@
 // Never fabricates predictions or alters existing prediction formulas.
 // ==============================================================================
 
-import { addDays, getTodayUTC, parseISODateToUTC } from '../dateUtils';
+import { addDays, getTodayLocal, parseISODateToUTC } from '../dateUtils';
 import type { RestockPlan } from '../../types';
 import type { RestockDisplayStatus, RestockStatusInfo } from './types';
 
@@ -76,7 +76,7 @@ export function isValidISODate(dateStr: string): boolean {
  */
 export function isReminderDue(
   reminderDate: string,
-  referenceDate: string = getTodayUTC()
+  referenceDate: string = getTodayLocal()
 ): boolean {
   if (!reminderDate || !referenceDate) return false;
   return reminderDate <= referenceDate;
@@ -89,7 +89,7 @@ export function isReminderDue(
 export function getRestockDisplayStatus(
   plan: RestockPlan | null | undefined,
   usagePeriodStatus?: 'active' | 'finished',
-  referenceDate: string = getTodayUTC()
+  referenceDate: string = getTodayLocal()
 ): RestockDisplayStatus {
   if (!plan) return 'inactive';
   if (usagePeriodStatus === 'finished') return 'inactive';

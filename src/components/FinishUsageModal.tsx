@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { db } from '../lib/dataSource';
-import { getTodayUTC, formatDisplayDate } from '../lib/dateUtils';
+import { getTodayLocal, formatDisplayDate } from '../lib/dateUtils';
 import { calculateCurrentDaysUsed } from '../lib/prediction';
 import type { ProductWithDetails } from '../types';
 
@@ -24,7 +24,7 @@ export const FinishUsageModal: React.FC<FinishUsageModalProps> = ({
   onFinished,
 }) => {
   const { user } = useAuth();
-  const today = getTodayUTC();
+  const today = getTodayLocal();
 
   const [finishedDate, setFinishedDate] = useState(today);
   const [submitting, setSubmitting] = useState(false);

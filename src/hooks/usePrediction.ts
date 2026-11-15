@@ -36,7 +36,7 @@ export function getPredictionMetrics(
   referenceDate?: string
 ): PredictionMetrics {
   const activeUsage = product.active_usage;
-  const latestPurchase = product.latest_purchase;
+  const purchaseForActive = product.active_purchase ?? product.latest_purchase;
 
   if (!activeUsage) {
     return {
@@ -70,16 +70,16 @@ export function getPredictionMetrics(
   const isOverdue = predictedRemainingDays !== null && predictedRemainingDays < 0;
   const overdueDays = isOverdue ? Math.abs(predictedRemainingDays!) : 0;
 
-  // 4. Cost Per Day: purchase_price / averageLifespan
+  // 4. Cost Per Day: active purchase_price / averageLifespan
   const costPerDay =
-    latestPurchase && hasEnoughData
-      ? calculateCostPerDay(latestPurchase.price, averageLifespan)
+    purchaseForActive && hasEnoughData
+      ? calculateCostPerDay(purchaseForActive.price, averageLifespan)
       : null;
 
-  // 5. Price Per Unit: purchase_price / size_value (separated metric)
+  // 5. Price Per Unit: active purchase_price / size_value (separated metric)
   const pricePerUnit =
-    latestPurchase && product.size_value
-      ? calculatePricePerUnit(latestPurchase.price, product.size_value)
+    purchaseForActive && product.size_value
+      ? calculatePricePerUnit(purchaseForActive.price, product.size_value)
       : null;
 
   // 6. Progress: daysUsed / averageLifespan * 100 (clamped visually to 0-100)

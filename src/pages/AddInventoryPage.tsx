@@ -9,7 +9,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { db } from '../lib/dataSource';
-import { getTodayUTC } from '../lib/dateUtils';
+import { getTodayLocal } from '../lib/dateUtils';
 import { getPredictionMetrics } from '../hooks/usePrediction';
 import type {
   Product,
@@ -23,7 +23,7 @@ export const AddInventoryPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const today = getTodayUTC();
+  const today = getTodayLocal();
 
   const preselectedId =
     (location.state as { preselectedProductId?: string })?.preselectedProductId ||

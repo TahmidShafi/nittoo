@@ -252,10 +252,23 @@ export interface ImportUsagePeriodItemInput {
   created_at?: string;
 }
 
+export interface ImportRestockPlanItemInput {
+  id: string;
+  product_id: string;
+  usage_period_id: string;
+  mode: RestockPlanMode;
+  days_before_finish?: number | null;
+  reminder_date: string;
+  status: RestockPlanStatus;
+  created_at?: string;
+  completed_at?: string | null;
+}
+
 export interface ImportUserDataInput {
   products: ImportProductItemInput[];
   purchases: ImportPurchaseItemInput[];
   usage_periods: ImportUsagePeriodItemInput[];
+  restock_plans?: ImportRestockPlanItemInput[];
 }
 
 export interface ImportExecutionResult {
@@ -264,6 +277,7 @@ export interface ImportExecutionResult {
   restoredPurchases: number;
   restoredCycles: number;
   restoredUnopened: number;
+  restoredRestockPlans?: number;
   skippedConflicts: number;
   error?: string;
 }

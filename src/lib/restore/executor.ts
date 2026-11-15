@@ -20,6 +20,7 @@ export async function executeRestore(
     products: plan.productsToCreate,
     purchases: plan.purchasesToCreate,
     usage_periods: plan.usageToCreate,
+    restock_plans: plan.restockPlansToCreate,
   };
 
   try {

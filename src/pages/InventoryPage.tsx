@@ -9,7 +9,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { db } from '../lib/dataSource';
-import { getTodayUTC, formatDisplayDate } from '../lib/dateUtils';
+import { getTodayLocal, formatDisplayDate } from '../lib/dateUtils';
 import { isReminderDue } from '../lib/restock';
 import { getPredictionMetrics } from '../hooks/usePrediction';
 import { EditInventoryModal } from '../components/EditInventoryModal';
@@ -142,7 +142,7 @@ export const InventoryPage: React.FC = () => {
 
     setActivatingId(item.purchase.id);
     try {
-      const today = getTodayUTC();
+      const today = getTodayLocal();
       await db.startUsagePeriod(user.id, {
         product_id: item.product.id,
         purchase_id: item.purchase.id,

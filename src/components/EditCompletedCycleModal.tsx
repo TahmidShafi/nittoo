@@ -7,7 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { db } from '../lib/dataSource';
-import { getTodayUTC } from '../lib/dateUtils';
+import { getTodayLocal } from '../lib/dateUtils';
 import type { UsagePeriod } from '../types';
 
 export interface EditCompletedCycleModalProps {
@@ -28,7 +28,7 @@ export const EditCompletedCycleModal: React.FC<EditCompletedCycleModalProps> = (
   cycleNumber,
 }) => {
   const { user } = useAuth();
-  const today = getTodayUTC();
+  const today = getTodayLocal();
 
   const [openedDate, setOpenedDate] = useState('');
   const [finishedDate, setFinishedDate] = useState('');

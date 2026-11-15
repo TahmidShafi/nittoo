@@ -80,7 +80,7 @@ async function runCategorySpendingVerification() {
           created_at: new Date().toISOString(),
         },
       ],
-      active_usage: null,
+      active_usage: { id: 'uA-act', product_id: 'pA', purchase_id: 'puA', opened_date: '2026-03-05', finished_date: null, status: 'active', created_at: '' },
       finished_periods: [
         {
           id: 'u-zero',
@@ -96,7 +96,10 @@ async function runCategorySpendingVerification() {
     },
   ];
   const zeroPriceRes = getCategorySpending(zeroPriceFixture);
-  assert(zeroPriceRes.length === 0, '8. Total cost 0 returns empty array without division-by-zero crash');
+  assert(
+    zeroPriceRes.length === 1 && zeroPriceRes[0].monthlyCost === 0 && zeroPriceRes[0].percentageOfTotal === 0,
+    '8. Total cost 0 returns category with 0 monthlyCost and 0% without division-by-zero crash'
+  );
 
   // Test 2: Products with zero completed cycles are strictly excluded
   const zeroHistoryFixture: ProductWithHistory[] = [
@@ -119,7 +122,7 @@ async function runCategorySpendingVerification() {
         },
       ],
       usage_periods: [],
-      active_usage: null,
+      active_usage: { id: 'uA-act', product_id: 'pA', purchase_id: 'puA', opened_date: '2026-03-05', finished_date: null, status: 'active', created_at: '' },
       finished_periods: [],
       unopened_purchases: [],
     },
@@ -138,7 +141,7 @@ async function runCategorySpendingVerification() {
     product: { id: 'pA', user_id: userA, name: 'Product A', category: 'Skincare', created_at: '' },
     purchases: [{ id: 'puA', product_id: 'pA', purchase_date: '2026-01-01', price: 1200, currency: 'BDT', created_at: '' }],
     usage_periods: [{ id: 'uA', product_id: 'pA', purchase_id: 'puA', opened_date: '2026-01-01', finished_date: '2026-03-02', status: 'finished', created_at: '' }],
-    active_usage: null,
+    active_usage: { id: 'uA-act', product_id: 'pA', purchase_id: 'puA', opened_date: '2026-03-05', finished_date: null, status: 'active', created_at: '' },
     finished_periods: [{ id: 'uA', product_id: 'pA', purchase_id: 'puA', opened_date: '2026-01-01', finished_date: '2026-03-02', status: 'finished', created_at: '' }],
     unopened_purchases: [],
   };
@@ -147,7 +150,7 @@ async function runCategorySpendingVerification() {
     product: { id: 'pB', user_id: userA, name: 'Product B', category: 'Skincare', created_at: '' },
     purchases: [{ id: 'puB', product_id: 'pB', purchase_date: '2026-01-01', price: 900, currency: 'BDT', created_at: '' }],
     usage_periods: [{ id: 'uB', product_id: 'pB', purchase_id: 'puB', opened_date: '2026-01-01', finished_date: '2026-04-01', status: 'finished', created_at: '' }],
-    active_usage: null,
+    active_usage: { id: 'uA-act', product_id: 'pA', purchase_id: 'puA', opened_date: '2026-03-05', finished_date: null, status: 'active', created_at: '' },
     finished_periods: [{ id: 'uB', product_id: 'pB', purchase_id: 'puB', opened_date: '2026-01-01', finished_date: '2026-04-01', status: 'finished', created_at: '' }],
     unopened_purchases: [],
   };
@@ -156,7 +159,7 @@ async function runCategorySpendingVerification() {
     product: { id: 'pC', user_id: userA, name: 'Product C', category: 'Haircare', created_at: '' },
     purchases: [{ id: 'puC', product_id: 'pC', purchase_date: '2026-01-01', price: 1200, currency: 'BDT', created_at: '' }],
     usage_periods: [{ id: 'uC', product_id: 'pC', purchase_id: 'puC', opened_date: '2026-01-01', finished_date: '2026-03-02', status: 'finished', created_at: '' }],
-    active_usage: null,
+    active_usage: { id: 'uA-act', product_id: 'pA', purchase_id: 'puA', opened_date: '2026-03-05', finished_date: null, status: 'active', created_at: '' },
     finished_periods: [{ id: 'uC', product_id: 'pC', purchase_id: 'puC', opened_date: '2026-01-01', finished_date: '2026-03-02', status: 'finished', created_at: '' }],
     unopened_purchases: [],
   };
@@ -183,7 +186,7 @@ async function runCategorySpendingVerification() {
     product: { id: 'pOral', user_id: userA, name: 'Sensodyne', category: 'Oral Care', created_at: '' },
     purchases: [{ id: 'puO', product_id: 'pOral', purchase_date: '2026-01-01', price: 600, currency: 'BDT', created_at: '' }],
     usage_periods: [{ id: 'uO', product_id: 'pOral', purchase_id: 'puO', opened_date: '2026-01-01', finished_date: '2026-01-31', status: 'finished', created_at: '' }],
-    active_usage: null,
+    active_usage: { id: 'uA-act', product_id: 'pA', purchase_id: 'puA', opened_date: '2026-03-05', finished_date: null, status: 'active', created_at: '' },
     finished_periods: [{ id: 'uO', product_id: 'pOral', purchase_id: 'puO', opened_date: '2026-01-01', finished_date: '2026-01-31', status: 'finished', created_at: '' }],
     unopened_purchases: [],
   }; // monthly = 600 / 30 * 30 = 600

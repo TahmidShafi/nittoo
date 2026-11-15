@@ -7,7 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { db } from '../lib/dataSource';
-import { getTodayUTC } from '../lib/dateUtils';
+import { getTodayLocal } from '../lib/dateUtils';
 import {
   PRODUCT_CATEGORIES,
   type Product,
@@ -41,7 +41,7 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
   mode,
 }) => {
   const { user } = useAuth();
-  const today = getTodayUTC();
+  const today = getTodayLocal();
 
   // Product Details
   const [name, setName] = useState('');

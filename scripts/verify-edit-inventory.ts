@@ -270,13 +270,14 @@ async function runEditInventoryVerification() {
   assert(finishedPeriod.opened_date === '2026-06-01', 'Finished period opened_date unchanged');
   assert(finishedPeriod.finished_date === '2026-07-01', 'Finished period finished_date unchanged');
 
-  // Attempting to edit a finished usage period must reject
+  // Stage 17 allows editing finished usage periods when finished_date is supplied,
+  // but omitting finished_date on a completed cycle must be rejected.
   await assertRejects(
     db.updateUsagePeriod(TEST_USER, useHistory.id, {
       opened_date: '2026-06-05',
     }),
-    'only active',
-    'Editing completed/finished usage period rejected'
+    'Finished date is required for completed cycles',
+    'Editing completed/finished usage period without finished_date rejected'
   );
 
   // ----------------------------------------------------------------------------

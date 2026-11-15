@@ -4,7 +4,7 @@
 // ==============================================================================
 
 import { supabase } from './supabase';
-import { getTodayUTC } from './dateUtils';
+import { getTodayLocal } from './dateUtils';
 import { isValidISODate } from './restock/plan';
 import { dataCache } from './dataCache';
 import type {
@@ -390,7 +390,7 @@ export class SupabaseDatabase implements IDataSource {
       throw new Error('Opened date is required');
     }
 
-    const today = getTodayUTC();
+    const today = getTodayLocal();
     if (input.opened_date > today) {
       throw new Error('Opened date cannot be in the future');
     }
@@ -1077,6 +1077,7 @@ export class SupabaseDatabase implements IDataSource {
       existingPeriods.filter((u) => u.status === 'active').map((u) => u.product_id)
     );
     const usedPurchaseIds = new Set<string>(existingPeriods.map((u) => u.purchase_id));
+    const usageIdMap = new Map<string, string>();
 
     for (const u of input.usage_periods) {
       let targetProductId = productIdMap.get(u.product_id);
@@ -1090,6 +1091,7 @@ export class SupabaseDatabase implements IDataSource {
       if (!targetProductId || !targetPurchaseId) continue;
 
       if (existingUsageIdSet.has(u.id)) {
+        usageIdMap.set(u.id, u.id);
         usedPurchaseIds.add(targetPurchaseId);
         continue; // Idempotent skip
       }
@@ -1107,19 +1109,25 @@ export class SupabaseDatabase implements IDataSource {
           };
           if (u.created_at) insertPayload.created_at = u.created_at;
 
-          let inserted = false;
+          let createdId = '';
           if (isUuid(u.id)) {
-            const { error: insErr } = await client
+            const { data: insData, error: insErr } = await client
               .from('usage_periods')
-              .insert({ ...insertPayload, id: u.id });
-            if (!insErr) inserted = true;
+              .insert({ ...insertPayload, id: u.id })
+              .select('id')
+              .single();
+            if (!insErr && insData) createdId = insData.id;
           }
-          if (!inserted) {
-            const { error: insErr2 } = await client
+          if (!createdId) {
+            const { data: insData2, error: insErr2 } = await client
               .from('usage_periods')
-              .insert(insertPayload);
-            if (insErr2) throw new Error(`Failed to restore active usage: ${insErr2.message}`);
+              .insert(insertPayload)
+              .select('id')
+              .single();
+            if (insErr2 || !insData2) throw new Error(`Failed to restore active usage: ${insErr2?.message}`);
+            createdId = insData2.id;
           }
+          usageIdMap.set(u.id, createdId);
           activeProductIds.add(targetProductId);
           usedPurchaseIds.add(targetPurchaseId);
         }
@@ -1134,21 +1142,92 @@ export class SupabaseDatabase implements IDataSource {
         };
         if (u.created_at) insertPayload.created_at = u.created_at;
 
-        let inserted = false;
+        let createdId = '';
         if (isUuid(u.id)) {
-          const { error: insErr } = await client
+          const { data: insData, error: insErr } = await client
             .from('usage_periods')
-            .insert({ ...insertPayload, id: u.id });
-          if (!insErr) inserted = true;
+            .insert({ ...insertPayload, id: u.id })
+            .select('id')
+            .single();
+          if (!insErr && insData) createdId = insData.id;
         }
-        if (!inserted) {
-          const { error: insErr2 } = await client
+        if (!createdId) {
+          const { data: insData2, error: insErr2 } = await client
             .from('usage_periods')
-            .insert(insertPayload);
-          if (insErr2) throw new Error(`Failed to restore usage cycle: ${insErr2.message}`);
+            .insert(insertPayload)
+            .select('id')
+            .single();
+          if (insErr2 || !insData2) throw new Error(`Failed to restore usage cycle: ${insErr2?.message}`);
+          createdId = insData2.id;
         }
+        usageIdMap.set(u.id, createdId);
         restoredCycles++;
         usedPurchaseIds.add(targetPurchaseId);
+      }
+    }
+
+    // 4. Restore Restock Plans (idempotent, strictly assigned to current user)
+    let restoredRestockPlans = 0;
+    if (input.restock_plans && input.restock_plans.length > 0) {
+      const { data: existingPlansData } = await client
+        .from('restock_plans')
+        .select('id, usage_period_id, status')
+        .eq('user_id', userId);
+
+      const existingPlans = (existingPlansData || []) as Array<{
+        id: string;
+        usage_period_id: string;
+        status: string;
+      }>;
+      const existingPlanIdSet = new Set(existingPlans.map((rp) => rp.id));
+      const plannedUsageIds = new Set(
+        existingPlans.filter((rp) => rp.status === 'planned').map((rp) => rp.usage_period_id)
+      );
+
+      for (const rp of input.restock_plans) {
+        let targetProductId = productIdMap.get(rp.product_id);
+        if (!targetProductId && existingProductIdSet.has(rp.product_id)) {
+          targetProductId = rp.product_id;
+        }
+        let targetUsageId = usageIdMap.get(rp.usage_period_id);
+        if (!targetUsageId && existingUsageIdSet.has(rp.usage_period_id)) {
+          targetUsageId = rp.usage_period_id;
+        }
+        if (!targetProductId || !targetUsageId) continue;
+
+        if (existingPlanIdSet.has(rp.id)) continue;
+        if (rp.status === 'planned' && plannedUsageIds.has(targetUsageId)) continue;
+
+        const insertPayload: any = {
+          user_id: userId,
+          product_id: targetProductId,
+          usage_period_id: targetUsageId,
+          mode: rp.mode,
+          days_before_finish: rp.days_before_finish ?? null,
+          reminder_date: rp.reminder_date,
+          status: rp.status,
+          completed_at: rp.completed_at ?? null,
+        };
+        if (rp.created_at) insertPayload.created_at = rp.created_at;
+
+        let inserted = false;
+        if (isUuid(rp.id)) {
+          const { error: rpErr } = await client
+            .from('restock_plans')
+            .insert({ ...insertPayload, id: rp.id });
+          if (!rpErr) inserted = true;
+        }
+        if (!inserted) {
+          const { error: rpErr2 } = await client
+            .from('restock_plans')
+            .insert(insertPayload);
+          if (rpErr2) throw new Error(`Failed to restore restock plan: ${rpErr2.message}`);
+        }
+
+        if (rp.status === 'planned') {
+          plannedUsageIds.add(targetUsageId);
+        }
+        restoredRestockPlans++;
       }
     }
 
@@ -1162,6 +1241,7 @@ export class SupabaseDatabase implements IDataSource {
       restoredPurchases,
       restoredCycles,
       restoredUnopened,
+      restoredRestockPlans,
       skippedConflicts,
     };
   }

@@ -5,6 +5,7 @@
 
 import type { DiscoveryProduct, DiscoverySearchOptions, IProductDiscoveryProvider } from './types';
 import { mapCategory, normalizeText, parseSize, sanitizeImageUrl } from './normalize';
+import { isSupabaseConfigured, supabase } from '../supabase';
 
 export interface RawOpenFactsProduct {
   code?: string;
@@ -370,8 +371,10 @@ export class UpcItemDbProvider implements IProductDiscoveryProvider {
   readonly name = 'UPCitemdb';
   private fetchFn: FetchFunction;
   private endpoint: string;
+  private hasCustomFetch: boolean;
 
   constructor(options?: UpcItemDbProviderOptions) {
+    this.hasCustomFetch = Boolean(options?.fetchFn);
     this.fetchFn = options?.fetchFn || defaultFetch;
     this.endpoint = options?.endpoint || options?.baseUrl || '/api/discovery/barcode';
   }
@@ -410,12 +413,27 @@ export class UpcItemDbProvider implements IProductDiscoveryProvider {
 
     // Use Nittoo server endpoint if configured with /api path
     if (this.endpoint.startsWith('/api/') || this.endpoint.includes('/api/discovery/barcode')) {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      };
+
+      // In live browser mode, require a valid Supabase session token; in demo/mock mode, skip proxy (OBF/OFF only)
+      if (!this.hasCustomFetch) {
+        if (!isSupabaseConfigured || !supabase) {
+          return null;
+        }
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData?.session?.access_token;
+        if (!accessToken) {
+          return null;
+        }
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+
       const response = await fetchWithTimeout(this.fetchFn, this.endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
+        headers,
         body: JSON.stringify({ barcode: cleanBarcode }),
         signal: options?.signal,
       });

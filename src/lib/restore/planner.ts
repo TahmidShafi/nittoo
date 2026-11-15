@@ -5,7 +5,7 @@
 // an immutable ImportPlan for user preview and confirmation.
 // ==============================================================================
 
-import type { IDataSource, Product, Purchase, UsagePeriod } from '../../types';
+import type { IDataSource, Product, Purchase, UsagePeriod, RestockPlan, ImportRestockPlanItemInput } from '../../types';
 import type { NittooExportData } from '../export/types';
 import type {
   ImportPlan,
@@ -28,10 +28,12 @@ export async function buildImportPlan(
   const existingProducts: Product[] = currentUserData.products || [];
   const existingPurchases: Purchase[] = currentUserData.purchases || [];
   const existingUsage: UsagePeriod[] = currentUserData.usage_periods || [];
+  const existingRestockPlans: RestockPlan[] = currentUserData.restock_plans || [];
 
   const existingProductIdSet = new Set(existingProducts.map((p) => p.id));
   const existingPurchaseIdSet = new Set(existingPurchases.map((pu) => pu.id));
   const existingUsageIdSet = new Set(existingUsage.map((u) => u.id));
+  const existingRestockPlanIdSet = new Set(existingRestockPlans.map((rp) => rp.id));
 
   // Map of existing product names (normalized) to existing product IDs
   const existingProductByName = new Map<string, Product>();
@@ -136,6 +138,8 @@ export async function buildImportPlan(
   const activeConflicts: ActiveUsageConflict[] = [];
   const plannedActiveProductIds = new Set<string>(activeProductIds);
   const usedPurchaseIds = new Set<string>();
+  const usageMapping = new Map<string, string>();
+  const skippedBackupUsageIds = new Set<string>();
 
   // Mark already used purchases in current user account
   for (const u of existingUsage) {
@@ -153,9 +157,13 @@ export async function buildImportPlan(
     if (!effectiveProductId || !effectivePurchaseId) continue;
 
     const userScopedUsageId = `${currentUserId}_${bu.id}`;
-    const isAlreadyPresent =
-      existingUsageIdSet.has(bu.id) || existingUsageIdSet.has(userScopedUsageId);
-    if (isAlreadyPresent) {
+    if (existingUsageIdSet.has(bu.id)) {
+      usageMapping.set(bu.id, bu.id);
+      usedPurchaseIds.add(effectivePurchaseId);
+      continue; // Idempotent skip
+    }
+    if (existingUsageIdSet.has(userScopedUsageId)) {
+      usageMapping.set(bu.id, userScopedUsageId);
       usedPurchaseIds.add(effectivePurchaseId);
       continue; // Idempotent skip
     }
@@ -165,6 +173,7 @@ export async function buildImportPlan(
     if (isFinished) {
       historicalCyclesCount++;
       usedPurchaseIds.add(effectivePurchaseId);
+      usageMapping.set(bu.id, bu.id);
       usageToCreate.push({
         id: bu.id,
         product_id: effectiveProductId,
@@ -178,6 +187,7 @@ export async function buildImportPlan(
       // Active bottle
       if (plannedActiveProductIds.has(effectiveProductId)) {
         // Active bottle conflict!
+        skippedBackupUsageIds.add(bu.id);
         activeConflicts.push({
           productName: bu.product_name || 'Product',
           backupProductId: bu.product_id,
@@ -190,6 +200,7 @@ export async function buildImportPlan(
         activeUsageCount++;
         plannedActiveProductIds.add(effectiveProductId);
         usedPurchaseIds.add(effectivePurchaseId);
+        usageMapping.set(bu.id, bu.id);
         usageToCreate.push({
           id: bu.id,
           product_id: effectiveProductId,
@@ -208,6 +219,47 @@ export async function buildImportPlan(
   const unopenedPurchasesCount = purchasesToCreate.filter(
     (pu) => !usedPurchaseIds.has(pu.id)
   ).length;
+
+  // 5b. Resolve Restock Plans (idempotent, respects active usage conflicts & single planned constraint)
+  const restockPlansToCreate: ImportRestockPlanItemInput[] = [];
+  const plannedUsagePeriodIds = new Set<string>(
+    existingRestockPlans.filter((rp) => rp.status === 'planned').map((rp) => rp.usage_period_id)
+  );
+  let newRestockPlansCount = 0;
+
+  for (const brp of backupData.restock_plans || []) {
+    if (skippedBackupUsageIds.has(brp.usage_period_id)) continue;
+
+    const effectiveProductId = productMapping.get(brp.product_id);
+    const effectiveUsageId = usageMapping.get(brp.usage_period_id);
+    if (!effectiveProductId || !effectiveUsageId) continue;
+
+    const userScopedPlanId = `${currentUserId}_${brp.id}`;
+    if (existingRestockPlanIdSet.has(brp.id) || existingRestockPlanIdSet.has(userScopedPlanId)) {
+      continue; // Idempotent skip
+    }
+
+    if (brp.status === 'planned' && plannedUsagePeriodIds.has(effectiveUsageId)) {
+      continue; // Enforce at most one 'planned' restock plan per usage period
+    }
+
+    if (brp.status === 'planned') {
+      plannedUsagePeriodIds.add(effectiveUsageId);
+    }
+
+    newRestockPlansCount++;
+    restockPlansToCreate.push({
+      id: brp.id,
+      product_id: effectiveProductId,
+      usage_period_id: effectiveUsageId,
+      mode: brp.mode,
+      days_before_finish: brp.days_before_finish ?? null,
+      reminder_date: brp.reminder_date,
+      status: brp.status,
+      created_at: brp.created_at,
+      completed_at: (brp as any).completed_at ?? null,
+    });
+  }
 
   const warnings: string[] = [];
   if (activeConflicts.length > 0) {
@@ -230,6 +282,7 @@ export async function buildImportPlan(
     activeUsageCount,
     unopenedPurchasesCount,
     activeConflictsCount: activeConflicts.length,
+    newRestockPlansCount,
     estimatedMonthlyConsumption: backupData.summary?.estimated_monthly_consumption ?? null,
     invalidRecordsCount: 0,
   };
@@ -245,6 +298,7 @@ export async function buildImportPlan(
     productsToCreate,
     purchasesToCreate,
     usageToCreate,
+    restockPlansToCreate,
     activeConflicts,
     possibleProductMatches,
     warnings,
