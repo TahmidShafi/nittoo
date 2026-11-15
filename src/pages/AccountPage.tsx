@@ -49,7 +49,7 @@ export const AccountPage: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-[700px] mx-auto py-4 sm:py-6 space-y-6 animate-page-in">
+    <div className="w-full max-w-[700px] mx-auto py-4 sm:py-6 space-y-6">
       {/* 1. Page Header */}
       <div>
         <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">

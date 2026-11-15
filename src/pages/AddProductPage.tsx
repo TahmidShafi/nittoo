@@ -477,7 +477,7 @@ export const AddProductPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-xl mx-auto py-2 animate-page-in">
+    <div className="max-w-xl mx-auto py-2">
       {/* Header */}
       <div className="mb-6">
         <span className="text-[11px] font-bold uppercase tracking-wider text-[#2D6A4F] block mb-1">

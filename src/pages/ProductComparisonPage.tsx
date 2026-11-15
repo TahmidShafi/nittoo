@@ -208,7 +208,7 @@ export const ProductComparisonPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto animate-page-in">
+    <div className="space-y-8">
       {/* Breadcrumb Navigation */}
       <div>
         <Link
@@ -251,9 +251,12 @@ export const ProductComparisonPage: React.FC = () => {
       )}
 
       {loading ? (
-        <div className="py-20 text-center">
-          <div className="inline-block w-6 h-6 border-2 border-[#2D6A4F] border-t-transparent rounded-full animate-spin mb-3" />
-          <p className="text-xs text-neutral-500">Loading product comparison data...</p>
+        <div className="space-y-4 py-2">
+          <div className="h-28 skeleton-shimmer rounded-2xl" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="h-20 skeleton-shimmer rounded-xl" />
+            <div className="h-20 skeleton-shimmer rounded-xl" />
+          </div>
         </div>
       ) : !baseId ? (
         /* STATE 0: SELECT BASE PRODUCT */

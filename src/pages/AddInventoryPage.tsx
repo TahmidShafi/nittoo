@@ -200,7 +200,7 @@ export const AddInventoryPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto animate-page-in">
+    <div className="space-y-6 max-w-2xl mx-auto">
       {/* Navigation Breadcrumb */}
       <div>
         <Link
