@@ -6,10 +6,11 @@
 
 import type { Product, ProductWithHistory, SizeUnit } from '../types';
 import {
-  calculateAverageLifespan,
-  calculateUsageDuration,
+  calculatePredictedLifespan,
   calculatePredictedRemainingDays,
+  calculateUsageDuration,
   getEffectiveSize,
+  getValidFinishedPeriods,
 } from './prediction';
 import { getDaysUsed, addDays } from './dateUtils';
 import {
@@ -202,16 +203,26 @@ export function deriveProductObservedMetrics(
   history: ProductWithHistory
 ): ProductObservedMetrics {
   const { product, purchases, finished_periods, active_usage } = history;
-  const completedCycles = finished_periods.length;
+  const completedCycles = getValidFinishedPeriods(finished_periods).length;
 
   const confidence = calculateConfidence(completedCycles);
   const confidenceState = confidence.state;
   const confidenceLabel = confidence.label;
   const confidenceSupporting = confidence.supportingText;
 
-  // 1. Observed Average Lifespan (strictly finished cycles)
+  // 1. Predicted/Observed Lifespan (valid finished cycles, rate-normalized when sized)
+  const activePurchase = active_usage
+    ? (purchases.find((p) => p.id === active_usage.purchase_id) ?? purchases[0] ?? null)
+    : (purchases[0] ?? null);
   const observedAverageLifespan =
-    completedCycles > 0 ? calculateAverageLifespan(finished_periods) : null;
+    completedCycles > 0
+      ? calculatePredictedLifespan({
+          usagePeriods: finished_periods,
+          product,
+          purchases,
+          activePurchase,
+        })
+      : null;
 
   // 2. Observed Weighted Cost / Day
   let observedCostPerDay: number | null = null;
@@ -238,9 +249,6 @@ export function deriveProductObservedMetrics(
     observedCostPerDay !== null ? Math.round(observedCostPerDay * 30) : null;
 
   // 4. Current-Cost Purchase Price & Unit Price (ACTIVE purchase, falling back to latest)
-  const activePurchase = active_usage
-    ? purchases.find((p) => p.id === active_usage.purchase_id) || null
-    : null;
   const currentPurchase = activePurchase || purchases[0] || null;
   const latestPurchasePrice = currentPurchase ? currentPurchase.price : null;
   const latestPurchaseCurrency = currentPurchase?.currency || 'BDT';

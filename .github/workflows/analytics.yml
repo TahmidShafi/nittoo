@@ -42,7 +42,7 @@ jobs:
           npm ci
           npx tsx scripts/export-demo-fixture.ts
           npx tsx scripts/export-baseline-parity.ts
-          git diff --exit-code analytics/fixtures/baseline_parity.json
+          git diff --exit-code analytics/fixtures/demo_export.json analytics/fixtures/baseline_parity.json
 
       - name: Setup uv & Python 3.12
         uses: astral-sh/setup-uv@v5
@@ -62,6 +62,13 @@ jobs:
       - name: Run pytest (including contract test)
         working-directory: analytics
         run: uv run pytest
+
+      - name: Verify forecast calibration & parity fixtures are up to date
+        working-directory: analytics
+        run: |
+          uv run lab export-calibration
+          uv run lab export-parity
+          git diff --exit-code ../src/lib/forecast/calibration.json fixtures/forecast_parity.json
 
       - name: Run Forecast Lab pipeline at CI scale (50 households)
         working-directory: analytics

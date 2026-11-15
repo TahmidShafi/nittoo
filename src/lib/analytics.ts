@@ -16,10 +16,10 @@
 
 import type { Product, UsagePeriod, ProductWithHistory } from '../types';
 import {
-  calculateAverageLifespan,
-  calculateCurrentDaysUsed,
-  calculatePredictedRemainingDays,
   calculateCostPerDay,
+  calculateCurrentDaysUsed,
+  calculatePredictedLifespan,
+  calculatePredictedRemainingDays,
 } from './prediction';
 import { addDays } from './dateUtils';
 
@@ -114,8 +114,15 @@ export function getUpcomingPurchases(
     const activeUsage = item.active_usage;
     if (!activeUsage) continue;
 
-    // Must have finished history to have an average lifespan
-    const averageLifespan = calculateAverageLifespan(item.finished_periods);
+    // Must have valid finished history to have a predicted lifespan
+    const activePurchase =
+      item.purchases.find((p) => p.id === activeUsage.purchase_id) ?? item.purchases[0] ?? null;
+    const averageLifespan = calculatePredictedLifespan({
+      usagePeriods: item.finished_periods,
+      product: item.product,
+      purchases: item.purchases,
+      activePurchase,
+    });
     if (averageLifespan === null || averageLifespan <= 0) continue;
 
     const daysUsed = calculateCurrentDaysUsed(activeUsage.opened_date, referenceDate);
@@ -167,7 +174,16 @@ export function calculateEstimatedMonthlyConsumption(
   for (const item of productsWithHistory) {
     if (!item.active_usage) continue;
 
-    const averageLifespan = calculateAverageLifespan(item.finished_periods);
+    const activePurchase =
+      item.purchases.find((p) => p.id === item.active_usage!.purchase_id) ??
+      item.purchases[0] ??
+      null;
+    const averageLifespan = calculatePredictedLifespan({
+      usagePeriods: item.finished_periods,
+      product: item.product,
+      purchases: item.purchases,
+      activePurchase,
+    });
     if (averageLifespan === null || averageLifespan <= 0) continue;
 
     const activePrice = getActiveOrLatestPurchasePrice(item);
@@ -198,7 +214,16 @@ export function getCostEfficiencyRankings(
   const eligible: ProductCostEfficiency[] = [];
 
   for (const item of productsWithHistory) {
-    const averageLifespan = calculateAverageLifespan(item.finished_periods);
+    const activePurchase =
+      item.purchases.find((p) => p.id === item.active_usage!.purchase_id) ??
+      item.purchases[0] ??
+      null;
+    const averageLifespan = calculatePredictedLifespan({
+      usagePeriods: item.finished_periods,
+      product: item.product,
+      purchases: item.purchases,
+      activePurchase,
+    });
     if (averageLifespan === null || averageLifespan <= 0) continue;
 
     const currentPrice = getActiveOrLatestPurchasePrice(item);
@@ -281,7 +306,16 @@ export function getCategorySpending(
   let totalEligibleMonthly = 0;
 
   for (const item of productsWithHistory) {
-    const averageLifespan = calculateAverageLifespan(item.finished_periods);
+    const activePurchase =
+      item.purchases.find((p) => p.id === item.active_usage!.purchase_id) ??
+      item.purchases[0] ??
+      null;
+    const averageLifespan = calculatePredictedLifespan({
+      usagePeriods: item.finished_periods,
+      product: item.product,
+      purchases: item.purchases,
+      activePurchase,
+    });
     if (averageLifespan === null || averageLifespan <= 0) continue;
 
     const currentPrice = getActiveOrLatestPurchasePrice(item);

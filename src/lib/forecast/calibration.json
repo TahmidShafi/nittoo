@@ -1,0 +1,23 @@
+{
+  "provenance": {
+    "source_seed": 7,
+    "method": "rate_mean",
+    "variant": "rule_only",
+    "min_train_cycles": 2,
+    "source": "analytics/src/nittoo_lab/config.py:FORECAST_INTERVAL_QUANTILES"
+  },
+  "buckets": {
+    "2": {
+      "q10": -0.1598,
+      "q90": 0.1667
+    },
+    "3-4": {
+      "q10": -0.1364,
+      "q90": 0.1675
+    },
+    "5+": {
+      "q10": -0.1111,
+      "q90": 0.1549
+    }
+  }
+}

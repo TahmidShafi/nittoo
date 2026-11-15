@@ -261,4 +261,70 @@ describe('analytics', () => {
     expect(cats[1].category).toBe('Haircare');
     expect(cats[1].percentageOfTotal).toBe(40);
   });
+
+  it('uses rate-normalized predicted lifespan for costPerDay and monthly run rate on size switches', () => {
+    // Product default 200ml finished in 40d (5 ml/day); active bottle is 400ml at 1000 BDT ->
+    // predicted lifespan is 80d (not 40d), so costPerDay = 12.50 and monthly = 375 BDT.
+    const item = makeProductHistory({
+      product: {
+        id: 'p-switch',
+        user_id: 'u1',
+        name: 'Size Switch Cleanser',
+        category: 'Skincare',
+        brand: 'CeraVe',
+        size_value: 200,
+        size_unit: 'ml',
+        created_at: '2026-01-01T00:00:00Z',
+      },
+      purchases: [
+        {
+          id: 'pu-old',
+          product_id: 'p-switch',
+          purchase_date: '2026-01-01',
+          price: 500,
+          currency: 'BDT',
+          store_vendor: 'Shajgoj',
+          size_value: null,
+          size_unit: null,
+          created_at: '2026-01-01T00:00:00Z',
+        },
+        {
+          id: 'pu-active',
+          product_id: 'p-switch',
+          purchase_date: '2026-03-01',
+          price: 1000,
+          currency: 'BDT',
+          store_vendor: 'Shajgoj',
+          size_value: 400,
+          size_unit: 'ml',
+          created_at: '2026-03-01T00:00:00Z',
+        },
+      ],
+      finished_periods: [
+        {
+          id: 'f-1',
+          product_id: 'p-switch',
+          purchase_id: 'pu-old',
+          opened_date: '2026-01-01',
+          finished_date: '2026-02-10', // 40 days
+          status: 'finished',
+          created_at: '2026-01-01T00:00:00Z',
+        },
+      ],
+      active_usage: {
+        id: 'a-1',
+        product_id: 'p-switch',
+        purchase_id: 'pu-active',
+        opened_date: '2026-03-01',
+        finished_date: null,
+        status: 'active',
+        created_at: '2026-03-01T00:00:00Z',
+      },
+    });
+
+    const rankings = getCostEfficiencyRankings([item]);
+    expect(rankings.mostEfficient[0].averageLifespan).toBe(80);
+    expect(rankings.mostEfficient[0].costPerDay).toBe(12.5);
+    expect(calculateEstimatedMonthlyConsumption([item])).toBe(375);
+  });
 });

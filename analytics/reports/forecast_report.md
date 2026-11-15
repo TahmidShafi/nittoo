@@ -1,7 +1,7 @@
 # Nittoo Forecast Lab — Rolling-Origin Backtest Report
 
-Generated at: `2026-11-15T14:19:37+00:00`  
-Scale: `500 households x 24 months` | Seed: `4001 (holdout) / 7 (dev) / 4002 (2.5x noise) / 4003 (eps=0.3) / 4004 (eps=0.6)` | Git commit: `e00e98a`  
+Generated at: `2026-11-15T15:06:25+00:00`  
+Scale: `500 households x 24 months` | Seed: `4001 (holdout) / 7 (dev) / 4002 (2.5x noise) / 4003 (eps=0.3) / 4004 (eps=0.6)` | Git commit: `b8f67e4`  
 Config: `MIN_TRAIN_CYCLES=2`, `EWMA_DURATION_ALPHA=0.85`, `EWMA_RATE_ALPHA=0.25`, `BONFERRONI_CI=99.58%` (`m=12`).
 
 ## 1. Selection Rule & Primary Comparison (Rule-Clean Next Cycles)
@@ -219,3 +219,4 @@ Comparison of `ewma_duration (rule_only)` at `alpha=0.25` vs `alpha=0.85` agains
 - **Mechanical winner vs shipped method:** Although the mechanical winner is `rate_mean (rule_plus_rate_outlier)` (`4.37` d MAE), we **ship `rate_mean (rule_only)`** (`4.53` d MAE).
 - **Why `rate_mean (rule_only)`:** (1) It also passes the pre-registered Bonferroni test against `baseline (none)` (`+12.882` d, `99.58% CI [+11.750, +14.159]`); (2) the incremental gain from `rule_plus_rate_outlier` is small on holdout (`+0.164` d, `95% CI [+0.136, +0.195]`), minimal under `2.5x` noise (Section 4), and **reverses** under pack-size elasticity (`eps=0.6`: `7.91` d `rule_only` vs `8.36` d `rule_plus_rate_outlier` in Section 6); and (3) shipping `rule_only` avoids porting an unreliable rate-outlier detector into the web app.
 - **Elasticity risk:** Between `eps=0.3` and `eps=0.6` (Section 6), duration-based `ewma_duration` crosses over and beats rate-based methods (`5.34` d vs `7.91` d at `eps=0.6`). Real Nittoo usage data is needed to measure actual pack-size elasticity before committing to rate normalization long-term.
+- **Existing restock plans:** Stored `relative` plans (`mode='relative'`) recompute their `reminder_date` dynamically from `days_before_finish` and the new expected finish date when displayed or evaluated; `custom` plans (`mode='custom'`) stay fixed.

@@ -8,7 +8,10 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { db } from '../lib/dataSource';
 import { getTodayLocal, formatDisplayDate } from '../lib/dateUtils';
-import { calculateAverageLifespan } from '../lib/prediction';
+import {
+  calculatePredictedLifespan,
+  getValidFinishedPeriods,
+} from '../lib/prediction';
 import { calculateConfidence, getConfidenceBadgeStyles } from '../lib/confidence';
 import {
   calculateExpectedFinishDate,
@@ -46,14 +49,22 @@ export const PlanRestockModal: React.FC<PlanRestockModalProps> = ({
   // Prediction calculations from canonical engine
   const activeUsage = product?.active_usage || null;
   const finishedPeriods = product?.finished_periods || [];
-  const averageLifespan = calculateAverageLifespan(finishedPeriods);
+  const validCompletedCycles = getValidFinishedPeriods(finishedPeriods).length;
+  const averageLifespan = product
+    ? calculatePredictedLifespan({
+        usagePeriods: finishedPeriods,
+        product,
+        purchases: product.purchases || [],
+        activePurchase: product.active_purchase ?? product.latest_purchase,
+      })
+    : null;
   const hasPrediction = averageLifespan !== null && averageLifespan > 0 && !!activeUsage;
   const expectedFinishDate =
     hasPrediction && activeUsage
       ? calculateExpectedFinishDate(activeUsage.opened_date, averageLifespan)
       : null;
 
-  const confidence = calculateConfidence(finishedPeriods.length);
+  const confidence = calculateConfidence(validCompletedCycles);
   const badgeStyles = getConfidenceBadgeStyles(confidence.state);
 
   // Form State

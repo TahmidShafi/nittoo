@@ -1,10 +1,33 @@
 // ==============================================================================
 // Nittoo Prediction & Metric Engine
-// Strict Business Logic: Finished Periods Only, No Fabricated Estimates
+// Strict Business Logic: Valid Finished Periods Only, Rate-Normalized When Sized
 // ==============================================================================
 
 import type { Product, Purchase, SizeUnit, UsagePeriod } from '../types';
-import { getDaysBetween, getDaysUsed } from './dateUtils';
+import { addDays, getDaysBetween, getDaysUsed, getTodayLocal } from './dateUtils';
+import calibrationData from './forecast/calibration.json';
+
+/** Rule-based duration validity bounds shared with analytics/src/nittoo_lab/config.py. */
+export const MIN_VALID_DURATION_DAYS = 1;
+export const MAX_VALID_DURATION_DAYS = 1000;
+export const MIN_RANGE_CYCLES = 2;
+
+export type HistoryBucket = '2' | '3-4' | '5+';
+
+export interface PredictedLifespanInput {
+  usagePeriods: UsagePeriod[];
+  product: Pick<Product, 'size_value' | 'size_unit'>;
+  purchases: Pick<Purchase, 'id' | 'size_value' | 'size_unit'>[];
+  activePurchase?: Pick<Purchase, 'size_value' | 'size_unit'> | null;
+}
+
+export interface RunOutRange {
+  minDate: string;
+  maxDate: string;
+  lowDays: number;
+  highDays: number;
+  bucket: HistoryBucket;
+}
 
 /**
  * Calculates duration in days for a finished usage period.
@@ -19,10 +42,27 @@ export function calculateUsageDuration(period: UsagePeriod): number | null {
 }
 
 /**
- * Calculates average lifespan in days strictly from finished usage periods.
- * If zero finished periods exist, returns null ("Not enough data").
+ * Returns finished usage periods whose durations pass rule-based validity
+ * (1 <= duration_days < 1000, excluding 0-day and >=1000-day data-entry faults).
  */
-export function calculateAverageLifespan(usagePeriods: UsagePeriod[]): number | null {
+export function getValidFinishedPeriods(usagePeriods: UsagePeriod[]): UsagePeriod[] {
+  return usagePeriods.filter((p) => {
+    if (p.status !== 'finished' || p.finished_date === null || p.finished_date === undefined) {
+      return false;
+    }
+    const duration = calculateUsageDuration(p);
+    return (
+      duration !== null &&
+      duration >= MIN_VALID_DURATION_DAYS &&
+      duration < MAX_VALID_DURATION_DAYS
+    );
+  });
+}
+
+/**
+ * Legacy duration-only arithmetic mean kept ONLY for Part A baseline parity script and tests.
+ */
+export function legacyAverageLifespan(usagePeriods: UsagePeriod[]): number | null {
   const finishedPeriods = usagePeriods.filter(
     (p) => p.status === 'finished' && p.finished_date !== null && p.finished_date !== undefined
   );
@@ -41,6 +81,102 @@ export function calculateAverageLifespan(usagePeriods: UsagePeriod[]): number | 
 }
 
 /**
+ * Predicts expected lifespan (days) of the active bottle using rate_mean (rule_only):
+ * - Excludes 0-day and >=1000-day cycles.
+ * - When active effective size is known and at least one valid finished cycle has a known
+ *   effective size with matching unit, predicts active_size / mean(size_i / duration_i).
+ * - Otherwise falls back to the rule-cleaned mean duration.
+ */
+export function calculatePredictedLifespan({
+  usagePeriods,
+  product,
+  purchases,
+  activePurchase,
+}: PredictedLifespanInput): number | null {
+  const validPeriods = getValidFinishedPeriods(usagePeriods);
+  if (validPeriods.length === 0) {
+    return null;
+  }
+
+  const purchaseById = new Map(purchases.map((p) => [p.id, p]));
+  const activeSize = getEffectiveSize(activePurchase, product);
+
+  const rates: number[] = [];
+  for (const period of validPeriods) {
+    const duration = calculateUsageDuration(period);
+    if (duration === null || duration <= 0) continue;
+
+    const linkedPurchase = purchaseById.get(period.purchase_id) ?? null;
+    const eff = getEffectiveSize(linkedPurchase, product);
+    if (eff.size_value === null || eff.size_value <= 0) continue;
+    if (activeSize.size_unit !== null && eff.size_unit !== activeSize.size_unit) continue;
+
+    rates.push(eff.size_value / duration);
+  }
+
+  let rawLifespan: number;
+  if (activeSize.size_value !== null && activeSize.size_value > 0 && rates.length > 0) {
+    const meanRate = rates.reduce((sum, r) => sum + r, 0) / rates.length;
+    if (meanRate <= 0) return null;
+    rawLifespan = activeSize.size_value / meanRate;
+  } else {
+    const totalDays = validPeriods.reduce((sum, p) => sum + (calculateUsageDuration(p) ?? 0), 0);
+    rawLifespan = totalDays / validPeriods.length;
+  }
+
+  const rounded = Math.round(rawLifespan * 10) / 10;
+  return rounded > 0 ? rounded : null;
+}
+
+export function getHistoryBucket(validCycleCount: number): HistoryBucket | null {
+  if (validCycleCount < MIN_RANGE_CYCLES) return null;
+  if (validCycleCount === 2) return '2';
+  if (validCycleCount <= 4) return '3-4';
+  return '5+';
+}
+
+/**
+ * Computes calibrated P10-P90 run-out date range for an active cycle.
+ * Returns null if fewer than MIN_RANGE_CYCLES valid cycles exist, or if today > maxDate (overdue).
+ */
+export function calculateRunOutRange(
+  openedDate: string,
+  predictedLifespan: number | null,
+  validCycleCount: number,
+  referenceDate?: string
+): RunOutRange | null {
+  if (!openedDate || predictedLifespan === null || predictedLifespan <= 0) {
+    return null;
+  }
+  const bucket = getHistoryBucket(validCycleCount);
+  if (!bucket) return null;
+
+  const { q10, q90 } = calibrationData.buckets[bucket];
+  const lowDays = Math.max(1, Math.round(predictedLifespan * (1 + q10)));
+  const highDays = Math.max(lowDays, Math.round(predictedLifespan * (1 + q90)));
+
+  const minDate = addDays(openedDate, lowDays);
+  const maxDate = addDays(openedDate, highDays);
+
+  const today = referenceDate ?? getTodayLocal();
+  if (today > maxDate) {
+    return null;
+  }
+
+  return { minDate, maxDate, lowDays, highDays, bucket };
+}
+
+export function formatRunOutRange(range: RunOutRange): string {
+  const fmt = (iso: string) =>
+    new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'UTC',
+    }).format(new Date(`${iso}T00:00:00Z`));
+  return `Runs out between ${fmt(range.minDate)} and ${fmt(range.maxDate)}`;
+}
+
+/**
  * Calculates days used so far for an active period.
  */
 export function calculateCurrentDaysUsed(
@@ -51,9 +187,9 @@ export function calculateCurrentDaysUsed(
 }
 
 /**
- * Predicts remaining days of an active usage period using historical average lifespan.
- * Returns null if no finished lifespan data exists ("Not enough data").
- * Result can be negative if the user has already exceeded the historical average lifespan.
+ * Predicts remaining days of an active usage period using historical predicted lifespan.
+ * Returns null if no valid finished lifespan data exists ("Not enough data").
+ * Result can be negative if the user has already exceeded the predicted lifespan.
  */
 export function calculatePredictedRemainingDays(
   averageLifespan: number | null,

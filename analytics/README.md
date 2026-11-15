@@ -49,6 +49,22 @@ uv run lab simulate --households 500 --months 24
 uv run lab ingest
 uv run lab transform
 uv run lab report
+uv run lab forecast
+uv run lab export-calibration
+uv run lab export-parity
 uv run ruff check .
 uv run pytest
 ```
+
+## Reproducing Committed Reports
+
+- **`reports/data_quality.md`** (holdout seed `2027`, `500 × 24`):
+  ```bash
+  rm -f data/nittoo.duckdb
+  uv run lab simulate --households 500 --months 24 --seed 2027
+  uv run lab ingest
+  uv run lab transform --no-docs
+  uv run lab report
+  ```
+- **`reports/forecast_report.md`** (`500 × 24` across dev `7`, holdout `4001`, 2.5× noise `4002`, and pack-size elasticity `4003`/`4004`):
+  Run `simulate_households` → `ingest_exports` → `run_dbt_pipeline` → `run_rolling_backtest` → `evaluate_targets` for `(7, 0.08, 0.0)`, `(4001, 0.08, 0.0)`, `(4002, 0.20, 0.0)`, `(4003, 0.08, 0.3)`, and `(4004, 0.08, 0.6)` (plus `ewma_duration_alpha=0.25` on `4001` and `load_size_switch_stats`), then write `render_forecast_report(...)` to `reports/forecast_report.md`. (`uv run lab forecast` runs the same `render_forecast_report` on a single DuckDB database.)

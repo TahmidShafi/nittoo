@@ -6,18 +6,23 @@
 import { useMemo } from 'react';
 import type { ProductWithDetails } from '../types';
 import {
-  calculateAverageLifespan,
   calculateCurrentDaysUsed,
   calculateCostPerDay,
+  calculatePredictedLifespan,
   calculatePricePerUnit,
   calculateProgressPercent,
+  calculateRunOutRange,
   getEffectiveSize,
+  getValidFinishedPeriods,
+  type RunOutRange,
 } from '../lib/prediction';
 
 export interface PredictionMetrics {
   daysUsed: number;
   averageLifespan: number | null;
   predictedRemainingDays: number | null;
+  runOutRange: RunOutRange | null;
+  validCompletedCycles: number;
   costPerDay: number | null;
   pricePerUnit: number | null;
   progressPercent: number | null;
@@ -44,6 +49,8 @@ export function getPredictionMetrics(
       daysUsed: 0,
       averageLifespan: null,
       predictedRemainingDays: null,
+      runOutRange: null,
+      validCompletedCycles: 0,
       costPerDay: null,
       pricePerUnit: null,
       progressPercent: null,
@@ -58,10 +65,22 @@ export function getPredictionMetrics(
   // 1. Days Used: today UTC - opened_date
   const daysUsed = calculateCurrentDaysUsed(activeUsage.opened_date, referenceDate);
 
-  // 2. Average Lifespan: finished usage periods ONLY
+  // 2. Predicted Lifespan: valid finished periods ONLY (rate-normalized when sized)
   const finishedPeriods = product.finished_periods || [];
-  const averageLifespan = calculateAverageLifespan(finishedPeriods);
+  const validCompletedCycles = getValidFinishedPeriods(finishedPeriods).length;
+  const averageLifespan = calculatePredictedLifespan({
+    usagePeriods: finishedPeriods,
+    product,
+    purchases: product.purchases || [],
+    activePurchase: purchaseForActive,
+  });
   const hasEnoughData = averageLifespan !== null && averageLifespan > 0;
+  const runOutRange = calculateRunOutRange(
+    activeUsage.opened_date,
+    averageLifespan,
+    validCompletedCycles,
+    referenceDate
+  );
 
   // 3. Predicted Remaining Days: averageLifespan - daysUsed (preserves negative values for overdue detection)
   const predictedRemainingDays = hasEnoughData
@@ -108,6 +127,8 @@ export function getPredictionMetrics(
     daysUsed,
     averageLifespan,
     predictedRemainingDays,
+    runOutRange,
+    validCompletedCycles,
     costPerDay,
     pricePerUnit,
     progressPercent,

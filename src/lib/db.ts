@@ -680,8 +680,10 @@ export class SupabaseDatabase implements IDataSource {
           ? purchaseByIdMap.get(activeUsage.purchase_id) || latestPurchaseMap.get(p.id) || null
           : null;
         const restockPlan = activeUsage ? restockPlanMap.get(activeUsage.id) || null : null;
+        const prodPurchases = (purchases || []).filter((pu) => pu.product_id === p.id);
         return {
           ...p,
+          purchases: prodPurchases,
           active_usage: activeUsage,
           latest_purchase: latestPurchaseMap.get(p.id) || null,
           active_purchase: activePurchase,
@@ -894,8 +896,10 @@ export class SupabaseDatabase implements IDataSource {
         const activePurchase = activeUsage
           ? purchaseByIdMap.get(activeUsage.purchase_id) || latestPurchaseMap.get(p.id) || null
           : null;
+        const prodPurchases = (purchases || []).filter((pu) => pu.product_id === p.id);
         return {
           ...p,
+          purchases: prodPurchases,
           active_usage: activeUsage,
           latest_purchase: latestPurchaseMap.get(p.id) || null,
           active_purchase: activePurchase,

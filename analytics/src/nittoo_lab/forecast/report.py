@@ -597,6 +597,9 @@ def render_forecast_report(
             f"`ewma_duration` crosses over and beats rate-based methods{eps06_cross}. "
             "Real Nittoo usage data is needed to measure actual pack-size elasticity "
             "before committing to rate normalization long-term.",
+            "- **Existing restock plans:** Stored `relative` plans (`mode='relative'`) recompute "
+            "their `reminder_date` dynamically from `days_before_finish` and the new expected "
+            "finish date when displayed or evaluated; `custom` plans (`mode='custom'`) stay fixed.",
         ]
     )
     return "\n".join(lines) + "\n"

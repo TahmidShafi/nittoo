@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildDemoSeedData } from './seed';
+import { calculatePredictedLifespan, calculateRunOutRange } from '../prediction';
 import { MockDatabase, InMemoryStorageAdapter, mockDb } from '../mock-db';
 import {
   DEMO_USER_ID,
@@ -95,5 +96,35 @@ describe('demo/seed', () => {
       if (origWindow === undefined) delete (globalThis as { window?: unknown }).window;
       else (globalThis as { window?: unknown }).window = origWindow;
     }
+  });
+
+  it('scales lifespan and run-out range sensibly for the 650ml size-switch product', () => {
+    const bundle = buildDemoSeedData(DEMO_USER_ID, '2026-11-15');
+    const loreal = bundle.products.find((p) => p.name.includes('Elvive Hyaluron'))!;
+    expect(loreal).toBeDefined();
+    const purchases = bundle.purchases.filter((pu) => pu.product_id === loreal.id);
+    const finished = bundle.usage_periods.filter(
+      (u) => u.product_id === loreal.id && u.status === 'finished'
+    );
+    const active = bundle.usage_periods.find(
+      (u) => u.product_id === loreal.id && u.status === 'active'
+    )!;
+    const activePurchase = purchases.find((pu) => pu.id === active.purchase_id)!;
+    expect(activePurchase.size_value).toBe(650);
+
+    const lifespan = calculatePredictedLifespan({
+      usagePeriods: finished,
+      product: loreal,
+      purchases,
+      activePurchase,
+    });
+    expect(lifespan).not.toBeNull();
+    // 340ml history (~74.8d) scaled to 650ml active bottle -> ~143d
+    expect(lifespan!).toBeGreaterThan(135);
+    expect(lifespan!).toBeLessThan(155);
+
+    const range = calculateRunOutRange(active.opened_date, lifespan, finished.length, '2026-11-15');
+    expect(range).not.toBeNull();
+    expect(range!.bucket).toBe('3-4');
   });
 });

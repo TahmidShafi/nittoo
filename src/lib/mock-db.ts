@@ -863,6 +863,7 @@ export class MockDatabase implements IDataSource {
 
         results.push({
           ...product,
+          purchases: data.purchases.filter((pu) => pu.product_id === product.id),
           active_usage: activeUsage,
           latest_purchase: latestPurchase,
           active_purchase: activePurchase,

@@ -155,6 +155,7 @@ export interface UpdateUsagePeriodInput {
 // ------------------------------------------------------------------------------
 
 export interface ProductWithDetails extends Product {
+  purchases?: Purchase[];
   active_usage?: UsagePeriod | null;
   latest_purchase?: Purchase | null;
   active_purchase?: Purchase | null;

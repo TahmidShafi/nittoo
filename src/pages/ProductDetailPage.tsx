@@ -19,12 +19,15 @@ import { usePageMeta } from '../hooks/usePageMeta';
 import { db } from '../lib/dataSource';
 import { formatDisplayDate } from '../lib/dateUtils';
 import {
-  calculateAverageLifespan,
   calculateCurrentDaysUsed,
-  calculateUsageDuration,
+  calculatePredictedLifespan,
   calculatePricePerUnit,
   calculateProgressPercent,
+  calculateRunOutRange,
+  calculateUsageDuration,
+  formatRunOutRange,
   getEffectiveSize,
+  getValidFinishedPeriods,
 } from '../lib/prediction';
 import { calculateConfidence, getConfidenceBadgeStyles } from '../lib/confidence';
 import {
@@ -32,6 +35,7 @@ import {
   getRestockDisplayStatus,
   getRestockStatusInfo,
   getRelativeOptionLabel,
+  recalculatePlanReminderDate,
 } from '../lib/restock';
 import { FinishUsageModal } from '../components/FinishUsageModal';
 import { EditInventoryModal } from '../components/EditInventoryModal';
@@ -177,8 +181,19 @@ export const ProductDetailPage: React.FC = () => {
 
     const { product, purchases, finished_periods } = history;
 
-    // 1. Average Duration (strictly from finished periods)
-    const averageDuration = calculateAverageLifespan(finished_periods);
+    // 1. Predicted Lifespan (valid finished periods, rate-normalized when sized)
+    const activePurchase = history.active_usage
+      ? purchases.find((p) => p.id === history.active_usage!.purchase_id) || null
+      : null;
+    const latestPurchase = purchases[0] || null;
+    const currentPurchase = activePurchase || latestPurchase;
+    const averageDuration = calculatePredictedLifespan({
+      usagePeriods: finished_periods,
+      product,
+      purchases,
+      activePurchase: currentPurchase,
+    });
+    const validCompletedCycles = getValidFinishedPeriods(finished_periods).length;
 
     // 2. Weighted Average Cost Per Day:
     // total price of completed purchase cycles ÷ total completed usage days
@@ -208,11 +223,6 @@ export const ProductDetailPage: React.FC = () => {
     const purchaseCount = purchases.length;
 
     // 5. Unit Rate: active purchase's price ÷ effective size (falling back to latest purchase)
-    const activePurchase = history.active_usage
-      ? purchases.find((p) => p.id === history.active_usage!.purchase_id) || null
-      : null;
-    const latestPurchase = purchases[0] || null;
-    const currentPurchase = activePurchase || latestPurchase;
     const effectiveSize = getEffectiveSize(currentPurchase, product);
     const unitRate =
       currentPurchase && effectiveSize.size_value
@@ -221,6 +231,7 @@ export const ProductDetailPage: React.FC = () => {
 
     return {
       averageDuration,
+      validCompletedCycles,
       weightedCostPerDay,
       totalSpent,
       purchaseCount,
@@ -230,8 +241,8 @@ export const ProductDetailPage: React.FC = () => {
     };
   }, [history]);
 
-  // Evidence Confidence Calculation strictly from finished periods
-  const completedCycles = history ? history.finished_periods.length : 0;
+  // Evidence Confidence Calculation strictly from valid finished periods
+  const completedCycles = summaryStats ? summaryStats.validCompletedCycles : 0;
   const confidence = useMemo(() => calculateConfidence(completedCycles), [completedCycles]);
   const confidenceBadgeStyles = useMemo(() => getConfidenceBadgeStyles(confidence.state), [confidence.state]);
 
@@ -263,19 +274,21 @@ export const ProductDetailPage: React.FC = () => {
     }
 
     const progress = avgDuration !== null ? calculateProgressPercent(daysUsed, avgDuration) : null;
+    const runOutRange = calculateRunOutRange(active.opened_date, avgDuration, completedCycles);
 
     return {
       active,
       daysUsed,
       predictedRemaining,
       avgDuration,
+      runOutRange,
       progress,
       isOverdue,
       overdueDays,
       urgencyLabel,
       urgencyState,
     };
-  }, [history, summaryStats]);
+  }, [history, summaryStats, completedCycles]);
 
   // Prepare Chart Data: Finished Periods sorted chronologically
   const chartData = useMemo(() => {
@@ -382,6 +395,11 @@ export const ProductDetailPage: React.FC = () => {
     }
     return calculateExpectedFinishDate(activeUsageData.active.opened_date, summaryStats.averageDuration);
   }, [activeUsageData, summaryStats]);
+
+  const effectiveRestockPlan = useMemo(() => {
+    if (!restockPlan) return null;
+    return recalculatePlanReminderDate(restockPlan, expectedFinishDate);
+  }, [restockPlan, expectedFinishDate]);
 
   const handleDismissRestock = async () => {
     if (!user || !restockPlan) return;
@@ -689,6 +707,11 @@ export const ProductDetailPage: React.FC = () => {
                       {confidence.label}
                     </span>
                   </div>
+                  {activeUsageData.runOutRange && (
+                    <p className="text-xs font-medium text-neutral-600">
+                      {formatRunOutRange(activeUsageData.runOutRange)}
+                    </p>
+                  )}
                   <p className="text-xs text-neutral-500 flex items-center gap-1.5 flex-wrap">
                     <span>{confidence.supportingText}</span>
                     <span className="text-neutral-300">•</span>
@@ -705,6 +728,11 @@ export const ProductDetailPage: React.FC = () => {
                       {confidence.label}
                     </span>
                   </div>
+                  {activeUsageData.runOutRange && (
+                    <p className="text-xs font-medium text-neutral-600">
+                      {formatRunOutRange(activeUsageData.runOutRange)}
+                    </p>
+                  )}
                   <p className="text-xs text-neutral-400 italic">
                     Complete a cycle to start learning.
                   </p>
@@ -718,32 +746,32 @@ export const ProductDetailPage: React.FC = () => {
                 <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
                   RESTOCK
                 </span>
-                {restockPlan && restockPlan.status === 'planned' && (
+                {effectiveRestockPlan && effectiveRestockPlan.status === 'planned' && (
                   <span
                     className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
                       getRestockStatusInfo(
-                        getRestockDisplayStatus(restockPlan, activeUsageData.active.status),
-                        restockPlan.reminder_date,
-                        restockPlan.days_before_finish,
-                        restockPlan.mode
+                        getRestockDisplayStatus(effectiveRestockPlan, activeUsageData.active.status),
+                        effectiveRestockPlan.reminder_date,
+                        effectiveRestockPlan.days_before_finish,
+                        effectiveRestockPlan.mode
                       ).badgeClass
                     }`}
                   >
                     <span
                       className={`w-1.5 h-1.5 rounded-full ${
                         getRestockStatusInfo(
-                          getRestockDisplayStatus(restockPlan, activeUsageData.active.status),
-                          restockPlan.reminder_date,
-                          restockPlan.days_before_finish,
-                          restockPlan.mode
+                          getRestockDisplayStatus(effectiveRestockPlan, activeUsageData.active.status),
+                          effectiveRestockPlan.reminder_date,
+                          effectiveRestockPlan.days_before_finish,
+                          effectiveRestockPlan.mode
                         ).dotClass
                       }`}
                     />
                     {getRestockStatusInfo(
-                      getRestockDisplayStatus(restockPlan, activeUsageData.active.status),
-                      restockPlan.reminder_date,
-                      restockPlan.days_before_finish,
-                      restockPlan.mode
+                      getRestockDisplayStatus(effectiveRestockPlan, activeUsageData.active.status),
+                      effectiveRestockPlan.reminder_date,
+                      effectiveRestockPlan.days_before_finish,
+                      effectiveRestockPlan.mode
                     ).label}
                   </span>
                 )}
@@ -780,18 +808,18 @@ export const ProductDetailPage: React.FC = () => {
               )}
 
               {/* State 2: Planned (Future) */}
-              {restockPlan &&
-                restockPlan.status === 'planned' &&
-                getRestockDisplayStatus(restockPlan, activeUsageData.active.status) === 'planned' && (
+              {effectiveRestockPlan &&
+                effectiveRestockPlan.status === 'planned' &&
+                getRestockDisplayStatus(effectiveRestockPlan, activeUsageData.active.status) === 'planned' && (
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-500/5 rounded-xl p-3.5 border border-emerald-500/20">
                     <div>
                       <span className="text-xs text-neutral-500 font-medium">Reminder</span>
                       <p className="text-sm font-bold text-neutral-900">
-                        {formatDisplayDate(restockPlan.reminder_date)}
+                        {formatDisplayDate(effectiveRestockPlan.reminder_date)}
                       </p>
                       <p className="text-[11px] text-neutral-500 mt-0.5">
-                        {restockPlan.mode === 'relative' && restockPlan.days_before_finish !== null
-                          ? `${getRelativeOptionLabel(restockPlan.days_before_finish)} estimated finish`
+                        {effectiveRestockPlan.mode === 'relative' && effectiveRestockPlan.days_before_finish !== null
+                          ? `${getRelativeOptionLabel(effectiveRestockPlan.days_before_finish)} estimated finish`
                           : 'Custom reminder date'}
                       </p>
                     </div>
@@ -815,9 +843,9 @@ export const ProductDetailPage: React.FC = () => {
                 )}
 
               {/* State 3: Due */}
-              {restockPlan &&
-                restockPlan.status === 'planned' &&
-                getRestockDisplayStatus(restockPlan, activeUsageData.active.status) === 'due' && (
+              {effectiveRestockPlan &&
+                effectiveRestockPlan.status === 'planned' &&
+                getRestockDisplayStatus(effectiveRestockPlan, activeUsageData.active.status) === 'due' && (
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-amber-500/10 rounded-xl p-3.5 border border-amber-500/30">
                     <div>
                       <div className="flex items-center gap-1.5">
@@ -827,7 +855,7 @@ export const ProductDetailPage: React.FC = () => {
                         </span>
                       </div>
                       <p className="text-xs text-neutral-600 mt-0.5">
-                        Reminder was scheduled for {formatDisplayDate(restockPlan.reminder_date)}
+                        Reminder was scheduled for {formatDisplayDate(effectiveRestockPlan.reminder_date)}
                         {expectedFinishDate && ` · Estimated finish: ${formatDisplayDate(expectedFinishDate)}`}
                       </p>
                     </div>

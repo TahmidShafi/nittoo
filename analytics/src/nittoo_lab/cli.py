@@ -6,6 +6,7 @@ from typing import Annotated
 
 import typer
 
+from nittoo_lab.forecast.export import export_calibration, export_forecast_parity
 from nittoo_lab.forecast.report import run_forecast_evaluation
 from nittoo_lab.ingest.loader import DEFAULT_DB_PATH, ingest_exports
 from nittoo_lab.reporting.generator import generate_data_quality_report
@@ -80,6 +81,20 @@ def forecast(
         f"Wrote {res.report_path} in {res.elapsed_seconds:.2f}s "
         f"(n={res.rule_clean_targets}, winner={res.winner[0]} ({res.winner[1]}))"
     )
+
+
+@app.command("export-calibration")
+def export_calibration_cmd() -> None:
+    """Export frozen P10/P90 interval quantiles to src/lib/forecast/calibration.json."""
+    out = export_calibration()
+    typer.echo(f"Wrote {out}")
+
+
+@app.command("export-parity")
+def export_parity_cmd() -> None:
+    """Export app forecast parity fixture to analytics/fixtures/forecast_parity.json."""
+    out = export_forecast_parity()
+    typer.echo(f"Wrote {out}")
 
 
 @app.command("all")

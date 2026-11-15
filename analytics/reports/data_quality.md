@@ -1,7 +1,7 @@
 # Nittoo Forecast Lab — Data Quality Report
 
-Generated at: `2026-11-15T13:32:22+00:00`  
-Scale: `500 households x 24 months` | Seed: `2027` | Git commit: `6970f3b`  
+Generated at: `2026-11-15T15:03:23+00:00`  
+Scale: `500 households x 24 months` | Seed: `2027` | Git commit: `b8f67e4`  
 Dataset: **SYNTHETIC** household consumption & pricing simulation.
 
 ## 1. Row Counts per Layer
@@ -70,44 +70,44 @@ Total quarantined records: **258**
 
 | Test | Status | Failures | Time (s) |
 | :--- | :---: | ---: | ---: |
-| `assert_consumption_rate_plausible` | pass | 0 | 0.095 |
-| `accepted_values_dim_product_size_unit__ml__g__count` | pass | 0 | 0.098 |
-| `assert_finished_after_opened` | pass | 0 | 0.098 |
-| `accepted_values_fact_consumption_cycle_status__completed__active` | pass | 0 | 0.1 |
-| `not_null_dim_date_date_day` | pass | 0 | 0.052 |
-| `not_null_dim_product_category` | pass | 0 | 0.051 |
-| `assert_no_zero_day_cycles_in_marts` | pass | 0 | 0.058 |
-| `not_null_dim_product_product_id` | pass | 0 | 0.054 |
-| `not_null_dim_product_user_id` | pass | 0 | 0.047 |
-| `not_null_dim_vendor_vendor_key` | pass | 0 | 0.049 |
-| `not_null_fact_consumption_cycle_product_id` | pass | 0 | 0.044 |
-| `not_null_dim_vendor_vendor_name` | pass | 0 | 0.05 |
-| `not_null_fact_consumption_cycle_status` | pass | 0 | 0.051 |
-| `not_null_fact_consumption_cycle_usage_period_id` | pass | 0 | 0.046 |
-| `not_null_fact_purchase_price` | pass | 0 | 0.045 |
-| `not_null_fact_consumption_cycle_purchase_id` | pass | 0 | 0.056 |
-| `not_null_fact_purchase_purchase_date` | pass | 0 | 0.052 |
-| `not_null_fact_purchase_product_id` | pass | 0 | 0.056 |
-| `not_null_fact_purchase_purchase_id` | pass | 0 | 0.054 |
-| `not_null_fact_purchase_vendor_key` | pass | 0 | 0.045 |
-| `not_null_mart_category_price_index_avg_unit_price` | pass | 0 | 0.05 |
-| `not_null_mart_category_price_index_category` | pass | 0 | 0.054 |
-| `not_null_mart_category_price_index_price_month` | pass | 0 | 0.055 |
-| `not_null_mart_category_price_index_size_unit` | pass | 0 | 0.036 |
-| `not_null_mart_monthly_spend_category` | pass | 0 | 0.052 |
+| `accepted_values_dim_product_size_unit__ml__g__count` | pass | 0 | 0.07 |
+| `assert_consumption_rate_plausible` | pass | 0 | 0.07 |
+| `assert_finished_after_opened` | pass | 0 | 0.071 |
+| `accepted_values_fact_consumption_cycle_status__completed__active` | pass | 0 | 0.073 |
+| `not_null_dim_date_date_day` | pass | 0 | 0.039 |
+| `not_null_dim_product_category` | pass | 0 | 0.039 |
+| `assert_no_zero_day_cycles_in_marts` | pass | 0 | 0.043 |
+| `not_null_dim_product_product_id` | pass | 0 | 0.039 |
+| `not_null_dim_product_user_id` | pass | 0 | 0.039 |
+| `not_null_dim_vendor_vendor_name` | pass | 0 | 0.04 |
+| `not_null_dim_vendor_vendor_key` | pass | 0 | 0.044 |
+| `not_null_fact_consumption_cycle_product_id` | pass | 0 | 0.039 |
+| `not_null_fact_consumption_cycle_purchase_id` | pass | 0 | 0.041 |
+| `not_null_fact_consumption_cycle_status` | pass | 0 | 0.039 |
+| `not_null_fact_consumption_cycle_usage_period_id` | pass | 0 | 0.034 |
+| `not_null_fact_purchase_price` | pass | 0 | 0.041 |
+| `not_null_fact_purchase_purchase_date` | pass | 0 | 0.041 |
+| `not_null_fact_purchase_product_id` | pass | 0 | 0.045 |
+| `not_null_fact_purchase_purchase_id` | pass | 0 | 0.033 |
+| `not_null_fact_purchase_vendor_key` | pass | 0 | 0.034 |
+| `not_null_mart_category_price_index_avg_unit_price` | pass | 0 | 0.042 |
+| `not_null_mart_category_price_index_category` | pass | 0 | 0.042 |
+| `not_null_mart_category_price_index_price_month` | pass | 0 | 0.038 |
+| `not_null_mart_category_price_index_size_unit` | pass | 0 | 0.03 |
+| `not_null_mart_monthly_spend_category` | pass | 0 | 0.044 |
 | `not_null_mart_monthly_spend_spend_month` | pass | 0 | 0.045 |
-| `not_null_mart_monthly_spend_total_spend_bdt` | pass | 0 | 0.047 |
-| `not_null_mart_monthly_spend_user_id` | pass | 0 | 0.049 |
-| `relationships_fact_consumption_cycle_product_id__product_id__ref_dim_product_` | pass | 0 | 0.072 |
-| `relationships_fact_purchase_purchase_date__date_day__ref_dim_date_` | pass | 0 | 0.036 |
-| `relationships_fact_purchase_product_id__product_id__ref_dim_product_` | pass | 0 | 0.052 |
-| `relationships_fact_consumption_cycle_purchase_id__purchase_id__ref_fact_purchase_` | pass | 0 | 0.113 |
-| `unique_dim_date_date_day` | pass | 0 | 0.045 |
-| `relationships_fact_purchase_vendor_key__vendor_key__ref_dim_vendor_` | pass | 0 | 0.061 |
+| `not_null_mart_monthly_spend_total_spend_bdt` | pass | 0 | 0.041 |
+| `not_null_mart_monthly_spend_user_id` | pass | 0 | 0.03 |
+| `relationships_fact_purchase_purchase_date__date_day__ref_dim_date_` | pass | 0 | 0.041 |
+| `relationships_fact_consumption_cycle_product_id__product_id__ref_dim_product_` | pass | 0 | 0.075 |
+| `relationships_fact_purchase_product_id__product_id__ref_dim_product_` | pass | 0 | 0.058 |
+| `relationships_fact_consumption_cycle_purchase_id__purchase_id__ref_fact_purchase_` | pass | 0 | 0.089 |
+| `relationships_fact_purchase_vendor_key__vendor_key__ref_dim_vendor_` | pass | 0 | 0.056 |
+| `unique_dim_date_date_day` | pass | 0 | 0.042 |
 | `unique_dim_product_product_id` | pass | 0 | 0.043 |
-| `unique_dim_vendor_vendor_key` | pass | 0 | 0.046 |
-| `warn_duration_outliers_detected` | warn | 571 | 0.018 |
-| `unique_fact_purchase_purchase_id` | pass | 0 | 0.071 |
-| `warn_duplicate_purchases_deduped` | warn | 326 | 0.06 |
-| `unique_fact_consumption_cycle_usage_period_id` | pass | 0 | 0.077 |
-| `warn_zero_day_cycles_detected` | warn | 265 | 0.029 |
+| `unique_dim_vendor_vendor_key` | pass | 0 | 0.04 |
+| `warn_duration_outliers_detected` | warn | 571 | 0.02 |
+| `warn_zero_day_cycles_detected` | warn | 265 | 0.015 |
+| `unique_fact_purchase_purchase_id` | pass | 0 | 0.059 |
+| `unique_fact_consumption_cycle_usage_period_id` | pass | 0 | 0.063 |
+| `warn_duplicate_purchases_deduped` | warn | 326 | 0.059 |

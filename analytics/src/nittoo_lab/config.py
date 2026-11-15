@@ -60,6 +60,10 @@ ROBUSTNESS_SEEDS: tuple[int, ...] = (3001, 3002, 3003, 3004, 3005, 3006)
 ROBUSTNESS_HOUSEHOLDS: int = 200
 ROBUSTNESS_MONTHS: int = 24
 
+# Rule-based duration validity bounds (matches src/lib/prediction.ts).
+MIN_VALID_DURATION_DAYS: int = 1
+MAX_VALID_DURATION_DAYS: int = 1000
+
 # Minimum completed prefix cycles required before rolling-origin forecasting.
 MIN_TRAIN_CYCLES: int = 2
 
