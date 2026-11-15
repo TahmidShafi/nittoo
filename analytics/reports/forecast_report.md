@@ -1,7 +1,7 @@
 # Nittoo Forecast Lab — Rolling-Origin Backtest Report
 
-Generated at: `2026-11-15T14:07:52+00:00`  
-Scale: `500 households x 24 months` | Seed: `4001 (holdout) / 7 (dev) / 4002 (2.5x noise) / 4003 (eps=0.3) / 4004 (eps=0.6)` | Git commit: `0728b1e`  
+Generated at: `2026-11-15T14:19:37+00:00`  
+Scale: `500 households x 24 months` | Seed: `4001 (holdout) / 7 (dev) / 4002 (2.5x noise) / 4003 (eps=0.3) / 4004 (eps=0.6)` | Git commit: `e00e98a`  
 Config: `MIN_TRAIN_CYCLES=2`, `EWMA_DURATION_ALPHA=0.85`, `EWMA_RATE_ALPHA=0.25`, `BONFERRONI_CI=99.58%` (`m=12`).
 
 ## 1. Selection Rule & Primary Comparison (Rule-Clean Next Cycles)
@@ -196,13 +196,26 @@ Comparison of `ewma_duration (rule_only)` at `alpha=0.25` vs `alpha=0.85` agains
 | `constant_size` | 4.02 | 4.09 | 4.46 |
 | `any_size_change` | 17.29 | 16.14 | 12.58 |
 
+### 7.1 `rate_mean (rule_only)` vs `rate_mean (rule_plus_rate_outlier)`
+
+- **Holdout paired 95% household-clustered bootstrap CI** (`rule_only` minus `rule_plus_rate_outlier`): `+0.164` d (`95% CI [+0.136, +0.195]`; `4.53` d vs `4.37` d).
+- **High-Noise (`2.5x`, `seed=4002`):** `9.28` d (`rule_only`) vs `9.22` d (`rule_plus_rate_outlier`).
+- **Elasticity stress tests (`rule_only` vs `rule_plus_rate_outlier`):** `Elasticity eps=0.3 (seed=4003)`: `5.84` d vs `5.76` d; `Elasticity eps=0.6 (seed=4004)`: `7.91` d vs `8.36` d.
+
 ## 8. Plain-English Summary
 
-- **Data cleaning vs method choice:** `baseline (none)` vs `baseline (rule_only)` separates outlier removal from forecasting (`17.42` d vs `12.71` d).
-- **Winner (`rate_mean (rule_plus_rate_outlier)`):** achieves `4.37` d MAE (vs `17.42` d for the current app baseline).
-- **Where the baseline wins / matches:** when pack size does **not** change (`size_changed_from_previous=False`), `baseline (none)` (`15.08` d) is close to `rate_mean` (`4.22` d); on pack-size switches (`size_changed_from_previous=True`), `baseline (none)` degrades to `30.46` d while size-normalized `rate_mean` stays at `5.20` d.
+- **Per-group performance (primary lens):** on **constant-size histories** (Group a, `34.5%` of targets), `baseline (none)` = `9.48` d, `baseline (rule_only)` = `4.02` d, and `rate_mean (rule_only)` = `3.88` d (rule cleaning accounts for almost all of the gain; duration and rate methods match once rules remove extreme faults); on **histories with >= 1 size change** (Group b, `65.5%` of targets), `baseline (none)` = `21.59` d and `baseline (rule_only)` = `17.29` d, while `rate_mean (rule_only)` stays at `4.88` d.
+- **Blended MAE depends on switch frequency:** the overall holdout blend (`17.42` d -> `4.53` d for `rate_mean (rule_only)`) is a weighted average of Groups (a) and (b) and therefore depends directly on the simulator's size-switch assumption (83.2% of products switch; 37.8% of purchases override).
+- **Mechanical selection winner:** `rate_mean (rule_plus_rate_outlier)` at `4.37` d blended MAE.
 
 ## 9. Limitations
 
 - **Synthetic data assumption:** These results come from a synthetic generator whose baseline (`eps=0.0`) assumes a stable per-household daily consumption rate independent of pack size — the exact property that rate-based methods exploit. The magnitude of the improvement on real Nittoo user histories is therefore unknown.
+- **Switch-frequency assumption:** The blended gain depends on the simulator's synthetic switch rate (83.2% of products switch; 37.8% of purchases override); real households with fewer switches will see blended MAE closer to Group (a).
 - **Sensitivity to pack-size elasticity:** When consumption scales with pack size (`eps=0.3` and `eps=0.6` in Section 6), rate-based MAE degrades substantially because a constant daily rate no longer transfers across pack sizes.
+
+## 10. Shipping Decision
+
+- **Mechanical winner vs shipped method:** Although the mechanical winner is `rate_mean (rule_plus_rate_outlier)` (`4.37` d MAE), we **ship `rate_mean (rule_only)`** (`4.53` d MAE).
+- **Why `rate_mean (rule_only)`:** (1) It also passes the pre-registered Bonferroni test against `baseline (none)` (`+12.882` d, `99.58% CI [+11.750, +14.159]`); (2) the incremental gain from `rule_plus_rate_outlier` is small on holdout (`+0.164` d, `95% CI [+0.136, +0.195]`), minimal under `2.5x` noise (Section 4), and **reverses** under pack-size elasticity (`eps=0.6`: `7.91` d `rule_only` vs `8.36` d `rule_plus_rate_outlier` in Section 6); and (3) shipping `rule_only` avoids porting an unreliable rate-outlier detector into the web app.
+- **Elasticity risk:** Between `eps=0.3` and `eps=0.6` (Section 6), duration-based `ewma_duration` crosses over and beats rate-based methods (`5.34` d vs `7.91` d at `eps=0.6`). Real Nittoo usage data is needed to measure actual pack-size elasticity before committing to rate normalization long-term.
