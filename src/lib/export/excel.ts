@@ -82,6 +82,7 @@ export function generateExcelWorkbook(data: NittooExportData): Uint8Array {
   // ----------------------------------------------------------------------------
   // 3. Purchases Sheet
   // ----------------------------------------------------------------------------
+  const productById = new Map(data.products.map((p) => [p.id, p]));
   const purchaseRows: (string | number | null)[][] = [
     [
       'Purchase ID',
@@ -93,10 +94,17 @@ export function generateExcelWorkbook(data: NittooExportData): Uint8Array {
       'Price',
       'Currency',
       'Store / Vendor',
+      'Pack Size',
+      'Unit',
+      'Size Override',
     ],
   ];
 
   for (const pu of data.purchases) {
+    const prod = productById.get(pu.product_id);
+    const hasOverride = pu.size_value !== undefined && pu.size_value !== null;
+    const effectiveSize = hasOverride ? pu.size_value : (prod?.size ?? '');
+    const effectiveUnit = hasOverride ? (pu.size_unit ?? prod?.unit ?? '') : (prod?.unit ?? '');
     purchaseRows.push([
       pu.id,
       pu.product_id,
@@ -107,6 +115,9 @@ export function generateExcelWorkbook(data: NittooExportData): Uint8Array {
       pu.price,
       pu.currency,
       pu.store_vendor || 'N/A',
+      effectiveSize,
+      effectiveUnit,
+      hasOverride ? 'Yes' : 'No',
     ]);
   }
 

@@ -245,6 +245,8 @@ export interface ImportPurchaseItemInput {
   price: number;
   currency?: string;
   store_vendor?: string | null;
+  size_value?: number | null;
+  size_unit?: SizeUnit | null;
   created_at?: string;
 }
 

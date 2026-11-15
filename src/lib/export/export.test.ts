@@ -19,7 +19,7 @@ describe('export', () => {
     const db = new MockDatabase(new InMemoryStorageAdapter());
     const data = await buildExportData(DEFAULT_MOCK_USER_ID, 'demo@nittoo.local', db);
 
-    expect(data.version).toBe('1.0.0');
+    expect(data.version).toBe('1.1.0');
     expect(data.user.email).toBe('demo@nittoo.local');
     expect(data.products.length).toBe(3);
     expect(data.purchases.length).toBeGreaterThan(0);
@@ -34,7 +34,7 @@ describe('export', () => {
     const data = await buildExportData(DEFAULT_MOCK_USER_ID, 'demo@nittoo.local', db);
     const parsed = JSON.parse(generateJsonBackup(data));
 
-    expect(parsed.version).toBe('1.0.0');
+    expect(parsed.version).toBe('1.1.0');
     expect(parsed.products).toHaveLength(3);
     expect(parsed.summary.total_products).toBe(3);
   });
