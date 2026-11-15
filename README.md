@@ -119,7 +119,7 @@ For full entity definitions and formulas, see [Domain Model](docs/domain-model.m
 | **Backend & Auth** | Supabase (PostgreSQL, Auth, Row-Level Security, Deno Edge Functions) |
 | **Analytics Lab** | Python 3.12 (`uv`), Pydantic v2, NumPy, DuckDB, `dbt-core` + `dbt-duckdb`, Typer |
 | **Testing & CI** | Vitest, Playwright, `eslint`, `ruff`, `pytest`, GitHub Actions, Local Supabase CLI |
-| **Hosting** | Vercel (SPA + security headers) |
+| **Hosting** | Vercel (SPA rewrites) |
 
 ---
 
@@ -171,9 +171,9 @@ uv run lab readme-results      # Refresh the README results block from forecast_
 ## Engineering Decisions & Lessons
 
 - **Schema drift resolved via idempotent migrations:** Early manual schema edits drifted from `schema.sql`; consolidating into ordered, idempotent migrations under [`supabase/migrations/`](supabase/migrations/) and resetting a local Supabase in CI eliminated environment drift.
-- **Data contract caught an export format change:** Validating TypeScript exports against a shared Pydantic + JSON Schema contract (`nittoo_export.schema.json`) in CI catches silent field renames before downstream analytics break.
+- **Data contract caught an export format change:** When the app's JSON export added per-purchase pack size (`v1.1.0`), the Pydantic + JSON Schema contract test failed in CI, forcing the contract update to ship together with the export change.
 - **Data-quality checks moved into dbt:** Shifting zero-day, outlier, and referential checks into dbt intermediate models and singular/warning SQL tests keeps raw ingestion fast while surfacing auditable quality metrics.
-- **Simulator bug caught by diagnosing detector false positives:** Investigating unexpected false positives in the MAD outlier detector uncovered an initialization bug in the simulator; fixing it and adding a regression test in [`tests/test_simulate.py`](analytics/tests/test_simulate.py) made synthetic benchmarks trustworthy.
+- **Simulator bug caught by diagnosing detector false positives:** Investigating unexpected false positives in the MAD outlier detector uncovered an initialization bug in the simulator; fixing it and adding the `test_product_default_size_matches_first_purchase` regression test in [`tests/test_dbt_pipeline.py`](analytics/tests/test_dbt_pipeline.py) made synthetic benchmarks trustworthy.
 - **Honest dev/holdout evaluation & shipping the simpler model:** Selection was frozen on dev seed `7` and evaluated once on holdout seed `4001`. Although `rate_mean (rule_plus_rate_outlier)` was the mechanical winner, we shipped `rate_mean (rule_only)` because the extra gain was small (`95% CI` documented in the backtest report), degraded under noise and elasticity, and avoided porting an unreliable detector.
 - **Per-purchase pack size discovered through analysis:** Modeling pack sizes only on `products` distorted lifespans when users bought different bottle sizes; adding per-purchase `size_value`/`size_unit` overrides and rate normalization fixed cross-size forecasts.
 - **Account deletion via Edge Function:** Client-side deletion could only clear app tables; adding the `delete-account` Edge Function ensured the underlying Supabase Auth user is actually deleted.
