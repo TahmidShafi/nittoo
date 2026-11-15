@@ -459,6 +459,10 @@ export class MockDatabase implements IDataSource {
       throw new Error('Unauthorized: You do not own this product');
     }
 
+    if (input.size_value !== undefined && input.size_value !== null && input.size_value <= 0) {
+      throw new Error('Purchase size must be greater than 0');
+    }
+
     const normalizedVendor =
       input.store_vendor !== undefined && input.store_vendor !== null
         ? input.store_vendor.trim() || null
@@ -471,6 +475,8 @@ export class MockDatabase implements IDataSource {
       price: input.price,
       currency: input.currency || 'BDT',
       store_vendor: normalizedVendor,
+      size_value: input.size_value ?? null,
+      size_unit: input.size_value != null ? (input.size_unit ?? null) : null,
       created_at: new Date().toISOString(),
     };
 
@@ -649,6 +655,10 @@ export class MockDatabase implements IDataSource {
       throw new Error('Opened date cannot be earlier than purchase date');
     }
 
+    if (input.size_value !== undefined && input.size_value !== null && input.size_value <= 0) {
+      throw new Error('Purchase size must be greater than 0');
+    }
+
     const updatedPurchase: Purchase = {
       ...purchase,
       purchase_date: input.purchase_date,
@@ -659,6 +669,12 @@ export class MockDatabase implements IDataSource {
     if (input.store_vendor !== undefined) {
       updatedPurchase.store_vendor =
         input.store_vendor !== null ? input.store_vendor.trim() || null : null;
+    }
+    if (input.size_value !== undefined) {
+      updatedPurchase.size_value = input.size_value;
+      updatedPurchase.size_unit = input.size_value !== null ? (input.size_unit ?? null) : null;
+    } else if (input.size_unit !== undefined) {
+      updatedPurchase.size_unit = input.size_unit;
     }
 
     data.purchases[purchaseIndex] = updatedPurchase;
@@ -1055,6 +1071,8 @@ export class MockDatabase implements IDataSource {
           price: Number(pu.price),
           currency: pu.currency || 'BDT',
           store_vendor: pu.store_vendor ? pu.store_vendor.trim() || null : null,
+          size_value: pu.size_value ?? null,
+          size_unit: pu.size_value != null ? (pu.size_unit ?? null) : null,
           created_at: pu.created_at || new Date().toISOString(),
         };
         data.purchases.push(newPurchase);

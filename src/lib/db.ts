@@ -77,6 +77,10 @@ export class SupabaseDatabase implements IDataSource {
       throw new Error('Unauthorized or product does not exist');
     }
 
+    if (input.size_value !== undefined && input.size_value !== null && input.size_value <= 0) {
+      throw new Error('Purchase size must be greater than 0');
+    }
+
     const normalizedVendor =
       input.store_vendor !== undefined && input.store_vendor !== null
         ? input.store_vendor.trim() || null
@@ -90,6 +94,12 @@ export class SupabaseDatabase implements IDataSource {
     };
     if (normalizedVendor !== null) {
       insertPayload.store_vendor = normalizedVendor;
+    }
+    if (input.size_value !== undefined && input.size_value !== null) {
+      insertPayload.size_value = input.size_value;
+      if (input.size_unit !== undefined && input.size_unit !== null) {
+        insertPayload.size_unit = input.size_unit;
+      }
     }
 
     let { data, error } = await client
@@ -339,6 +349,10 @@ export class SupabaseDatabase implements IDataSource {
       }
     }
 
+    if (input.size_value !== undefined && input.size_value !== null && input.size_value <= 0) {
+      throw new Error('Purchase size must be greater than 0');
+    }
+
     const updatePayload: Record<string, unknown> = {
       purchase_date: input.purchase_date,
       price: input.price,
@@ -348,6 +362,12 @@ export class SupabaseDatabase implements IDataSource {
     if (input.store_vendor !== undefined) {
       updatePayload.store_vendor =
         input.store_vendor !== null ? input.store_vendor.trim() || null : null;
+    }
+    if (input.size_value !== undefined) {
+      updatePayload.size_value = input.size_value;
+      updatePayload.size_unit = input.size_value !== null ? (input.size_unit ?? null) : null;
+    } else if (input.size_unit !== undefined) {
+      updatePayload.size_unit = input.size_unit;
     }
 
     let { data, error } = await client
@@ -1025,6 +1045,8 @@ export class SupabaseDatabase implements IDataSource {
           price: Number(pu.price),
           currency: pu.currency || 'BDT',
           store_vendor: pu.store_vendor ? pu.store_vendor.trim() || null : null,
+          size_value: pu.size_value ?? null,
+          size_unit: pu.size_value != null ? (pu.size_unit ?? null) : null,
         };
         if (pu.created_at) insertPayload.created_at = pu.created_at;
 

@@ -24,6 +24,7 @@ import {
   calculateUsageDuration,
   calculatePricePerUnit,
   calculateProgressPercent,
+  getEffectiveSize,
 } from '../lib/prediction';
 import { calculateConfidence, getConfidenceBadgeStyles } from '../lib/confidence';
 import {
@@ -206,11 +207,16 @@ export const ProductDetailPage: React.FC = () => {
     // 4. Number of Purchases
     const purchaseCount = purchases.length;
 
-    // 5. Unit Rate: latest purchase price ÷ size_value (if size exists)
+    // 5. Unit Rate: active purchase's price ÷ effective size (falling back to latest purchase)
+    const activePurchase = history.active_usage
+      ? purchases.find((p) => p.id === history.active_usage!.purchase_id) || null
+      : null;
     const latestPurchase = purchases[0] || null;
+    const currentPurchase = activePurchase || latestPurchase;
+    const effectiveSize = getEffectiveSize(currentPurchase, product);
     const unitRate =
-      latestPurchase && product.size_value
-        ? calculatePricePerUnit(latestPurchase.price, product.size_value)
+      currentPurchase && effectiveSize.size_value
+        ? calculatePricePerUnit(currentPurchase.price, effectiveSize.size_value)
         : null;
 
     return {
@@ -219,6 +225,7 @@ export const ProductDetailPage: React.FC = () => {
       totalSpent,
       purchaseCount,
       unitRate,
+      effectiveSizeUnit: effectiveSize.size_unit,
       latestPurchase,
     };
   }, [history]);
@@ -1068,12 +1075,12 @@ export const ProductDetailPage: React.FC = () => {
           <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
             Unit Rate
           </span>
-          {summaryStats?.unitRate !== null && product.size_unit ? (
+          {summaryStats?.unitRate !== null && summaryStats?.effectiveSizeUnit ? (
             <div className="mt-1">
               <span className="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight">
                 ৳{summaryStats?.unitRate}
               </span>
-              <span className="text-xs text-neutral-500 ml-1">/ {product.size_unit}</span>
+              <span className="text-xs text-neutral-500 ml-1">/ {summaryStats.effectiveSizeUnit}</span>
             </div>
           ) : (
             <div className="text-xs font-semibold italic text-neutral-400 mt-2">

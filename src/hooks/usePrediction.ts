@@ -11,6 +11,7 @@ import {
   calculateCostPerDay,
   calculatePricePerUnit,
   calculateProgressPercent,
+  getEffectiveSize,
 } from '../lib/prediction';
 
 export interface PredictionMetrics {
@@ -76,10 +77,11 @@ export function getPredictionMetrics(
       ? calculateCostPerDay(purchaseForActive.price, averageLifespan)
       : null;
 
-  // 5. Price Per Unit: active purchase_price / size_value (separated metric)
+  // 5. Price Per Unit: active purchase_price / active effective size (separated metric)
+  const effectiveSize = getEffectiveSize(purchaseForActive, product);
   const pricePerUnit =
-    purchaseForActive && product.size_value
-      ? calculatePricePerUnit(purchaseForActive.price, product.size_value)
+    purchaseForActive && effectiveSize.size_value
+      ? calculatePricePerUnit(purchaseForActive.price, effectiveSize.size_value)
       : null;
 
   // 6. Progress: daysUsed / averageLifespan * 100 (clamped visually to 0-100)
