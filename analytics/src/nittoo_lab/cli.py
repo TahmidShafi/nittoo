@@ -7,9 +7,11 @@ from typing import Annotated
 import typer
 
 from nittoo_lab.forecast.export import export_calibration, export_forecast_parity
-from nittoo_lab.forecast.report import run_forecast_evaluation
+from nittoo_lab.forecast.report import run_forecast_evaluation, run_full_forecast_suite
 from nittoo_lab.ingest.loader import DEFAULT_DB_PATH, ingest_exports
 from nittoo_lab.reporting.generator import generate_data_quality_report
+from nittoo_lab.reporting.reproduce import reproduce_all_reports
+from nittoo_lab.reporting.robustness import run_robustness_sweep
 from nittoo_lab.simulate.generator import simulate_households
 from nittoo_lab.transform.runner import run_dbt_pipeline
 
@@ -74,13 +76,51 @@ def report(
 @app.command()
 def forecast(
     db_path: Annotated[Path, typer.Option(help="Source DuckDB database file")] = DEFAULT_DB_PATH,
+    full: Annotated[
+        bool,
+        typer.Option(
+            "--full",
+            help="Run full 5-dataset suite (500 x 24) and write forecast_results.json",
+        ),
+    ] = False,
 ) -> None:
     """Run rolling-origin forecasting backtest and write analytics/reports/forecast_report.md."""
-    res = run_forecast_evaluation(db_path=db_path)
+    res = run_full_forecast_suite() if full else run_forecast_evaluation(db_path=db_path)
     typer.echo(
         f"Wrote {res.report_path} in {res.elapsed_seconds:.2f}s "
         f"(n={res.rule_clean_targets}, winner={res.winner[0]} ({res.winner[1]}))"
     )
+
+
+@app.command()
+def robustness(
+    households: Annotated[int, typer.Option(min=1, help="Number of synthetic households")] = 200,
+    months: Annotated[int, typer.Option(min=1, help="Simulation horizon in months")] = 24,
+) -> None:
+    """Run frozen-threshold MAD outlier sweep (seeds 3001-3006) and write detector_robustness.md."""
+    res = run_robustness_sweep(households=households, months=months)
+    typer.echo(
+        f"Wrote {res.report_path} ({len(res.rows)} cells) in {res.elapsed_seconds:.2f}s"
+    )
+
+
+@app.command("reproduce-reports")
+def reproduce_reports_cmd(
+    check: Annotated[
+        bool,
+        typer.Option("--check", help="Fail if regenerated reports differ from committed files"),
+    ] = False,
+) -> None:
+    """Regenerate all committed reports (and forecast_results.json) at documented scales."""
+    res = reproduce_all_reports(check=check)
+    if check:
+        if not res.ok:
+            for name, diff_text in res.diffs.items():
+                typer.echo(f"DIFF in {name}:\n{diff_text}", err=True)
+            raise typer.Exit(code=1)
+        typer.echo(f"All committed reports match regenerated output ({res.elapsed_seconds:.2f}s).")
+    else:
+        typer.echo(f"Regenerated all committed reports in {res.elapsed_seconds:.2f}s.")
 
 
 @app.command("export-calibration")

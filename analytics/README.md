@@ -66,5 +66,16 @@ uv run pytest
   uv run lab transform --no-docs
   uv run lab report
   ```
-- **`reports/forecast_report.md`** (`500 × 24` across dev `7`, holdout `4001`, 2.5× noise `4002`, and pack-size elasticity `4003`/`4004`):
-  Run `simulate_households` → `ingest_exports` → `run_dbt_pipeline` → `run_rolling_backtest` → `evaluate_targets` for `(7, 0.08, 0.0)`, `(4001, 0.08, 0.0)`, `(4002, 0.20, 0.0)`, `(4003, 0.08, 0.3)`, and `(4004, 0.08, 0.6)` (plus `ewma_duration_alpha=0.25` on `4001` and `load_size_switch_stats`), then write `render_forecast_report(...)` to `reports/forecast_report.md`. (`uv run lab forecast` runs the same `render_forecast_report` on a single DuckDB database.)
+- **`reports/forecast_report.md` & `reports/forecast_results.json`** (`500 × 24` across dev `7`, holdout `4001`, 2.5× noise `4002`, and pack-size elasticity `4003`/`4004`):
+  ```bash
+  uv run lab forecast --full
+  ```
+- **`reports/detector_robustness.md`** (frozen-threshold MAD sweep across seeds `3001`–`3006`, `200 × 24`):
+  ```bash
+  uv run lab robustness
+  ```
+- **Regenerate & verify all committed reports + `forecast_results.json`** (used by the weekly/manual `reproduce-reports.yml` workflow):
+  ```bash
+  uv run lab reproduce-reports
+  uv run lab reproduce-reports --check
+  ```
