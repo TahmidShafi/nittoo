@@ -38,7 +38,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const confidence = calculateConfidence(validCompletedCycles);
 
   return (
-    <div className="bg-white border border-neutral-200/80 rounded-2xl p-5 shadow-xs card-interactive hover:border-[#2D6A4F]/40 flex flex-col justify-between group">
+    <div className="h-full bg-white border border-neutral-200/80 rounded-2xl p-5 shadow-xs card-interactive hover:border-[#2D6A4F]/40 flex flex-col justify-between group">
       <div>
         {/* Card Header: Category Pill & Status Badge */}
         <div className="flex items-start justify-between gap-2 mb-3">
@@ -141,7 +141,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <div className="h-1.5 w-full bg-neutral-100 rounded-full overflow-hidden">
             {progressPercent !== null ? (
               <div
-                className={`h-full rounded-full transition-all duration-300 ${
+                className={`h-full rounded-full animate-progress-fill ${
                   isOverdue
                     ? 'bg-rose-500 w-full'
                     : predictedRemainingDays !== null && predictedRemainingDays < 14
@@ -159,7 +159,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         {/* Prominent Daily Cost & Unit Rate */}
         <div className="mt-4 pt-3 border-t border-neutral-100/80 flex items-baseline justify-between">
           <div>
-            <span className="text-[10px] uppercase font-semibold tracking-wider text-neutral-400 block mb-0.5">
+            <span className="text-[10px] uppercase font-semibold tracking-wider text-neutral-500 block mb-0.5">
               Cost Per Day
             </span>
             {costPerDay !== null ? (
@@ -176,7 +176,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
           {pricePerUnit !== null && (
             <div className="text-right">
-              <span className="text-[10px] uppercase font-semibold tracking-wider text-neutral-400 block mb-0.5">
+              <span className="text-[10px] uppercase font-semibold tracking-wider text-neutral-500 block mb-0.5">
                 Unit Rate
               </span>
               <span className="text-xs font-medium text-neutral-600">

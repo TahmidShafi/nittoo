@@ -38,6 +38,7 @@ import {
   recalculatePlanReminderDate,
 } from '../lib/restock';
 import { FinishUsageModal } from '../components/FinishUsageModal';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 import { EditInventoryModal } from '../components/EditInventoryModal';
 import { EditCompletedCycleModal } from '../components/EditCompletedCycleModal';
 import { DeleteCompletedCycleModal } from '../components/DeleteCompletedCycleModal';
@@ -62,6 +63,7 @@ export const ProductDetailPage: React.FC = () => {
 
   const [loading, setLoading] = useState<boolean>(() => !cachedEntry);
   const [error, setError] = useState<string | null>(null);
+  const prefersReducedMotion = useReducedMotion();
 
   // Stale-while-revalidate refs
   const isInitialLoad = useRef(!cachedEntry);
@@ -480,22 +482,22 @@ export const ProductDetailPage: React.FC = () => {
   // Loading State Skeleton
   if (loading) {
     return (
-      <div className="space-y-6 max-w-5xl mx-auto animate-pulse">
-        <div className="h-4 w-32 bg-neutral-200 rounded" />
+      <div className="space-y-6">
+        <div className="h-4 w-32 skeleton-shimmer rounded" />
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-neutral-200">
           <div className="space-y-2 w-full max-w-md">
-            <div className="h-4 w-36 bg-neutral-100 rounded" />
-            <div className="h-8 w-64 bg-neutral-200 rounded" />
+            <div className="h-4 w-36 skeleton-shimmer rounded" />
+            <div className="h-8 w-64 skeleton-shimmer rounded" />
           </div>
-          <div className="h-10 w-44 bg-neutral-200 rounded-xl shrink-0" />
+          <div className="h-10 w-44 skeleton-shimmer rounded-xl shrink-0" />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-24 bg-white border border-neutral-200 rounded-2xl p-4 flex flex-col justify-between" />
+            <div key={i} className="h-24 skeleton-shimmer border border-neutral-200 rounded-2xl p-4" />
           ))}
         </div>
-        <div className="h-44 bg-white border border-neutral-200 rounded-2xl p-5" />
-        <div className="h-64 bg-white border border-neutral-200 rounded-2xl p-5" />
+        <div className="h-44 skeleton-shimmer border border-neutral-200 rounded-2xl p-5" />
+        <div className="h-64 skeleton-shimmer border border-neutral-200 rounded-2xl p-5" />
       </div>
     );
   }
@@ -524,7 +526,7 @@ export const ProductDetailPage: React.FC = () => {
   const { product } = history;
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto animate-page-in">
+    <div className="space-y-8">
       {/* Navigation Breadcrumb */}
       <div>
         <Link
@@ -678,7 +680,7 @@ export const ProductDetailPage: React.FC = () => {
             <div className="h-2 w-full bg-neutral-100 rounded-full overflow-hidden">
               {activeUsageData.progress !== null ? (
                 <div
-                  className={`h-full rounded-full transition-all duration-300 ${
+                  className={`h-full rounded-full animate-progress-fill ${
                     activeUsageData.isOverdue
                       ? 'bg-rose-500 w-full'
                       : activeUsageData.predictedRemaining !== null && activeUsageData.predictedRemaining < 14
@@ -1206,7 +1208,15 @@ export const ProductDetailPage: React.FC = () => {
                     boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
                   }}
                 />
-                <Bar dataKey="duration" fill="#2D6A4F" radius={[6, 6, 0, 0]} maxBarSize={44} />
+                <Bar
+                  dataKey="duration"
+                  fill="#2D6A4F"
+                  radius={[6, 6, 0, 0]}
+                  maxBarSize={44}
+                  isAnimationActive={!prefersReducedMotion}
+                  animationDuration={300}
+                  animationEasing="ease-out"
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>

@@ -14,6 +14,7 @@ import { isReminderDue } from '../lib/restock';
 import { getPredictionMetrics } from '../hooks/usePrediction';
 import { EditInventoryModal } from '../components/EditInventoryModal';
 import { dataCache, areValuesEqual } from '../lib/dataCache';
+import { getStaggerStyle } from '../lib/motion';
 import type {
   Product,
   Purchase,
@@ -39,6 +40,18 @@ export const InventoryPage: React.FC = () => {
   // Stale-while-revalidate refs
   const isInitialLoad = useRef(!cachedEntry);
   const lastRefetchTimeRef = useRef(Date.now());
+  const hasStaggeredRef = useRef(false);
+
+  useEffect(() => {
+    if (
+      !loading &&
+      !error &&
+      (inventory.active.length > 0 || inventory.unopened.length > 0) &&
+      !hasStaggeredRef.current
+    ) {
+      hasStaggeredRef.current = true;
+    }
+  }, [loading, error, inventory.active.length, inventory.unopened.length]);
 
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -177,7 +190,7 @@ export const InventoryPage: React.FC = () => {
   }, [inventory.unopened]);
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto animate-page-in">
+    <div className="space-y-8">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-neutral-200/80">
         <div>
@@ -244,9 +257,10 @@ export const InventoryPage: React.FC = () => {
       )}
 
       {loading ? (
-        <div className="py-16 text-center">
-          <div className="inline-block w-6 h-6 border-2 border-[#2D6A4F] border-t-transparent rounded-full animate-spin mb-3" />
-          <p className="text-xs text-neutral-500">Loading your inventory...</p>
+        <div className="space-y-4 py-2">
+          <div className="h-24 skeleton-shimmer rounded-2xl" />
+          <div className="h-24 skeleton-shimmer rounded-2xl" />
+          <div className="h-24 skeleton-shimmer rounded-2xl" />
         </div>
       ) : (
         <div className="space-y-10">
@@ -283,14 +297,17 @@ export const InventoryPage: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-2.5">
-                {inventory.active.map((prod) => {
+                {inventory.active.map((prod, index) => {
                   const metrics = getPredictionMetrics(prod);
                   const backups = prod.unopened_count || 0;
 
                   return (
                     <div
                       key={prod.id}
-                      className="bg-white border border-neutral-200/80 rounded-2xl p-4 sm:p-5 shadow-xs card-interactive flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
+                      className={`bg-white border border-neutral-200/80 rounded-2xl p-4 sm:p-5 shadow-xs card-interactive flex flex-col sm:flex-row sm:items-center justify-between gap-4 group ${
+                        !hasStaggeredRef.current ? 'animate-stagger-in' : ''
+                      }`}
+                      style={!hasStaggeredRef.current ? getStaggerStyle(index) : undefined}
                     >
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -429,10 +446,17 @@ export const InventoryPage: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {unopenedByProduct.map((group) => (
+                {unopenedByProduct.map((group, index) => (
                   <div
                     key={group.product.id}
-                    className="bg-white border border-neutral-200/80 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3"
+                    className={`bg-white border border-neutral-200/80 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3 ${
+                      !hasStaggeredRef.current ? 'animate-stagger-in' : ''
+                    }`}
+                    style={
+                      !hasStaggeredRef.current
+                        ? getStaggerStyle(inventory.active.length + index)
+                        : undefined
+                    }
                   >
                     {/* Compact Product Group Header */}
                     <div className="flex items-center justify-between pb-2 border-b border-neutral-100">

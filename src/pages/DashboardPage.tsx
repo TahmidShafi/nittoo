@@ -18,7 +18,9 @@ import {
 import { getPredictionMetrics } from '../hooks/usePrediction';
 import { ProductCard } from '../components/ProductCard';
 import { FinishUsageModal } from '../components/FinishUsageModal';
+import { CountUpValue } from '../components/CountUpValue';
 import { dataCache, areValuesEqual } from '../lib/dataCache';
+import { getStaggerStyle } from '../lib/motion';
 import type { ProductWithDetails } from '../types';
 
 function getSortPriority(predictedRemaining: number | null): number {
@@ -78,6 +80,7 @@ export const DashboardPage: React.FC = () => {
   // Stale-while-revalidate refs
   const isInitialLoad = useRef(!cachedEntry);
   const lastRefetchTimeRef = useRef(Date.now());
+  const hasStaggeredRef = useRef(false);
 
   // Filter & Search State
   const [searchQuery, setSearchQuery] = useState('');
@@ -240,6 +243,13 @@ export const DashboardPage: React.FC = () => {
     });
   }, [products]);
 
+  // Mark initial list entrance complete after first populated commit (StrictMode-safe)
+  useEffect(() => {
+    if (!loading && !error && products.length > 0 && !hasStaggeredRef.current) {
+      hasStaggeredRef.current = true;
+    }
+  }, [loading, error, products.length]);
+
   const handleOpenFinishModal = (product: ProductWithDetails) => {
     setModalProduct(product);
     setIsModalOpen(true);
@@ -251,7 +261,7 @@ export const DashboardPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 animate-page-in">
+    <div className="space-y-8">
       {/* Notice Banner */}
       {infoNotice && (
         <div className="p-4 rounded-xl bg-amber-50/90 border border-amber-200/80 text-amber-900 text-xs font-medium flex items-start justify-between shadow-xs">
@@ -377,13 +387,13 @@ export const DashboardPage: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Card 1: Active Essentials */}
           <div className="bg-white border border-neutral-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 block mb-1">
               Active Essentials
             </span>
             <div className="mt-2 flex items-baseline justify-between">
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-bold text-neutral-900 tracking-tight">
-                  {summaryMetrics.activeCount}
+                  <CountUpValue value={summaryMetrics.activeCount} />
                 </span>
                 <span className="text-xs text-neutral-500 font-medium">
                   in daily use
@@ -400,12 +410,12 @@ export const DashboardPage: React.FC = () => {
 
           {/* Card 2: Running Low / Overdue */}
           <div className="bg-white border border-neutral-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 block mb-1">
               Attention Needed
             </span>
             <div className="mt-2 flex items-baseline gap-2">
               <span className={`text-3xl font-bold tracking-tight ${summaryMetrics.overdueCount > 0 ? 'text-rose-600' : summaryMetrics.runningSoonCount > 0 ? 'text-amber-600' : 'text-neutral-900'}`}>
-                {summaryMetrics.overdueCount + summaryMetrics.runningSoonCount}
+                <CountUpValue value={summaryMetrics.overdueCount + summaryMetrics.runningSoonCount} />
               </span>
               <span className="text-xs text-neutral-500 font-medium">
                 {summaryMetrics.overdueCount > 0
@@ -419,12 +429,12 @@ export const DashboardPage: React.FC = () => {
 
           {/* Card 3: Estimated Monthly Consumption */}
           <div className="bg-white border border-neutral-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 block mb-1">
               Monthly Consumption
             </span>
             <div className="mt-2 flex items-baseline gap-1.5">
               <span className="text-3xl font-bold text-neutral-900 tracking-tight">
-                ৳{summaryMetrics.estimatedMonthlyCost}
+                <CountUpValue value={summaryMetrics.estimatedMonthlyCost} prefix="৳" />
               </span>
               <span className="text-xs text-neutral-500 font-medium">
                 / month run rate
@@ -485,12 +495,12 @@ export const DashboardPage: React.FC = () => {
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-24 bg-neutral-200/60 rounded-2xl animate-pulse" />
+              <div key={i} className="h-24 skeleton-shimmer rounded-2xl" />
             ))}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="h-64 bg-neutral-200/50 rounded-2xl animate-pulse" />
+              <div key={i} className="h-64 skeleton-shimmer rounded-2xl" />
             ))}
           </div>
         </div>
@@ -544,12 +554,17 @@ export const DashboardPage: React.FC = () => {
       {/* Active Essentials Product Grid */}
       {!loading && !error && filteredProducts.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredProducts.map((product) => (
-            <ProductCard
+          {filteredProducts.map((product, index) => (
+            <div
               key={product.id}
-              product={product}
-              onMarkFinished={handleOpenFinishModal}
-            />
+              className={!hasStaggeredRef.current ? 'animate-stagger-in h-full' : 'h-full'}
+              style={!hasStaggeredRef.current ? getStaggerStyle(index) : undefined}
+            >
+              <ProductCard
+                product={product}
+                onMarkFinished={handleOpenFinishModal}
+              />
+            </div>
           ))}
         </div>
       )}
