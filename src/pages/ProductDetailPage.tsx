@@ -851,16 +851,14 @@ export const ProductDetailPage: React.FC = () => {
                 getRestockDisplayStatus(effectiveRestockPlan, activeUsageData.active.status) === 'due' && (
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white rounded-xl p-3.5 border border-surface-border border-l-4 border-l-status-attention-fill">
                     <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-status-attention-fill animate-pulse" />
-                        <span className="text-xs font-bold text-status-attention-text">
-                          Restock reminder due
-                        </span>
-                      </div>
-                      <p className="text-xs text-neutral-600 mt-0.5">
-                        Reminder was scheduled for {formatDisplayDate(effectiveRestockPlan.reminder_date)}
-                        {expectedFinishDate && ` · Estimated finish: ${formatDisplayDate(expectedFinishDate)}`}
+                      <p className="text-sm font-bold text-neutral-900">
+                        Scheduled for {formatDisplayDate(effectiveRestockPlan.reminder_date)}
                       </p>
+                      {expectedFinishDate && (
+                        <p className="text-xs text-neutral-600 mt-0.5">
+                          Estimated finish: {formatDisplayDate(expectedFinishDate)}
+                        </p>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
                       <button
