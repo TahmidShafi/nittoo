@@ -311,3 +311,75 @@ def test_size_switch_propagation_and_size_changed_from_previous(tmp_path: Path) 
         ("up-2", 473.0, "ml", True),
         ("up-3", 473.0, "ml", False),
     ]
+
+
+def test_product_default_size_matches_first_purchase(tmp_path: Path) -> None:
+    exports_dir = tmp_path / "exports"
+    gt_path = tmp_path / "true_rates.json"
+    db_path = tmp_path / "nittoo.duckdb"
+
+    simulate_households(
+        households=30,
+        months=24,
+        seed=101,
+        exports_dir=exports_dir,
+        ground_truth_path=gt_path,
+    )
+    ingest_exports(exports_dir=exports_dir, db_path=db_path)
+    run_dbt_pipeline(db_path=db_path, generate_docs=False)
+
+    con = duckdb.connect(str(db_path), read_only=True)
+    try:
+        switched_count = con.execute(
+            """
+            SELECT COUNT(DISTINCT product_id)
+            FROM main_marts.fact_consumption_cycle
+            WHERE size_changed_from_previous = true
+            """
+        ).fetchone()[0]
+        first_cycle_mismatches = con.execute(
+            """
+            WITH first_cycles AS (
+                SELECT
+                    product_id,
+                    effective_size_value,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY product_id
+                        ORDER BY opened_date ASC, usage_period_id ASC
+                    ) AS rn
+                FROM main_marts.fact_consumption_cycle
+            )
+            SELECT COUNT(*)
+            FROM first_cycles AS fc
+            INNER JOIN raw.products AS pr ON fc.product_id = pr.id
+            WHERE fc.rn = 1
+              AND fc.effective_size_value IS DISTINCT FROM pr.size
+            """
+        ).fetchone()[0]
+        null_override_mismatches = con.execute(
+            """
+            SELECT COUNT(*)
+            FROM main_marts.fact_consumption_cycle AS f
+            INNER JOIN raw.purchases AS pu ON f.purchase_id = pu.id
+            INNER JOIN raw.products AS pr ON f.product_id = pr.id
+            WHERE pu.size_value IS NULL
+              AND f.effective_size_value IS DISTINCT FROM pr.size
+            """
+        ).fetchone()[0]
+        override_matches_default_bugs = con.execute(
+            """
+            SELECT COUNT(*)
+            FROM main_marts.fact_consumption_cycle AS f
+            INNER JOIN raw.purchases AS pu ON f.purchase_id = pu.id
+            INNER JOIN raw.products AS pr ON f.product_id = pr.id
+            WHERE pu.size_value IS NOT NULL
+              AND pu.size_value = pr.size
+            """
+        ).fetchone()[0]
+    finally:
+        con.close()
+
+    assert switched_count >= 5
+    assert first_cycle_mismatches == 0
+    assert null_override_mismatches == 0
+    assert override_matches_default_bugs == 0
