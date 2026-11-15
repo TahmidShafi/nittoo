@@ -30,7 +30,8 @@ import { calculateConfidence } from '../confidence';
 export async function buildExportData(
   userId: string,
   userEmail: string,
-  dataSource: IDataSource
+  dataSource: IDataSource,
+  asOfDate?: string
 ): Promise<NittooExportData> {
   // 1. Batched read-only retrieval of user data and inventory
   const [rawExport, inventoryData] = await Promise.all([
@@ -102,7 +103,9 @@ export async function buildExportData(
     const prod = productMap.get(u.product_id);
     const pu = purchaseMap.get(u.purchase_id);
     const isCompleted = u.status === 'finished' && Boolean(u.finished_date);
-    const duration = isCompleted ? calculateUsageDuration(u) : calculateCurrentDaysUsed(u.opened_date);
+    const duration = isCompleted
+      ? calculateUsageDuration(u)
+      : calculateCurrentDaysUsed(u.opened_date, asOfDate);
     const price = pu?.price || 0;
     const costPerDay =
       isCompleted && duration && duration > 0 ? Math.round((price / duration) * 100) / 100 : null;
@@ -134,7 +137,7 @@ export async function buildExportData(
   // Active containers
   for (const activeItem of inventoryData.active) {
     const daysUsed = activeItem.active_usage
-      ? calculateCurrentDaysUsed(activeItem.active_usage.opened_date)
+      ? calculateCurrentDaysUsed(activeItem.active_usage.opened_date, asOfDate)
       : null;
     const finishedPeriods = (usageByProduct.get(activeItem.id) || []).filter(
       (u) => u.status === 'finished' && u.finished_date
@@ -250,7 +253,7 @@ export async function buildExportData(
     let predictedRemaining: number | null = null;
     let predictedFinishDate: string | null = null;
     if (activePeriod && observedLifespan !== null) {
-      const daysUsed = calculateCurrentDaysUsed(activePeriod.opened_date);
+      const daysUsed = calculateCurrentDaysUsed(activePeriod.opened_date, asOfDate);
       predictedRemaining = calculatePredictedRemainingDays(observedLifespan, daysUsed);
       predictedFinishDate = addDays(activePeriod.opened_date, Math.round(observedLifespan));
     }
@@ -327,7 +330,7 @@ export async function buildExportData(
 
   return {
     version: '1.1.0',
-    exported_at: new Date().toISOString(),
+    exported_at: asOfDate ? `${asOfDate}T10:00:00.000Z` : new Date().toISOString(),
     user: {
       id: userId,
       email: userEmail,
