@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -192,10 +193,33 @@ def generate_data_quality_report(
     tests_warned = sum(1 for t in dbt_tests if t["status"] == "warn")
     tests_failed = tests_total - tests_passed - tests_warned
 
+    seed_label = "unknown"
+    scale_label = "unknown"
+    if faults_manifest_path.exists():
+        meta = json.loads(faults_manifest_path.read_text(encoding="utf-8"))
+        seed_label = str(meta.get("seed", "unknown"))
+        if "households" in meta and "months" in meta:
+            scale_label = f"{meta['households']} households x {meta['months']} months"
+
+    git_sha = "unknown"
+    try:
+        proc = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=ANALYTICS_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if proc.returncode == 0 and proc.stdout.strip():
+            git_sha = proc.stdout.strip()
+    except OSError:
+        pass
+
     lines: list[str] = [
         "# Nittoo Forecast Lab — Data Quality Report",
         "",
         f"Generated at: `{datetime.now(UTC).isoformat(timespec='seconds')}`  ",
+        f"Scale: `{scale_label}` | Seed: `{seed_label}` | Git commit: `{git_sha}`  ",
         "Dataset: **SYNTHETIC** household consumption & pricing simulation.",
         "",
         "## 1. Row Counts per Layer",

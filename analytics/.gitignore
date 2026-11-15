@@ -16,5 +16,5 @@ dbt/logs/
 dbt/dbt_packages/
 dbt/.user.yml
 
-# Generated reports
-reports/data_quality.md
+# Portfolio snapshot report (tracked)
+!reports/data_quality.md
