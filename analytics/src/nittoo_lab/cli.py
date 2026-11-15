@@ -65,9 +65,14 @@ def transform(
 @app.command()
 def report(
     db_path: Annotated[Path, typer.Option(help="Source DuckDB database file")] = DEFAULT_DB_PATH,
+    reports_dir: Annotated[
+        Path | None,
+        typer.Option(help="Directory for generated reports (defaults to analytics/reports)"),
+    ] = None,
 ) -> None:
     """Write analytics/reports/data_quality.md from DuckDB + dbt run_results."""
-    res = generate_data_quality_report(db_path=db_path)
+    kwargs = {"report_path": reports_dir / "data_quality.md"} if reports_dir is not None else {}
+    res = generate_data_quality_report(db_path=db_path, **kwargs)
     typer.echo(
         f"Wrote {res.report_path} in {res.elapsed_seconds:.2f}s "
         f"(tests {res.dbt_tests_passed}/{res.dbt_tests_total} passed)"
@@ -84,9 +89,18 @@ def forecast(
             help="Run full 5-dataset suite (500 x 24) and write forecast_results.json",
         ),
     ] = False,
+    reports_dir: Annotated[
+        Path | None,
+        typer.Option(help="Directory for generated reports (defaults to analytics/reports)"),
+    ] = None,
 ) -> None:
     """Run rolling-origin forecasting backtest and write analytics/reports/forecast_report.md."""
-    res = run_full_forecast_suite() if full else run_forecast_evaluation(db_path=db_path)
+    kwargs = {"report_path": reports_dir / "forecast_report.md"} if reports_dir is not None else {}
+    res = (
+        run_full_forecast_suite(**kwargs)
+        if full
+        else run_forecast_evaluation(db_path=db_path, **kwargs)
+    )
     typer.echo(
         f"Wrote {res.report_path} in {res.elapsed_seconds:.2f}s "
         f"(n={res.rule_clean_targets}, winner={res.winner[0]} ({res.winner[1]}))"
@@ -166,6 +180,10 @@ def run_all(
     seed: Annotated[int, typer.Option(help="Random seed")] = 42,
     db_path: Annotated[Path, typer.Option(help="Target DuckDB database file")] = DEFAULT_DB_PATH,
     docs: Annotated[bool, typer.Option("--docs/--no-docs", help="Run dbt docs generate")] = True,
+    reports_dir: Annotated[
+        Path | None,
+        typer.Option(help="Directory for generated reports (defaults to analytics/reports)"),
+    ] = None,
 ) -> None:
     """Run simulate -> ingest -> transform -> report end-to-end and print timing summary."""
     t_total = time.perf_counter()
@@ -177,8 +195,12 @@ def run_all(
     sim_stats = simulate_households(households=households, months=months, seed=seed)
     ing_stats = ingest_exports(db_path=db_path)
     dbt_res = run_dbt_pipeline(db_path=db_path, generate_docs=docs)
-    rep_res = generate_data_quality_report(db_path=db_path)
-    fc_res = run_forecast_evaluation(db_path=db_path)
+    dq_kwargs = {"report_path": reports_dir / "data_quality.md"} if reports_dir is not None else {}
+    fc_kwargs = (
+        {"report_path": reports_dir / "forecast_report.md"} if reports_dir is not None else {}
+    )
+    rep_res = generate_data_quality_report(db_path=db_path, **dq_kwargs)
+    fc_res = run_forecast_evaluation(db_path=db_path, **fc_kwargs)
 
     total_s = round(time.perf_counter() - t_total, 3)
 

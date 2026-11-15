@@ -16,6 +16,7 @@ def test_cli_help_lists_all_subcommands() -> None:
 
 def test_cli_all_runs_end_to_end_at_tiny_scale(tmp_path: Path) -> None:
     db_path = tmp_path / "tiny.duckdb"
+    reports_dir = tmp_path / "reports"
     res = runner.invoke(
         app,
         [
@@ -28,9 +29,13 @@ def test_cli_all_runs_end_to_end_at_tiny_scale(tmp_path: Path) -> None:
             "11",
             "--db-path",
             str(db_path),
+            "--reports-dir",
+            str(reports_dir),
             "--no-docs",
         ],
     )
     assert res.exit_code == 0
     assert "Nittoo Forecast Lab Timing Summary" in res.stdout
     assert db_path.exists()
+    assert (reports_dir / "data_quality.md").exists()
+    assert (reports_dir / "forecast_report.md").exists()
