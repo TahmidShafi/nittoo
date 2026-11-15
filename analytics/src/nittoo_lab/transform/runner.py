@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-ANALYTICS_ROOT = Path(__file__).resolve().parent.parent
+ANALYTICS_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_DBT_DIR = ANALYTICS_ROOT / "dbt"
 DEFAULT_DB_PATH = ANALYTICS_ROOT / "data" / "nittoo.duckdb"
 
@@ -19,6 +19,7 @@ class DbtResult:
     models_failed: int
     tests_total: int
     tests_passed: int
+    tests_warned: int
     tests_failed: int
     test_details: list[dict[str, object]]
     docs_generated: bool
@@ -68,6 +69,10 @@ def run_dbt_pipeline(
     t0 = time.perf_counter()
     target_dir = dbt_dir / "target"
 
+    seed_proc = _run_dbt_cmd(["seed"], dbt_dir, db_path)
+    if seed_proc.returncode != 0:
+        raise RuntimeError(f"dbt seed failed:\n{seed_proc.stdout}\n{seed_proc.stderr}")
+
     run_proc = _run_dbt_cmd(["run"], dbt_dir, db_path)
     if run_proc.returncode != 0:
         raise RuntimeError(f"dbt run failed:\n{run_proc.stdout}\n{run_proc.stderr}")
@@ -86,7 +91,8 @@ def run_dbt_pipeline(
     test_results = _parse_run_results(target_dir)
     tests_total = len(test_results)
     tests_passed = sum(1 for r in test_results if r["status"] == "pass")
-    tests_failed = tests_total - tests_passed
+    tests_warned = sum(1 for r in test_results if r["status"] == "warn")
+    tests_failed = tests_total - tests_passed - tests_warned
     if test_proc.returncode != 0:
         raise RuntimeError(f"dbt test failed:\n{test_proc.stdout}\n{test_proc.stderr}")
 
@@ -96,6 +102,7 @@ def run_dbt_pipeline(
         models_failed=models_failed,
         tests_total=tests_total,
         tests_passed=tests_passed,
+        tests_warned=tests_warned,
         tests_failed=tests_failed,
         test_details=test_results,
         docs_generated=docs_ok,

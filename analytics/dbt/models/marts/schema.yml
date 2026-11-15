@@ -2,95 +2,146 @@ version: 2
 
 models:
   - name: dim_product
+    description: "Product dimension with normalized brand, category, and pack size. Grain: one row per product_id."
     columns:
       - name: product_id
+        description: "Primary key of the product."
         tests: [unique, not_null]
       - name: user_id
+        description: "Owning household / user identifier."
         tests: [not_null]
       - name: category
+        description: "Product category."
         tests: [not_null]
       - name: size_unit
+        description: "Pack size unit (ml, g, or count)."
         tests:
           - accepted_values:
               values: ["ml", "g", "count"]
 
   - name: dim_vendor
+    description: "Store/vendor dimension. Grain: one row per vendor_key."
     columns:
       - name: vendor_key
+        description: "Surrogate MD5 key for vendor_name."
         tests: [unique, not_null]
       - name: vendor_name
+        description: "Normalized vendor name."
         tests: [not_null]
 
   - name: dim_date
+    description: "Calendar date dimension covering purchase and cycle dates. Grain: one row per date_day."
     columns:
       - name: date_day
+        description: "Calendar date primary key."
         tests: [unique, not_null]
 
   - name: fact_purchase
+    description: "Purchase fact table with unit price and vendor/date keys. Grain: one row per deduplicated purchase_id."
     columns:
       - name: purchase_id
+        description: "Primary key of the purchase."
         tests: [unique, not_null]
       - name: product_id
+        description: "Foreign key to dim_product."
         tests:
           - not_null
           - relationships:
               to: ref('dim_product')
               field: product_id
       - name: vendor_key
+        description: "Foreign key to dim_vendor."
         tests:
           - not_null
           - relationships:
               to: ref('dim_vendor')
               field: vendor_key
       - name: purchase_date
+        description: "Foreign key to dim_date."
         tests:
           - not_null
           - relationships:
               to: ref('dim_date')
               field: date_day
       - name: price
+        description: "Purchase price in BDT."
         tests: [not_null]
 
   - name: fact_consumption_cycle
+    description: >
+      Consumption cycle fact table retaining all cycles alongside dbt quality flags so
+      downstream consumers can filter on is_valid_for_forecasting. Grain: one row per usage_period_id.
     columns:
       - name: usage_period_id
+        description: "Primary key of the consumption cycle."
         tests: [unique, not_null]
       - name: product_id
+        description: "Foreign key to dim_product."
         tests:
           - not_null
           - relationships:
               to: ref('dim_product')
               field: product_id
       - name: purchase_id
+        description: "Foreign key to fact_purchase."
         tests:
           - not_null
           - relationships:
               to: ref('fact_purchase')
               field: purchase_id
       - name: status
+        description: "Cycle status: 'completed' or 'active'."
         tests:
           - not_null
           - accepted_values:
               values: ["completed", "active"]
+      - name: effective_size_value
+        description: "Effective pack size for the cycle: COALESCE(purchase.size_value, product.size_value)."
+      - name: effective_size_unit
+        description: "Effective pack unit for the cycle: COALESCE(purchase.size_unit, product.size_unit)."
+      - name: size_changed_from_previous
+        description: "True if effective_size_value differs from the immediately preceding cycle for the same product_id."
+      - name: is_zero_day
+        description: "True if completed cycle has 0-day duration."
+      - name: is_extreme_duration_1000d
+        description: "True if cycle duration is >= 1000 days."
+      - name: is_rate_outlier
+        description: "True if per-household-product consumption_rate_per_day is a MAD z-score outlier (or outside category+unit plausibility bounds when history < MIN_CYCLES_FOR_MAD)."
+      - name: is_duration_outlier
+        description: "True if cycle is an extreme duration (>= 1000 days) or a rate outlier."
+      - name: mad_z_score
+        description: "Robust MAD modified z-score within product+size group."
+      - name: is_valid_for_forecasting
+        description: "True if cycle passes all dbt quality checks."
 
   - name: mart_monthly_spend
+    description: "Monthly household spend aggregated by user, month, and category. Grain: one row per (user_id, spend_month, category)."
     columns:
       - name: user_id
+        description: "Household / user identifier."
         tests: [not_null]
       - name: spend_month
+        description: "First day of the spend month."
         tests: [not_null]
       - name: category
+        description: "Product category."
         tests: [not_null]
       - name: total_spend_bdt
+        description: "Total spend in BDT."
         tests: [not_null]
 
   - name: mart_category_price_index
+    description: "Monthly unit-price index by category and size_unit. Grain: one row per (category, size_unit, price_month)."
     columns:
       - name: category
+        description: "Product category."
         tests: [not_null]
       - name: size_unit
+        description: "Pack size unit (ml, g, count)."
         tests: [not_null]
       - name: price_month
+        description: "First day of the purchase month."
         tests: [not_null]
       - name: avg_unit_price
+        description: "Mean unit price in BDT per unit."
         tests: [not_null]

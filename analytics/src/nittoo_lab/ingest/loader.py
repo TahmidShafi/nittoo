@@ -10,9 +10,9 @@ from pathlib import Path
 import duckdb
 from pydantic import ValidationError
 
-from contracts.models import NittooExportBackup
+from nittoo_lab.contracts.models import NittooExportBackup
 
-ANALYTICS_ROOT = Path(__file__).resolve().parent.parent
+ANALYTICS_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_DB_PATH = ANALYTICS_ROOT / "data" / "nittoo.duckdb"
 DEFAULT_EXPORTS_DIR = ANALYTICS_ROOT / "data" / "raw" / "exports"
 
@@ -52,7 +52,8 @@ def _ensure_schema(con: duckdb.DuckDBPyConnection) -> None:
     con.execute(
         """
         CREATE TABLE IF NOT EXISTS raw.purchases (
-            id VARCHAR PRIMARY KEY,
+            raw_row_id VARCHAR PRIMARY KEY,
+            id VARCHAR NOT NULL,
             user_id VARCHAR NOT NULL,
             product_id VARCHAR NOT NULL,
             product_name VARCHAR NOT NULL,
@@ -62,6 +63,8 @@ def _ensure_schema(con: duckdb.DuckDBPyConnection) -> None:
             price DOUBLE NOT NULL,
             currency VARCHAR NOT NULL,
             store_vendor VARCHAR,
+            size_value DOUBLE,
+            size_unit VARCHAR,
             source_file VARCHAR NOT NULL
         )
         """
@@ -190,9 +193,6 @@ def ingest_exports(
         )
         reject_counts[reason_code] = reject_counts.get(reason_code, 0) + 1
 
-    seen_purchase_ids_in_batch: set[str] = set()
-    dup_occ: dict[str, int] = {}
-
     for file_path in files:
         fname = file_path.name
         try:
@@ -206,28 +206,29 @@ def ingest_exports(
             continue
 
         uid = backup.user.id
+        product_ids_in_file = {p.id for p in backup.products}
+        purchase_ids_in_file = {pu.id for pu in backup.purchases}
 
         for p in backup.products:
             products_rows.append(
                 (p.id, uid, p.name, p.brand, p.category, p.size, p.unit, p.created_at, fname)
             )
 
-        for pu in backup.purchases:
-            if pu.id in seen_purchase_ids_in_batch:
-                dup_occ[pu.id] = dup_occ.get(pu.id, 0) + 1
+        for idx_p, pu in enumerate(backup.purchases):
+            if pu.product_id not in product_ids_in_file:
                 add_reject(
                     fname,
                     "purchase",
                     pu.id,
-                    "DUPLICATE_PURCHASE",
-                    f"Duplicate purchase id {pu.id}",
+                    "MISSING_PRODUCT_REF",
+                    f"Purchase {pu.id} references unknown product_id {pu.product_id}",
                     pu.model_dump(mode="json"),
-                    occ=dup_occ[pu.id],
                 )
                 continue
-            seen_purchase_ids_in_batch.add(pu.id)
+            raw_row_id = hashlib.sha256(f"{fname}|{idx_p}|{pu.id}".encode()).hexdigest()[:24]
             purchases_rows.append(
                 (
+                    raw_row_id,
                     pu.id,
                     uid,
                     pu.product_id,
@@ -238,6 +239,8 @@ def ingest_exports(
                     pu.price,
                     pu.currency,
                     pu.store_vendor,
+                    pu.size_value,
+                    pu.size_unit,
                     fname,
                 )
             )
@@ -245,21 +248,15 @@ def ingest_exports(
         for u in backup.usage_periods:
             reason: str | None = None
             detail = ""
-            if u.finished_date is not None and u.finished_date < u.opened_date:
+            if u.product_id not in product_ids_in_file:
+                reason = "MISSING_PRODUCT_REF"
+                detail = f"Usage period {u.id} references unknown product_id {u.product_id}"
+            elif u.purchase_id not in purchase_ids_in_file:
+                reason = "MISSING_PURCHASE_REF"
+                detail = f"Usage period {u.id} references unknown purchase_id {u.purchase_id}"
+            elif u.finished_date is not None and u.finished_date < u.opened_date:
                 reason = "FINISHED_BEFORE_OPENED"
                 detail = f"finished_date {u.finished_date} < opened_date {u.opened_date}"
-            elif u.status == "completed" and (
-                u.days_used == 0
-                or (u.finished_date is not None and u.finished_date == u.opened_date)
-            ):
-                reason = "ZERO_DAY_CYCLE"
-                detail = f"completed cycle has 0 duration on {u.opened_date}"
-            elif u.days_used >= OUTLIER_MAX_DAYS or (
-                u.finished_date is not None
-                and (u.finished_date - u.opened_date).days >= OUTLIER_MAX_DAYS
-            ):
-                reason = "OUTLIER_1000_DAY"
-                detail = f"cycle duration >= {OUTLIER_MAX_DAYS} days ({u.days_used})"
 
             if reason is not None:
                 add_reject(
@@ -334,8 +331,9 @@ def ingest_exports(
                 con,
                 tmp_dir,
                 "raw.purchases",
-                "id",
+                "raw_row_id",
                 [
+                    "raw_row_id",
                     "id",
                     "user_id",
                     "product_id",
@@ -346,6 +344,8 @@ def ingest_exports(
                     "price",
                     "currency",
                     "store_vendor",
+                    "size_value",
+                    "size_unit",
                     "source_file",
                 ],
                 purchases_rows,

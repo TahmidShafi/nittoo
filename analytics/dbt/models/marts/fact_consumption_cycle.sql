@@ -7,9 +7,16 @@ select
     finished_date,
     status,
     duration_days,
-    size_value,
-    size_unit,
+    effective_size_value,
+    effective_size_unit,
+    size_changed_from_previous,
     consumption_rate_per_day,
     purchase_price,
-    cost_per_day
-from {{ ref('int_usage_enriched') }}
+    cost_per_day,
+    is_zero_day,
+    is_extreme_duration_1000d,
+    is_rate_outlier,
+    is_duration_outlier,
+    mad_z_score,
+    is_valid_for_forecasting
+from {{ ref('int_cycle_quality') }}

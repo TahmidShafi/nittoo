@@ -8,12 +8,18 @@ from pathlib import Path
 
 import numpy as np
 
-from contracts.models import ProductCategory, SizeUnit
-from simulate.archetypes import ARCHETYPES, ProductArchetype
+from nittoo_lab.config import (
+    DEFAULT_CYCLE_NOISE_STD,
+    DEFAULT_SUBTLE_FAST_RANGE,
+    DEFAULT_SUBTLE_SLOW_RANGE,
+)
+from nittoo_lab.contracts.models import ProductCategory, SizeUnit
+from nittoo_lab.simulate.archetypes import ARCHETYPES, ProductArchetype
 
-ANALYTICS_ROOT = Path(__file__).resolve().parent.parent
+ANALYTICS_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_EXPORTS_DIR = ANALYTICS_ROOT / "data" / "raw" / "exports"
 DEFAULT_GROUND_TRUTH_PATH = ANALYTICS_ROOT / "data" / "ground_truth" / "true_rates.json"
+DEFAULT_FAULTS_MANIFEST_PATH = ANALYTICS_ROOT / "data" / "ground_truth" / "injected_faults.json"
 
 VENDOR_PRICE_FACTOR: dict[str, float] = {
     "Shwapno": 0.99,
@@ -41,6 +47,7 @@ class SimulationStats:
     elapsed_seconds: float
     exports_dir: Path
     ground_truth_path: Path
+    faults_manifest_path: Path
 
 
 def _seasonality_multiplier(seasonality: str, month: int) -> float:
@@ -87,15 +94,23 @@ def simulate_households(
     seed: int = 42,
     exports_dir: Path = DEFAULT_EXPORTS_DIR,
     ground_truth_path: Path = DEFAULT_GROUND_TRUTH_PATH,
+    faults_manifest_path: Path | None = None,
     reference_date: date = date(2026, 11, 15),
+    cycle_noise_std: float = DEFAULT_CYCLE_NOISE_STD,
+    subtle_slow_range: tuple[float, float] = DEFAULT_SUBTLE_SLOW_RANGE,
+    subtle_fast_range: tuple[float, float] = DEFAULT_SUBTLE_FAST_RANGE,
 ) -> SimulationStats:
     t0 = time.perf_counter()
     rng = np.random.default_rng(seed)
+
+    if faults_manifest_path is None:
+        faults_manifest_path = ground_truth_path.parent / "injected_faults.json"
 
     exports_dir.mkdir(parents=True, exist_ok=True)
     for old_file in exports_dir.glob("hh_*.json"):
         old_file.unlink()
     ground_truth_path.parent.mkdir(parents=True, exist_ok=True)
+    faults_manifest_path.parent.mkdir(parents=True, exist_ok=True)
 
     window_days = months * 30
     start_date = reference_date - timedelta(days=window_days)
@@ -109,8 +124,10 @@ def simulate_households(
         "duplicate_purchase": 0,
         "outlier_1000_day": 0,
         "finished_before_opened": 0,
+        "subtle_duration_outlier": 0,
     }
     ground_truth_records: list[dict[str, object]] = []
+    fault_records: list[dict[str, object]] = []
 
     for h_idx in range(1, households + 1):
         hh_id = f"hh_{h_idx:04d}"
@@ -164,6 +181,10 @@ def simulate_households(
                 days_since_start = (purchase_date - start_date).days
                 price = _compute_price(rng, tpl, current_size, days_since_start, vendor)
 
+                default_size = float(tpl.sizes[0])
+                size_override = current_size if current_size != default_size else None
+                unit_override = tpl.unit if size_override is not None else None
+
                 pur_id = f"{hh_id}-pur-{tpl.slug}-{cycle_num:02d}"
                 pur_row: dict[str, object] = {
                     "id": pur_id,
@@ -175,6 +196,8 @@ def simulate_households(
                     "price": price,
                     "currency": "BDT",
                     "store_vendor": vendor,
+                    "size_value": size_override,
+                    "size_unit": unit_override,
                 }
                 purchases.append(pur_row)
 
@@ -182,10 +205,23 @@ def simulate_households(
                 if rng.random() < 0.005:
                     purchases.append(dict(pur_row))
                     fault_counts["duplicate_purchase"] += 1
+                    fault_records.append(
+                        {
+                            "fault_type": "duplicate_purchase",
+                            "entity_type": "purchase",
+                            "record_id": pur_id,
+                            "source_file": f"{hh_id}.json",
+                            "household_id": hh_id,
+                        }
+                    )
 
                 opened_date = cursor_date
                 season_mult = _seasonality_multiplier(tpl.seasonality, opened_date.month)
-                noise_mult = float(np.clip(rng.normal(1.0, 0.08), 0.75, 1.30))
+                low_clip = 0.75 if cycle_noise_std == DEFAULT_CYCLE_NOISE_STD else 0.25
+                high_clip = 1.30 if cycle_noise_std == DEFAULT_CYCLE_NOISE_STD else 2.50
+                noise_mult = float(
+                    np.clip(rng.normal(1.0, cycle_noise_std), low_clip, high_clip)
+                )
                 effective_rate = true_rate * season_mult * noise_mult
                 true_duration = max(7, round(current_size / effective_rate))
                 expected_finish = opened_date + timedelta(days=true_duration)
@@ -195,20 +231,65 @@ def simulate_households(
                     finished_date = expected_finish
                     days_used = (finished_date - opened_date).days
 
-                    # ~1.5% fault injection across finished cycles (~2% total across all faults)
+                    # ~2.0% fault injection across finished cycles
                     fault_roll = rng.random()
                     if fault_roll < 0.005:
                         finished_date = opened_date
                         days_used = 0
                         fault_counts["zero_day_cycle"] += 1
+                        fault_records.append(
+                            {
+                                "fault_type": "zero_day_cycle",
+                                "entity_type": "usage_period",
+                                "record_id": use_id,
+                                "source_file": f"{hh_id}.json",
+                                "household_id": hh_id,
+                            }
+                        )
                     elif fault_roll < 0.010:
                         finished_date = opened_date + timedelta(days=1050)
                         days_used = 1050
                         fault_counts["outlier_1000_day"] += 1
+                        fault_records.append(
+                            {
+                                "fault_type": "outlier_1000_day",
+                                "entity_type": "usage_period",
+                                "record_id": use_id,
+                                "source_file": f"{hh_id}.json",
+                                "household_id": hh_id,
+                            }
+                        )
                     elif fault_roll < 0.015:
                         finished_date = opened_date - timedelta(days=5)
                         days_used = 0
                         fault_counts["finished_before_opened"] += 1
+                        fault_records.append(
+                            {
+                                "fault_type": "finished_before_opened",
+                                "entity_type": "usage_period",
+                                "record_id": use_id,
+                                "source_file": f"{hh_id}.json",
+                                "household_id": hh_id,
+                            }
+                        )
+                    elif fault_roll < 0.020:
+                        factor = (
+                            float(rng.uniform(*subtle_slow_range))
+                            if rng.random() < 0.5
+                            else float(rng.uniform(*subtle_fast_range))
+                        )
+                        days_used = max(1, round(true_duration * factor))
+                        finished_date = opened_date + timedelta(days=days_used)
+                        fault_counts["subtle_duration_outlier"] += 1
+                        fault_records.append(
+                            {
+                                "fault_type": "subtle_duration_outlier",
+                                "entity_type": "usage_period",
+                                "record_id": use_id,
+                                "source_file": f"{hh_id}.json",
+                                "household_id": hh_id,
+                            }
+                        )
                     else:
                         completed_durations.append(days_used)
 
@@ -281,6 +362,8 @@ def simulate_households(
                                 "price": backup_price,
                                 "currency": "BDT",
                                 "store_vendor": last_vendor,
+                                "size_value": size_override,
+                                "size_unit": unit_override,
                             }
                         )
                         unopened_count += 1
@@ -330,7 +413,7 @@ def simulate_households(
                     "name": tpl.name,
                     "brand": tpl.brand,
                     "category": tpl.category,
-                    "size": current_size,
+                    "size": float(tpl.sizes[0]),
                     "unit": tpl.unit,
                     "created_at": f"{first_created.isoformat()}T09:00:00.000Z",
                 }
@@ -366,7 +449,7 @@ def simulate_households(
             )
 
         export_payload = {
-            "version": "1.0.0",
+            "version": "1.1.0",
             "exported_at": f"{reference_date.isoformat()}T10:00:00.000Z",
             "user": {"id": hh_id, "email": hh_email},
             "summary": {
@@ -410,6 +493,21 @@ def simulate_households(
         encoding="utf-8",
     )
 
+    faults_manifest_path.write_text(
+        json.dumps(
+            {
+                "seed": seed,
+                "households": households,
+                "months": months,
+                "reference_date": reference_date.isoformat(),
+                "counts": fault_counts,
+                "faults": fault_records,
+            },
+            separators=(",", ":"),
+        ),
+        encoding="utf-8",
+    )
+
     elapsed = round(time.perf_counter() - t0, 3)
     return SimulationStats(
         households=households,
@@ -423,6 +521,7 @@ def simulate_households(
         elapsed_seconds=elapsed,
         exports_dir=exports_dir,
         ground_truth_path=ground_truth_path,
+        faults_manifest_path=faults_manifest_path,
     )
 
 

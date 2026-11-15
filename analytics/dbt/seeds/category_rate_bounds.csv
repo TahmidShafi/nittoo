@@ -1,0 +1,40 @@
+category,size_unit,min_plausible_rate,max_plausible_rate
+Skincare,ml,0.05,25.0
+Skincare,g,0.05,20.0
+Skincare,count,0.1,10.0
+Haircare,ml,0.2,40.0
+Haircare,g,0.2,30.0
+Body Care,ml,0.5,60.0
+Body Care,g,0.5,40.0
+Oral Care,ml,1.0,60.0
+Oral Care,g,0.3,15.0
+Oral Care,count,0.01,4.0
+Supplements,count,0.2,10.0
+Supplements,g,0.5,100.0
+Supplements,ml,1.0,100.0
+Personal Hygiene,ml,0.5,50.0
+Personal Hygiene,count,0.1,15.0
+Shaving & Grooming,ml,0.2,25.0
+Shaving & Grooming,g,0.2,20.0
+Shaving & Grooming,count,0.02,2.0
+Household Cleaning,ml,1.0,100.0
+Household Cleaning,g,1.0,100.0
+Household Cleaning,count,0.1,10.0
+Laundry,ml,2.0,150.0
+Laundry,g,2.0,150.0
+Laundry,count,0.1,5.0
+Home Essentials,count,0.1,25.0
+Home Essentials,ml,0.5,50.0
+Food & Beverage,g,1.0,250.0
+Food & Beverage,ml,5.0,1000.0
+Food & Beverage,count,0.2,20.0
+Fitness,g,2.0,200.0
+Fitness,count,0.2,10.0
+Pet Care,g,5.0,500.0
+Pet Care,ml,1.0,100.0
+Baby Care,count,1.0,20.0
+Baby Care,ml,1.0,50.0
+Baby Care,g,1.0,100.0
+Other,ml,0.1,100.0
+Other,g,0.1,100.0
+Other,count,0.02,20.0

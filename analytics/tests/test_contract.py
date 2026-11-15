@@ -6,11 +6,11 @@ import jsonschema
 import pytest
 from pydantic import ValidationError
 
-from contracts.models import NittooExportBackup
+from nittoo_lab.contracts.models import NittooExportBackup
 
 ANALYTICS_ROOT = Path(__file__).resolve().parent.parent
 FIXTURE_PATH = ANALYTICS_ROOT / "fixtures" / "demo_export.json"
-SCHEMA_PATH = ANALYTICS_ROOT / "contracts" / "nittoo_export.schema.json"
+SCHEMA_PATH = ANALYTICS_ROOT / "src" / "nittoo_lab" / "contracts" / "nittoo_export.schema.json"
 
 
 def test_demo_export_fixture_matches_pydantic_contract() -> None:

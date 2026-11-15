@@ -7,6 +7,7 @@ profile: "nittoo_lab"
 model-paths: ["models"]
 test-paths: ["tests"]
 macro-paths: ["macros"]
+seed-paths: ["seeds"]
 
 clean-targets:
   - "target"

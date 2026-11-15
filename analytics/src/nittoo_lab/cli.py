@@ -1,20 +1,15 @@
 from __future__ import annotations
 
-import sys
 import time
 from pathlib import Path
 from typing import Annotated
 
 import typer
 
-ANALYTICS_ROOT = Path(__file__).resolve().parents[2]
-if str(ANALYTICS_ROOT) not in sys.path:
-    sys.path.insert(0, str(ANALYTICS_ROOT))
-
-from ingest.loader import DEFAULT_DB_PATH, ingest_exports  # noqa: E402
-from reports.generator import generate_data_quality_report  # noqa: E402
-from simulate.generator import simulate_households  # noqa: E402
-from transform.runner import run_dbt_pipeline  # noqa: E402
+from nittoo_lab.ingest.loader import DEFAULT_DB_PATH, ingest_exports
+from nittoo_lab.reporting.generator import generate_data_quality_report
+from nittoo_lab.simulate.generator import simulate_households
+from nittoo_lab.transform.runner import run_dbt_pipeline
 
 app = typer.Typer(help="Nittoo Forecast Lab CLI (simulate -> ingest -> transform -> report)")
 
