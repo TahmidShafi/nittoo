@@ -34,23 +34,39 @@ describe('prediction', () => {
     ).toBe(62);
   });
 
-  it('guards division by zero in costPerDay, pricePerUnit, monthlyCost, and progressPercent', () => {
-    expect(calculateCostPerDay(500, 0)).toBeNull();
-    expect(calculateCostPerDay(500, -5)).toBeNull();
-    expect(calculateCostPerDay(500, null)).toBeNull();
-    expect(calculateCostPerDay(500, 50)).toBe(10);
+  describe('division-by-zero and null guards', () => {
+    it.each([
+      [500, 0, null],
+      [500, -5, null],
+      [500, null, null],
+      [500, 50, 10],
+    ])('calculateCostPerDay(%s, %s) -> %s', (price, days, expected) => {
+      expect(calculateCostPerDay(price, days)).toBe(expected);
+    });
 
-    expect(calculatePricePerUnit(500, 0)).toBeNull();
-    expect(calculatePricePerUnit(500, null)).toBeNull();
-    expect(calculatePricePerUnit(500, 100)).toBe(5);
+    it.each([
+      [500, 0, null],
+      [500, null, null],
+      [500, 100, 5],
+    ])('calculatePricePerUnit(%s, %s) -> %s', (price, size, expected) => {
+      expect(calculatePricePerUnit(price, size)).toBe(expected);
+    });
 
-    expect(calculateMonthlyConsumptionCost(500, 0)).toBeNull();
-    expect(calculateMonthlyConsumptionCost(500, 30)).toBe(500);
+    it.each([
+      [500, 0, null],
+      [500, 30, 500],
+    ])('calculateMonthlyConsumptionCost(%s, %s) -> %s', (price, days, expected) => {
+      expect(calculateMonthlyConsumptionCost(price, days)).toBe(expected);
+    });
 
-    expect(calculateProgressPercent(10, 0)).toBeNull();
-    expect(calculateProgressPercent(10, null)).toBeNull();
-    expect(calculateProgressPercent(30, 60)).toBe(50);
-    expect(calculateProgressPercent(90, 60)).toBe(100);
+    it.each([
+      [10, 0, null],
+      [10, null, null],
+      [30, 60, 50],
+      [90, 60, 100],
+    ])('calculateProgressPercent(%s, %s) -> %s', (used, avg, expected) => {
+      expect(calculateProgressPercent(used, avg)).toBe(expected);
+    });
   });
 
   it('computes days used and remaining days deterministically', () => {

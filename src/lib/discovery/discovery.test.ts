@@ -183,17 +183,30 @@ describe('discovery & GS1 barcode', () => {
     expect(results.length).toBeGreaterThanOrEqual(2);
     expect(parseSize('500 g')).toEqual({ sizeValue: 500, sizeUnit: 'g' });
     expect(mapCategory('en:beverages')).toBe('Food & Beverage');
+  });
 
+  it('stores and retrieves search and barcode entries in discoveryCache', async () => {
+    const sample = {
+      source: 'open_beauty_facts' as const,
+      externalId: '3600541358522',
+      barcode: '3600541358522',
+      name: 'Moisturizer',
+      brand: 'BrandX',
+      category: 'Skincare' as const,
+      sizeValue: 50,
+      sizeUnit: 'ml' as const,
+      imageUrl: undefined,
+    };
     discoveryCache.clear();
-    discoveryCache.set('milk', results);
-    expect(discoveryCache.get('milk')).toHaveLength(results.length);
-    discoveryCache.setBarcode('3600541358522', results[0]);
-    expect(discoveryCache.getBarcode('3600541358522')?.name).toBe(results[0].name);
+    discoveryCache.set('milk', [sample]);
+    expect(discoveryCache.get('milk')).toHaveLength(1);
+    discoveryCache.setBarcode('3600541358522', sample);
+    expect(discoveryCache.getBarcode('3600541358522')?.name).toBe('Moisturizer');
 
     const cachedSearch = await searchExternalProducts('milk');
-    expect(cachedSearch).toHaveLength(results.length);
+    expect(cachedSearch).toHaveLength(1);
     const cachedBarcode = await lookupExternalProductByBarcode('3600541358522');
-    expect(cachedBarcode?.name).toBe(results[0].name);
+    expect(cachedBarcode?.name).toBe('Moisturizer');
   });
 
   it.each([

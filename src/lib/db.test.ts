@@ -244,7 +244,7 @@ describe('SupabaseDatabase (mocked Supabase client)', () => {
     expect(deleted.id).toBe('up-1');
   });
 
-  it('fetches active products, product history, all products, inventory, and export data', async () => {
+  it('fetches active products with active_purchase, latest_purchase, and unopened_count', async () => {
     const prod = {
       id: 'prod-1',
       user_id: userId,
@@ -283,7 +283,6 @@ describe('SupabaseDatabase (mocked Supabase client)', () => {
       created_at: '2026-04-02T00:00:00Z',
     };
 
-    // getActiveProducts
     pushResponse('products', { data: [prod], error: null });
     pushResponse('purchases', { data: [pur2, pur1], error: null });
     pushResponse('usage_periods', { data: [upActive], error: null });
@@ -293,26 +292,62 @@ describe('SupabaseDatabase (mocked Supabase client)', () => {
     expect(active[0].active_purchase?.id).toBe('pur-1');
     expect(active[0].latest_purchase?.id).toBe('pur-2');
     expect(active[0].unopened_count).toBe(1);
+  });
 
-    // getProductHistory
+  it('fetches product history, all products, inventory, and export data', async () => {
+    const prod = {
+      id: 'prod-1',
+      user_id: userId,
+      name: 'Toner',
+      category: 'Skincare',
+      brand: null,
+      size_value: 150,
+      size_unit: 'ml',
+      created_at: '2026-01-01T00:00:00Z',
+    };
+    const pur1 = {
+      id: 'pur-1',
+      product_id: 'prod-1',
+      purchase_date: '2026-04-01',
+      price: 500,
+      currency: 'BDT',
+      store_vendor: null,
+      created_at: '2026-04-01T00:00:00Z',
+    };
+    const pur2 = {
+      id: 'pur-2',
+      product_id: 'prod-1',
+      purchase_date: '2026-04-10',
+      price: 650,
+      currency: 'BDT',
+      store_vendor: 'Store',
+      created_at: '2026-04-10T00:00:00Z',
+    };
+    const upActive = {
+      id: 'up-1',
+      product_id: 'prod-1',
+      purchase_id: 'pur-1',
+      opened_date: '2026-04-02',
+      finished_date: null,
+      status: 'active',
+      created_at: '2026-04-02T00:00:00Z',
+    };
+
     pushResponse('products', { data: prod, error: null });
     pushResponse('purchases', { data: [pur2, pur1], error: null });
     pushResponse('usage_periods', { data: [upActive], error: null });
     const hist = await db.getProductHistory('prod-1', userId);
     expect(hist?.purchases).toHaveLength(2);
 
-    // getUserProductsWithHistory
     pushResponse('products', { data: [prod], error: null });
     pushResponse('purchases', { data: [pur2, pur1], error: null });
     pushResponse('usage_periods', { data: [upActive], error: null });
     const withHist = await db.getUserProductsWithHistory(userId);
     expect(withHist).toHaveLength(1);
 
-    // getAllUserProducts
     pushResponse('products', { data: [prod], error: null });
     expect(await db.getAllUserProducts(userId)).toHaveLength(1);
 
-    // getUserInventory
     pushResponse('products', { data: [prod], error: null });
     pushResponse('purchases', { data: [pur2, pur1], error: null });
     pushResponse('usage_periods', { data: [upActive], error: null });
@@ -320,7 +355,6 @@ describe('SupabaseDatabase (mocked Supabase client)', () => {
     expect(inv.unopened).toHaveLength(1);
     expect(inv.unopened[0].purchase.id).toBe('pur-2');
 
-    // exportUserData
     pushResponse('products', { data: [prod], error: null });
     pushResponse('purchases', { data: [pur2, pur1], error: null });
     pushResponse('usage_periods', { data: [upActive], error: null });
@@ -328,8 +362,9 @@ describe('SupabaseDatabase (mocked Supabase client)', () => {
     const exported = await db.exportUserData(userId);
     expect(exported.products).toHaveLength(1);
     expect(exported.purchases).toHaveLength(2);
+  });
 
-    // resetUserData: verifies user_id scoping on delete AND error propagation
+  it('scopes resetUserData deletes by user_id and propagates Supabase errors', async () => {
     recordedCalls.length = 0;
     pushResponse('products', { data: null, error: null });
     await db.resetUserData(userId);
@@ -343,7 +378,7 @@ describe('SupabaseDatabase (mocked Supabase client)', () => {
     await expect(db.resetUserData(userId)).rejects.toThrow('Failed to reset user data: delete failed');
   });
 
-  it('handles restock plan CRUD and importUserData', async () => {
+  it('creates, fetches, completes, and dismisses restock plans', async () => {
     const planRow = {
       id: 'rp-1',
       user_id: userId,
@@ -357,7 +392,6 @@ describe('SupabaseDatabase (mocked Supabase client)', () => {
       updated_at: '2026-04-02T00:00:00Z',
     };
 
-    // createRestockPlan: product -> usage_period -> existingPlan -> insert
     pushResponse('products', { data: { id: 'prod-1', user_id: userId }, error: null });
     pushResponse('usage_periods', {
       data: { id: 'up-1', product_id: 'prod-1', status: 'active' },
@@ -385,7 +419,9 @@ describe('SupabaseDatabase (mocked Supabase client)', () => {
 
     pushResponse('restock_plans', { data: { ...planRow, status: 'dismissed' }, error: null });
     expect((await db.dismissRestockPlan(userId, 'rp-1')).status).toBe('dismissed');
+  });
 
+  it('scopes deleteRestockPlan by id and user_id and propagates RLS errors', async () => {
     recordedCalls.length = 0;
     pushResponse('restock_plans', { data: { product_id: 'prod-1' }, error: null });
     pushResponse('restock_plans', { data: null, error: null });
@@ -403,6 +439,21 @@ describe('SupabaseDatabase (mocked Supabase client)', () => {
     await expect(db.deleteRestockPlan(userId, 'rp-1')).rejects.toThrow(
       'Failed to delete restock plan: rls blocked'
     );
+  });
+
+  it('handles importUserData and createRestockPlan updating existing planned plan', async () => {
+    const planRow = {
+      id: 'rp-1',
+      user_id: userId,
+      product_id: 'prod-1',
+      usage_period_id: 'up-1',
+      mode: 'relative',
+      days_before_finish: 3,
+      reminder_date: '2026-04-28',
+      status: 'planned',
+      created_at: '2026-04-02T00:00:00Z',
+      updated_at: '2026-04-02T00:00:00Z',
+    };
 
     // importUserData (merge_skip_conflicts with 1 product)
     pushResponse('products', { data: [], error: null });

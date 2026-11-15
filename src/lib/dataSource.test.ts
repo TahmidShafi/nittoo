@@ -32,8 +32,7 @@ describe('dataSource proxy & demo mode routing', () => {
     expect(isDemoSessionActive()).toBe(false);
   });
 
-  it('delegates CRUD, restock, export/import, and reset operations while managing cache', async () => {
-    setDemoModeActive(true);
+  async function seedProductWithPlan(userId: string) {
     const product = await db.createProduct(userId, {
       name: 'Serum',
       category: 'Skincare',
@@ -41,7 +40,6 @@ describe('dataSource proxy & demo mode routing', () => {
       size_value: 30,
       size_unit: 'ml',
     });
-
     const purchase = await db.createPurchase(userId, {
       product_id: product.id,
       purchase_date: '2026-04-01',
@@ -49,13 +47,11 @@ describe('dataSource proxy & demo mode routing', () => {
       currency: 'BDT',
       store_vendor: 'ShopX',
     });
-
     const usage = await db.startUsagePeriod(userId, {
       product_id: product.id,
       purchase_id: purchase.id,
       opened_date: '2026-04-02',
     });
-
     const plan = await db.createRestockPlan(userId, {
       product_id: product.id,
       usage_period_id: usage.id,
@@ -63,6 +59,12 @@ describe('dataSource proxy & demo mode routing', () => {
       days_before_finish: 3,
       reminder_date: '2026-04-28',
     });
+    return { product, purchase, usage, plan };
+  }
+
+  it('delegates read queries for products, history, inventory, and restock plans in demo mode', async () => {
+    setDemoModeActive(true);
+    const { product, usage, plan } = await seedProductWithPlan(userId);
 
     expect((await db.getActiveProducts(userId)).length).toBe(1);
     expect((await db.getAllUserProducts(userId)).length).toBe(1);
@@ -71,6 +73,11 @@ describe('dataSource proxy & demo mode routing', () => {
     expect((await db.getUserInventory(userId)).unopened.length).toBe(0);
     expect((await db.getRestockPlans(userId)).length).toBe(1);
     expect((await db.getRestockPlanForUsagePeriod(userId, usage.id))?.id).toBe(plan.id);
+  });
+
+  it('delegates update mutations and restock plan status transitions in demo mode', async () => {
+    setDemoModeActive(true);
+    const { product, purchase, usage, plan } = await seedProductWithPlan(userId);
 
     const updatedProduct = await db.updateProduct(userId, product.id, {
       name: 'Serum Pro',
@@ -99,11 +106,11 @@ describe('dataSource proxy & demo mode routing', () => {
 
     const dismissedPlan = await db.dismissRestockPlan(userId, plan.id);
     expect(dismissedPlan.status).toBe('dismissed');
+  });
 
-    dataCache.set(userId, 'dashboard', [{ stale: true }]);
-    await db.deleteRestockPlan(userId, plan.id);
-    expect(dataCache.get(userId, 'dashboard')).toBeNull();
-    expect(await db.getRestockPlans(userId)).toHaveLength(0);
+  it('supports finishUsagePeriod, exportUserData, and importUserData in demo mode', async () => {
+    setDemoModeActive(true);
+    const { product, usage } = await seedProductWithPlan(userId);
 
     const finished = await db.finishUsagePeriod(userId, usage.id, '2026-04-20');
     expect(finished.status).toBe('finished');
@@ -125,6 +132,18 @@ describe('dataSource proxy & demo mode routing', () => {
       usage_periods: [],
     });
     expect(importRes.success).toBe(true);
+  });
+
+  it('invalidates SWR cache on deleteRestockPlan, deleteUsagePeriod, and resetUserData', async () => {
+    setDemoModeActive(true);
+    const { product, usage, plan } = await seedProductWithPlan(userId);
+
+    dataCache.set(userId, 'dashboard', [{ stale: true }]);
+    await db.deleteRestockPlan(userId, plan.id);
+    expect(dataCache.get(userId, 'dashboard')).toBeNull();
+    expect(await db.getRestockPlans(userId)).toHaveLength(0);
+
+    await db.finishUsagePeriod(userId, usage.id, '2026-04-20');
 
     dataCache.set(userId, `product:${product.id}`, { cached: true });
     const deletedUsage = await db.deleteUsagePeriod(userId, usage.id);

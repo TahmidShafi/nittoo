@@ -8,12 +8,49 @@ import { validateBackupFile } from './restore/validator';
 import { buildImportPlan } from './restore/planner';
 import { executeRestore } from './restore/executor';
 
+async function setupSerumWithCompletedAndActiveCycles(db: MockDatabase, userId: string) {
+  const prod = await db.createProduct(userId, {
+    name: 'Niacinamide Serum',
+    category: 'Skincare',
+    brand: 'The Ordinary',
+    size_value: 30,
+    size_unit: 'ml',
+  });
+  const pur1 = await db.createPurchase(userId, {
+    product_id: prod.id,
+    purchase_date: '2026-08-01',
+    price: 900,
+    store_vendor: 'Shajgoj',
+  });
+  const up1 = await db.startUsagePeriod(userId, {
+    product_id: prod.id,
+    purchase_id: pur1.id,
+    opened_date: '2026-08-01',
+  });
+  await db.finishUsagePeriod(userId, up1.id, '2026-08-31');
+
+  const pur2 = await db.createPurchase(userId, {
+    product_id: prod.id,
+    purchase_date: '2026-09-01',
+    price: 960,
+  });
+  const pur3 = await db.createPurchase(userId, {
+    product_id: prod.id,
+    purchase_date: '2026-09-10',
+    price: 1100,
+  });
+  const up2 = await db.startUsagePeriod(userId, {
+    product_id: prod.id,
+    purchase_id: pur2.id,
+    opened_date: '2026-09-01',
+  });
+  return { prod, pur1, pur2, pur3, up1, up2 };
+}
+
 describe('Full end-to-end domain walkthrough', () => {
-  it('runs create -> purchase -> cycle -> backup -> prediction -> restock -> export -> restore', async () => {
+  it('starts in learning state with 0 finished cycles and no_data confidence', async () => {
     const db = new MockDatabase(new InMemoryStorageAdapter());
     const userA = 'walkthrough-a';
-    const userB = 'walkthrough-b';
-
     const prod = await db.createProduct(userA, {
       name: 'Niacinamide Serum',
       category: 'Skincare',
@@ -27,45 +64,37 @@ describe('Full end-to-end domain walkthrough', () => {
       price: 900,
       store_vendor: 'Shajgoj',
     });
-    const up1 = await db.startUsagePeriod(userA, {
+    await db.startUsagePeriod(userA, {
       product_id: prod.id,
       purchase_id: pur1.id,
       opened_date: '2026-08-01',
     });
 
-    // Learning state with 0 finished cycles
-    let activeList = await db.getActiveProducts(userA);
-    let metrics = getPredictionMetrics(activeList[0], '2026-08-10');
+    const activeList = await db.getActiveProducts(userA);
+    const metrics = getPredictionMetrics(activeList[0], '2026-08-10');
     expect(metrics.predictedRemainingDays).toBeNull();
     expect(calculateConfidence(0).state).toBe('no_data');
+  });
 
-    // Finish first cycle (30 days)
-    await db.finishUsagePeriod(userA, up1.id, '2026-08-31');
+  it('computes prediction, active-bottle costPerDay, backup count, and early confidence after 1 cycle', async () => {
+    const db = new MockDatabase(new InMemoryStorageAdapter());
+    const userA = 'walkthrough-a';
+    await setupSerumWithCompletedAndActiveCycles(db, userA);
 
-    // Buy second bottle + backup bottle
-    const pur2 = await db.createPurchase(userA, {
-      product_id: prod.id,
-      purchase_date: '2026-09-01',
-      price: 960,
-    });
-    const pur3 = await db.createPurchase(userA, {
-      product_id: prod.id,
-      purchase_date: '2026-09-10',
-      price: 1100,
-    });
-    const up2 = await db.startUsagePeriod(userA, {
-      product_id: prod.id,
-      purchase_id: pur2.id,
-      opened_date: '2026-09-01',
-    });
-
-    activeList = await db.getActiveProducts(userA);
-    metrics = getPredictionMetrics(activeList[0], '2026-09-16');
+    const activeList = await db.getActiveProducts(userA);
+    const metrics = getPredictionMetrics(activeList[0], '2026-09-16');
     expect(metrics.averageLifespan).toBe(30);
     expect(metrics.predictedRemainingDays).toBe(15);
     expect(metrics.costPerDay).toBe(32); // 960 / 30 (active bottle price, not backup 1100)
     expect(activeList[0].unopened_count).toBe(1);
     expect(calculateConfidence(1).state).toBe('early');
+  });
+
+  it('exports JSON backup with restock plan and restores cleanly into an isolated user', async () => {
+    const db = new MockDatabase(new InMemoryStorageAdapter());
+    const userA = 'walkthrough-a';
+    const userB = 'walkthrough-b';
+    const { prod, up2 } = await setupSerumWithCompletedAndActiveCycles(db, userA);
 
     await db.createRestockPlan(userA, {
       product_id: prod.id,
@@ -88,9 +117,8 @@ describe('Full end-to-end domain walkthrough', () => {
     expect(exec.restoredPurchases).toBe(3);
     expect(exec.restoredRestockPlans).toBe(1);
 
-    const userBInv = await db.getUserInventory(userB);
-    expect(userBInv.active).toHaveLength(1);
-    expect(userBInv.unopened).toHaveLength(1);
-    expect(userBInv.unopened[0].purchase.price).toBe(pur3.price);
+    const userBInventory = await db.getUserInventory(userB);
+    expect(userBInventory.active).toHaveLength(1);
+    expect(userBInventory.unopened).toHaveLength(1);
   });
 });

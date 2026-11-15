@@ -7,7 +7,7 @@ import { buildExportData } from '../export';
 import { generateJsonBackup } from '../export/json';
 
 describe('restore', () => {
-  it('validates, plans, and idempotently executes backup restore including restock_plans', async () => {
+  async function createBackupJsonWithRestockPlan() {
     const sourceDb = new MockDatabase(new InMemoryStorageAdapter());
     const active = await sourceDb.getActiveProducts(DEFAULT_MOCK_USER_ID);
     const cerave = active.find((p) => p.name.includes('CeraVe'))!;
@@ -25,14 +25,16 @@ describe('restore', () => {
       'demo@nittoo.local',
       sourceDb
     );
-    const jsonString = generateJsonBackup(exportBundle);
+    return { sourceDb, jsonString: generateJsonBackup(exportBundle) };
+  }
 
+  it('validates and executes backup restore including restock_plans into a fresh user', async () => {
+    const { jsonString } = await createBackupJsonWithRestockPlan();
     const validation = validateBackupFile(jsonString);
     expect(validation.valid).toBe(true);
     if (!validation.valid) return;
     expect(validation.backupData.restock_plans!.length).toBeGreaterThanOrEqual(1);
 
-    // Restore into a fresh user
     const targetDb = new MockDatabase(new InMemoryStorageAdapter());
     const targetUserId = 'restore-target-user';
 
@@ -43,16 +45,24 @@ describe('restore', () => {
     const exec1 = await executeRestore(plan, targetUserId, targetDb);
     expect(exec1.restoredProducts).toBe(3);
     expect(exec1.restoredRestockPlans).toBe(plan.summary.newRestockPlansCount);
+  });
 
-    // Re-running restore against existing data skips duplicates idempotently
+  it('skips duplicates idempotently on repeat import and guards missing userId', async () => {
+    const { sourceDb, jsonString } = await createBackupJsonWithRestockPlan();
+    const validation = validateBackupFile(jsonString);
+    if (!validation.valid) throw new Error('Expected valid backup');
+
+    const targetDb = new MockDatabase(new InMemoryStorageAdapter());
+    const targetUserId = 'restore-target-user';
+    const plan = await buildImportPlan(validation.backupData, targetUserId, targetDb);
+    await executeRestore(plan, targetUserId, targetDb);
+
     const plan2 = await buildImportPlan(validation.backupData, targetUserId, targetDb);
     expect(plan2.summary.newProductsCount).toBe(0);
     expect(plan2.summary.newRestockPlansCount).toBe(0);
 
-    // Error handling when userId is missing
     await expect(executeRestore(plan2, '', targetDb)).rejects.toThrow();
 
-    // Multi-tenant isolation: sourceDb (DEFAULT_MOCK_USER_ID) unaffected by targetDb restore
     const sourceProducts = await sourceDb.getAllUserProducts(DEFAULT_MOCK_USER_ID);
     expect(sourceProducts).toHaveLength(3);
   });

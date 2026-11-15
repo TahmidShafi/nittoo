@@ -82,11 +82,15 @@ describe('restock/plan', () => {
     expect(plansAfterFinish.find((p) => p.id === created.id)?.status).toBe('completed');
   });
 
-  it('formats relative labels and status display info', () => {
-    expect(getRelativeOptionLabel(null)).toBe('');
-    expect(getRelativeOptionLabel(0)).toBe('On expected finish');
-    expect(getRelativeOptionLabel(7)).toBe('7 days before');
+  it.each([
+    [null, ''],
+    [0, 'On expected finish'],
+    [7, '7 days before'],
+  ] as const)('formats relative option label for %s -> %s', (days, expected) => {
+    expect(getRelativeOptionLabel(days)).toBe(expected);
+  });
 
+  it('formats restock status display info for each status and mode', () => {
     expect(getRestockStatusInfo('due').label).toBe('Restock Due');
     expect(getRestockStatusInfo('planned', '2026-10-17', 7, 'relative').description).toContain(
       '7 days before'

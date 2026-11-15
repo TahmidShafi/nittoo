@@ -2,10 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { MockDatabase, InMemoryStorageAdapter, DEFAULT_MOCK_USER_ID } from './mock-db';
 
 describe('MockDatabase lifecycle & isolation', () => {
-  it('supports create product -> purchase -> start -> finish -> edit -> delete lifecycle', async () => {
+  it('moves purchase from unopened to active and enforces single active usage constraint', async () => {
     const db = new MockDatabase(new InMemoryStorageAdapter());
     const userA = 'user-a';
-    const userB = 'user-b';
 
     const product = await db.createProduct(userA, {
       name: 'Lip Sleeping Mask',
@@ -23,12 +22,10 @@ describe('MockDatabase lifecycle & isolation', () => {
     });
     expect(purchase.store_vendor).toBe('Shajgoj');
 
-    // Unopened initially
     const invBefore = await db.getUserInventory(userA);
     expect(invBefore.unopened).toHaveLength(1);
     expect(invBefore.active).toHaveLength(0);
 
-    // Start active usage
     const active = await db.startUsagePeriod(userA, {
       product_id: product.id,
       purchase_id: purchase.id,
@@ -36,7 +33,6 @@ describe('MockDatabase lifecycle & isolation', () => {
     });
     expect(active.status).toBe('active');
 
-    // Single active usage constraint
     const backup = await db.createPurchase(userA, {
       product_id: product.id,
       purchase_date: '2026-09-10',
@@ -49,20 +45,42 @@ describe('MockDatabase lifecycle & isolation', () => {
         opened_date: '2026-09-10',
       })
     ).rejects.toThrow(/active usage period/i);
+  });
 
-    // Finish usage
+  it('supports finishing, editing, deleting cycles and multi-user isolation', async () => {
+    const db = new MockDatabase(new InMemoryStorageAdapter());
+    const userA = 'user-a';
+    const userB = 'user-b';
+
+    const product = await db.createProduct(userA, {
+      name: 'Lip Sleeping Mask',
+      category: 'Skincare',
+      brand: 'Laneige',
+      size_value: 20,
+      size_unit: 'g',
+    });
+    const purchase = await db.createPurchase(userA, {
+      product_id: product.id,
+      purchase_date: '2026-09-01',
+      price: 1800,
+      store_vendor: 'Shajgoj',
+    });
+    const active = await db.startUsagePeriod(userA, {
+      product_id: product.id,
+      purchase_id: purchase.id,
+      opened_date: '2026-09-01',
+    });
+
     const finished = await db.finishUsagePeriod(userA, active.id, '2026-09-21');
     expect(finished.status).toBe('finished');
     expect(finished.finished_date).toBe('2026-09-21');
 
-    // Edit finished usage & delete
     const edited = await db.updateUsagePeriod(userA, active.id, {
       opened_date: '2026-09-02',
       finished_date: '2026-09-22',
     });
     expect(edited.opened_date).toBe('2026-09-02');
 
-    // Multi-user isolation
     expect(await db.getAllUserProducts(userB)).toHaveLength(0);
     await expect(db.getProductHistory(product.id, userB)).rejects.toThrow(/Unauthorized/i);
 
