@@ -11,6 +11,7 @@ import {
   getCostComparisonChartData,
   calculateEstimatedNextPrice,
 } from '../src/lib/analytics';
+import { calculateAverageLifespan } from '../src/lib/prediction';
 import type { ProductWithHistory } from '../src/types';
 
 function assert(condition: boolean, message: string) {
@@ -190,6 +191,32 @@ async function runAnalyticsVerification() {
   // 5E: calculateEstimatedNextPrice safety
   const emptyPrice = calculateEstimatedNextPrice([]);
   assert(emptyPrice === 0, 'calculateEstimatedNextPrice returns 0 for empty purchases');
+
+  // 5F: Monthly run rate excludes inactive products (active_usage === null)
+  const inactiveOnly: ProductWithHistory[] = [
+    {
+      ...mockHistories[0],
+      active_usage: null,
+    },
+  ];
+  assert(
+    calculateEstimatedMonthlyConsumption(inactiveOnly) === null,
+    'calculateEstimatedMonthlyConsumption excludes inactive products (returns null when none active)'
+  );
+
+  // 5G: calculateAverageLifespan returns null (not 0) when all finished cycles are 0-day
+  const zeroDayAvg = calculateAverageLifespan([
+    {
+      id: 'z1',
+      product_id: 'p1',
+      purchase_id: 'pu1',
+      opened_date: '2026-08-01',
+      finished_date: '2026-08-01',
+      status: 'finished',
+      created_at: '',
+    },
+  ]);
+  assert(zeroDayAvg === null, 'calculateAverageLifespan returns null (not 0) when all cycles are 0-day');
 
   console.log('\n=================================================================');
   console.log('✅ ALL STAGE 6 ANALYTICS VERIFICATIONS PASSED SUCCESSFULLY');
