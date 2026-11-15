@@ -127,20 +127,20 @@ export const LoginPage: React.FC = () => {
           {/* 3 Short Feature Highlights */}
           <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
             <div className="bg-white border border-neutral-200/80 rounded-xl p-3.5 shadow-xs space-y-1">
-              <p className="text-xs font-bold text-neutral-900">Run-out forecasts</p>
-              <p className="text-sm text-neutral-600 leading-relaxed">
+              <p className="text-sm font-semibold text-neutral-900">Run-out forecasts</p>
+              <p className="text-[13px] text-neutral-600 leading-relaxed">
                 Estimates remaining days and a run-out window from completed cycles.
               </p>
             </div>
             <div className="bg-white border border-neutral-200/80 rounded-xl p-3.5 shadow-xs space-y-1">
-              <p className="text-xs font-bold text-neutral-900">True daily cost</p>
-              <p className="text-sm text-neutral-600 leading-relaxed">
+              <p className="text-sm font-semibold text-neutral-900">True daily cost</p>
+              <p className="text-[13px] text-neutral-600 leading-relaxed">
                 Turns purchase prices into a clear cost per day and monthly run rate.
               </p>
             </div>
             <div className="bg-white border border-neutral-200/80 rounded-xl p-3.5 shadow-xs space-y-1">
-              <p className="text-xs font-bold text-neutral-900">Backup inventory</p>
-              <p className="text-sm text-neutral-600 leading-relaxed">
+              <p className="text-sm font-semibold text-neutral-900">Backup inventory</p>
+              <p className="text-[13px] text-neutral-600 leading-relaxed">
                 Tracks unopened stock separately from what you are using right now.
               </p>
             </div>
