@@ -6,6 +6,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { ModalShell } from './ModalShell';
 import { db } from '../lib/dataSource';
 import {
   validateBackupFile,
@@ -68,7 +69,7 @@ export const RestoreDataModal: React.FC<RestoreDataModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, step, onClose]);
 
-  if (!isOpen || !user) return null;
+  if (!user) return null;
 
   const handleFileProcess = async (file: File) => {
     setErrorMessage(null);
@@ -166,18 +167,15 @@ export const RestoreDataModal: React.FC<RestoreDataModalProps> = ({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/40 backdrop-blur-xs animate-fade-in"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="restore-dialog-title"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && step !== 'restoring') {
-          onClose();
-        }
+    <ModalShell
+      isOpen={isOpen}
+      onClose={() => {
+        if (step !== 'restoring') onClose();
       }}
+      ariaLabelledBy="restore-dialog-title"
+      backdropClassName="bg-neutral-900/40 backdrop-blur-xs"
+      panelClassName="bg-white border border-neutral-200/80 rounded-2xl w-full max-w-lg shadow-xl overflow-hidden max-h-[90vh] flex flex-col"
     >
-      <div className="bg-white border border-neutral-200/80 rounded-2xl w-full max-w-lg shadow-xl overflow-hidden animate-scale-in max-h-[90vh] flex flex-col">
         {/* Modal Header */}
         <div className="p-5 sm:p-6 border-b border-neutral-100 flex items-start justify-between gap-4">
           <div>
@@ -589,7 +587,6 @@ export const RestoreDataModal: React.FC<RestoreDataModalProps> = ({
             </button>
           )}
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 };

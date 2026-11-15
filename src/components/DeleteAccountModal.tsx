@@ -6,6 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { ModalShell } from './ModalShell';
 import { useNavigate } from 'react-router-dom';
 
 interface DeleteAccountModalProps {
@@ -40,8 +41,6 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, submitting, onClose]);
 
-  if (!isOpen) return null;
-
   const handleDelete = async () => {
     setSubmitting(true);
     setError(null);
@@ -59,16 +58,15 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-backdrop-in"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="delete-account-title"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !submitting) onClose();
+    <ModalShell
+      isOpen={isOpen}
+      onClose={() => {
+        if (!submitting) onClose();
       }}
+      ariaLabelledBy="delete-account-title"
+      backdropClassName="bg-black/50 backdrop-blur-xs"
+      panelClassName="w-full max-w-md bg-white rounded-2xl border border-rose-200/80 shadow-2xl p-6 sm:p-7 space-y-5"
     >
-      <div className="w-full max-w-md bg-white rounded-2xl border border-rose-200/80 shadow-2xl p-6 sm:p-7 space-y-5 animate-modal-in">
         <div className="space-y-1.5">
           <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center text-lg font-bold">
             ⚠️
@@ -112,7 +110,6 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
             {submitting ? 'Deleting Account...' : 'Delete Account'}
           </button>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 };

@@ -6,6 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { ModalShell } from './ModalShell';
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -44,8 +45,6 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, submitting, onClose]);
 
-  if (!isOpen) return null;
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -77,16 +76,14 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
   const isMismatch = confirmPassword.length > 0 && newPassword !== confirmPassword;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-backdrop-in"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="change-password-title"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !submitting) onClose();
+    <ModalShell
+      isOpen={isOpen}
+      onClose={() => {
+        if (!submitting) onClose();
       }}
+      ariaLabelledBy="change-password-title"
+      backdropClassName="bg-black/40 backdrop-blur-xs"
     >
-      <div className="w-full max-w-md bg-white rounded-2xl border border-neutral-200/80 shadow-2xl p-6 sm:p-7 space-y-5 animate-modal-in">
         <div>
           <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">
             ACCOUNT SECURITY
@@ -175,7 +172,6 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </ModalShell>
   );
 };

@@ -13,6 +13,7 @@ import {
   getValidFinishedPeriods,
 } from '../lib/prediction';
 import { calculateConfidence, getConfidenceBadgeStyles } from '../lib/confidence';
+import { ModalShell } from './ModalShell';
 import {
   calculateExpectedFinishDate,
   calculateRelativeReminderDate,
@@ -101,7 +102,7 @@ export const PlanRestockModal: React.FC<PlanRestockModalProps> = ({
     }
   }, [isOpen, existingPlan, hasPrediction, today]);
 
-  if (!isOpen || !product || !activeUsage) return null;
+  if (!product || !activeUsage) return null;
 
   // Deterministic reminder date preview calculation
   let calculatedReminderDate = '';
@@ -167,16 +168,12 @@ export const PlanRestockModal: React.FC<PlanRestockModalProps> = ({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="plan-restock-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-backdrop-in"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+    <ModalShell
+      isOpen={isOpen && !!product}
+      onClose={onClose}
+      ariaLabelledBy="plan-restock-title"
+      panelClassName="w-full max-w-md bg-white rounded-2xl border border-neutral-200/80 shadow-2xl p-6 sm:p-7 space-y-5 max-h-[90vh] overflow-y-auto"
     >
-      <div className="w-full max-w-md bg-white rounded-2xl border border-neutral-200/80 shadow-2xl p-6 sm:p-7 space-y-5 animate-modal-in max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-start justify-between">
           <div>
@@ -369,7 +366,6 @@ export const PlanRestockModal: React.FC<PlanRestockModalProps> = ({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </ModalShell>
   );
 };

@@ -3,11 +3,12 @@
 // Confirmation dialog with finished date selection for completing an active essential
 // ==============================================================================
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { db } from '../lib/dataSource';
 import { getTodayLocal, formatDisplayDate } from '../lib/dateUtils';
 import { calculateCurrentDaysUsed } from '../lib/prediction';
+import { ModalShell } from './ModalShell';
 import type { ProductWithDetails } from '../types';
 
 interface FinishUsageModalProps {
@@ -29,6 +30,11 @@ export const FinishUsageModal: React.FC<FinishUsageModalProps> = ({
   const [finishedDate, setFinishedDate] = useState(today);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const lastProductRef = useRef<ProductWithDetails | null>(null);
+
+  if (product && product.active_usage) {
+    lastProductRef.current = product;
+  }
 
   useEffect(() => {
     if (isOpen) {
@@ -37,9 +43,14 @@ export const FinishUsageModal: React.FC<FinishUsageModalProps> = ({
     }
   }, [isOpen, today]);
 
-  if (!isOpen || !product || !product.active_usage) return null;
+  const effectiveProduct = product && product.active_usage ? product : lastProductRef.current;
+  const open = isOpen && !!product && !!product.active_usage;
 
-  const activeUsage = product.active_usage;
+  if (!effectiveProduct || !effectiveProduct.active_usage) {
+    return null;
+  }
+
+  const activeUsage = effectiveProduct.active_usage;
   const daysUsed = calculateCurrentDaysUsed(activeUsage.opened_date, finishedDate);
 
   const handleConfirm = async (e: React.FormEvent) => {
@@ -66,15 +77,14 @@ export const FinishUsageModal: React.FC<FinishUsageModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-backdrop-in">
-      <div className="w-full max-w-md bg-white rounded-2xl border border-neutral-200/80 shadow-2xl p-6 sm:p-7 space-y-5 animate-modal-in">
+    <ModalShell isOpen={open} onClose={onClose} ariaLabel={`Mark ${effectiveProduct.name} Finished`}>
         <div className="flex items-start justify-between">
           <div>
             <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">
               Mark Essential Finished
             </span>
             <h3 className="text-lg font-bold text-neutral-900 tracking-tight">
-              {product.name}
+              {effectiveProduct.name}
             </h3>
           </div>
           <button
@@ -158,7 +168,6 @@ export const FinishUsageModal: React.FC<FinishUsageModalProps> = ({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </ModalShell>
   );
 };

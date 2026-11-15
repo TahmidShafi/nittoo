@@ -7,6 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { db } from '../lib/dataSource';
+import { ModalShell } from './ModalShell';
 import { formatDisplayDate } from '../lib/dateUtils';
 import type { UsagePeriod } from '../types';
 
@@ -50,7 +51,7 @@ export const DeleteCompletedCycleModal: React.FC<DeleteCompletedCycleModalProps>
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, submitting, onClose]);
 
-  if (!isOpen || !cycle) return null;
+  if (!cycle) return null;
 
   const handleDelete = async () => {
     if (!user) return;
@@ -69,16 +70,14 @@ export const DeleteCompletedCycleModal: React.FC<DeleteCompletedCycleModalProps>
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-backdrop-in"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="delete-cycle-title"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !submitting) onClose();
+    <ModalShell
+      isOpen={isOpen}
+      onClose={() => {
+        if (!submitting) onClose();
       }}
+      ariaLabelledBy="delete-cycle-title"
+      backdropClassName="bg-black/50 backdrop-blur-xs"
     >
-      <div className="w-full max-w-md bg-white rounded-2xl border border-neutral-200/80 shadow-2xl p-6 sm:p-7 space-y-5 animate-modal-in">
         <div className="space-y-1.5">
           <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 border border-amber-200/60 flex items-center justify-center text-lg font-bold">
             ⚠️
@@ -141,7 +140,6 @@ export const DeleteCompletedCycleModal: React.FC<DeleteCompletedCycleModalProps>
             {submitting ? 'Deleting Cycle...' : 'Delete Cycle'}
           </button>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 };

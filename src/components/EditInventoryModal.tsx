@@ -9,6 +9,7 @@ import { useAuth } from '../hooks/useAuth';
 import { db } from '../lib/dataSource';
 import { getTodayLocal } from '../lib/dateUtils';
 import { getEffectiveSize } from '../lib/prediction';
+import { ModalShell } from './ModalShell';
 import {
   PRODUCT_CATEGORIES,
   type Product,
@@ -90,7 +91,7 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
     }
   }, [isOpen, product, purchase, usagePeriod, mode]);
 
-  if (!isOpen || !product || !purchase) return null;
+  if (!product || !purchase) return null;
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -196,8 +197,12 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
       : 'Update product identity or acquisition details for this stored purchase.';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-backdrop-in">
-      <div className="w-full max-w-lg bg-white rounded-2xl border border-neutral-200/80 shadow-2xl p-6 sm:p-7 space-y-5 animate-modal-in max-h-[90vh] overflow-y-auto">
+    <ModalShell
+      isOpen={isOpen}
+      onClose={onClose}
+      ariaLabel={title}
+      panelClassName="w-full max-w-lg bg-white rounded-2xl border border-neutral-200/80 shadow-2xl p-6 sm:p-7 space-y-5 max-h-[90vh] overflow-y-auto"
+    >
         {/* Header */}
         <div className="flex items-start justify-between pb-3 border-b border-neutral-100">
           <div>
@@ -459,7 +464,6 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </ModalShell>
   );
 };

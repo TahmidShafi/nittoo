@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { ModalShell } from './ModalShell';
 import { useNavigate } from 'react-router-dom';
 
 interface SignOutAllSessionsModalProps {
@@ -39,8 +40,6 @@ export const SignOutAllSessionsModal: React.FC<SignOutAllSessionsModalProps> = (
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, submitting, onClose]);
 
-  if (!isOpen) return null;
-
   const handleSignOutAll = async () => {
     setSubmitting(true);
     setError(null);
@@ -58,16 +57,14 @@ export const SignOutAllSessionsModal: React.FC<SignOutAllSessionsModalProps> = (
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-backdrop-in"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="sign-out-all-title"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !submitting) onClose();
+    <ModalShell
+      isOpen={isOpen}
+      onClose={() => {
+        if (!submitting) onClose();
       }}
+      ariaLabelledBy="sign-out-all-title"
+      backdropClassName="bg-black/40 backdrop-blur-xs"
     >
-      <div className="w-full max-w-md bg-white rounded-2xl border border-neutral-200/80 shadow-2xl p-6 sm:p-7 space-y-5 animate-modal-in">
         <div>
           <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">
             SESSION SECURITY
@@ -108,7 +105,6 @@ export const SignOutAllSessionsModal: React.FC<SignOutAllSessionsModalProps> = (
             {submitting ? 'Signing out...' : 'Sign out all sessions'}
           </button>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 };
