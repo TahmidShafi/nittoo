@@ -63,6 +63,13 @@ jobs:
         working-directory: analytics
         run: uv run pytest
 
+      - name: Verify forecast calibration & parity fixtures are up to date
+        working-directory: analytics
+        run: |
+          uv run lab export-calibration
+          uv run lab export-parity
+          git diff --exit-code ../src/lib/forecast/calibration.json fixtures/forecast_parity.json
+
       - name: Run Forecast Lab pipeline at CI scale (50 households)
         working-directory: analytics
         run: uv run lab all --households 50
