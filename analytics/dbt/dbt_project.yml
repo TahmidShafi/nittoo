@@ -1,0 +1,25 @@
+name: "nittoo_lab"
+version: "0.1.0"
+config-version: 2
+
+profile: "nittoo_lab"
+
+model-paths: ["models"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  nittoo_lab:
+    staging:
+      +schema: staging
+      +materialized: view
+    intermediate:
+      +schema: intermediate
+      +materialized: view
+    marts:
+      +schema: marts
+      +materialized: table

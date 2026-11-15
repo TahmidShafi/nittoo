@@ -1,0 +1,786 @@
+{
+  "$defs": {
+    "ExportAnalyticsItem": {
+      "additionalProperties": false,
+      "properties": {
+        "product_id": {
+          "minLength": 1,
+          "title": "Product Id",
+          "type": "string"
+        },
+        "product_name": {
+          "title": "Product Name",
+          "type": "string"
+        },
+        "brand": {
+          "title": "Brand",
+          "type": "string"
+        },
+        "category": {
+          "enum": [
+            "Skincare",
+            "Haircare",
+            "Body Care",
+            "Oral Care",
+            "Supplements",
+            "Personal Hygiene",
+            "Shaving & Grooming",
+            "Household Cleaning",
+            "Laundry",
+            "Home Essentials",
+            "Food & Beverage",
+            "Fitness",
+            "Pet Care",
+            "Baby Care",
+            "Other"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "observed_average_lifespan": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observed Average Lifespan"
+        },
+        "completed_cycles": {
+          "minimum": 0,
+          "title": "Completed Cycles",
+          "type": "integer"
+        },
+        "observed_cost_per_day": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observed Cost Per Day"
+        },
+        "estimated_monthly_consumption": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Estimated Monthly Consumption"
+        },
+        "predicted_finish_date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Predicted Finish Date"
+        },
+        "predicted_remaining_days": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Predicted Remaining Days"
+        },
+        "confidence_state": {
+          "title": "Confidence State",
+          "type": "string"
+        },
+        "confidence_label": {
+          "title": "Confidence Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "product_id",
+        "product_name",
+        "brand",
+        "category",
+        "completed_cycles",
+        "confidence_state",
+        "confidence_label"
+      ],
+      "title": "ExportAnalyticsItem",
+      "type": "object"
+    },
+    "ExportCategoryBreakdown": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "title": "Category",
+          "type": "string"
+        },
+        "activeCount": {
+          "minimum": 0,
+          "title": "Activecount",
+          "type": "integer"
+        },
+        "estimatedMonthlyCost": {
+          "minimum": 0,
+          "title": "Estimatedmonthlycost",
+          "type": "number"
+        },
+        "percentage": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Percentage",
+          "type": "number"
+        }
+      },
+      "required": [
+        "category",
+        "activeCount",
+        "estimatedMonthlyCost",
+        "percentage"
+      ],
+      "title": "ExportCategoryBreakdown",
+      "type": "object"
+    },
+    "ExportInventoryItem": {
+      "additionalProperties": false,
+      "properties": {
+        "product_id": {
+          "minLength": 1,
+          "title": "Product Id",
+          "type": "string"
+        },
+        "product_name": {
+          "title": "Product Name",
+          "type": "string"
+        },
+        "brand": {
+          "title": "Brand",
+          "type": "string"
+        },
+        "category": {
+          "enum": [
+            "Skincare",
+            "Haircare",
+            "Body Care",
+            "Oral Care",
+            "Supplements",
+            "Personal Hygiene",
+            "Shaving & Grooming",
+            "Household Cleaning",
+            "Laundry",
+            "Home Essentials",
+            "Food & Beverage",
+            "Fitness",
+            "Pet Care",
+            "Baby Care",
+            "Other"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "inventory_status": {
+          "enum": [
+            "Active",
+            "Unopened"
+          ],
+          "title": "Inventory Status",
+          "type": "string"
+        },
+        "purchase_date": {
+          "format": "date",
+          "title": "Purchase Date",
+          "type": "string"
+        },
+        "price": {
+          "minimum": 0,
+          "title": "Price",
+          "type": "number"
+        },
+        "currency": {
+          "minLength": 1,
+          "title": "Currency",
+          "type": "string"
+        },
+        "opened_date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Opened Date"
+        },
+        "days_used": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Days Used"
+        },
+        "predicted_remaining_days": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Predicted Remaining Days"
+        },
+        "backup_count": {
+          "minimum": 0,
+          "title": "Backup Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "product_id",
+        "product_name",
+        "brand",
+        "category",
+        "inventory_status",
+        "purchase_date",
+        "price",
+        "currency",
+        "backup_count"
+      ],
+      "title": "ExportInventoryItem",
+      "type": "object"
+    },
+    "ExportProductItem": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "brand": {
+          "title": "Brand",
+          "type": "string"
+        },
+        "category": {
+          "enum": [
+            "Skincare",
+            "Haircare",
+            "Body Care",
+            "Oral Care",
+            "Supplements",
+            "Personal Hygiene",
+            "Shaving & Grooming",
+            "Household Cleaning",
+            "Laundry",
+            "Home Essentials",
+            "Food & Beverage",
+            "Fitness",
+            "Pet Care",
+            "Baby Care",
+            "Other"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "size": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Size"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "enum": [
+                "ml",
+                "g",
+                "count"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "brand",
+        "category",
+        "created_at"
+      ],
+      "title": "ExportProductItem",
+      "type": "object"
+    },
+    "ExportPurchaseItem": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "product_id": {
+          "minLength": 1,
+          "title": "Product Id",
+          "type": "string"
+        },
+        "product_name": {
+          "title": "Product Name",
+          "type": "string"
+        },
+        "brand": {
+          "title": "Brand",
+          "type": "string"
+        },
+        "category": {
+          "enum": [
+            "Skincare",
+            "Haircare",
+            "Body Care",
+            "Oral Care",
+            "Supplements",
+            "Personal Hygiene",
+            "Shaving & Grooming",
+            "Household Cleaning",
+            "Laundry",
+            "Home Essentials",
+            "Food & Beverage",
+            "Fitness",
+            "Pet Care",
+            "Baby Care",
+            "Other"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "purchase_date": {
+          "format": "date",
+          "title": "Purchase Date",
+          "type": "string"
+        },
+        "price": {
+          "minimum": 0,
+          "title": "Price",
+          "type": "number"
+        },
+        "currency": {
+          "minLength": 1,
+          "title": "Currency",
+          "type": "string"
+        },
+        "store_vendor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Store Vendor"
+        }
+      },
+      "required": [
+        "id",
+        "product_id",
+        "product_name",
+        "brand",
+        "category",
+        "purchase_date",
+        "price",
+        "currency"
+      ],
+      "title": "ExportPurchaseItem",
+      "type": "object"
+    },
+    "ExportRestockPlanItem": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "product_id": {
+          "minLength": 1,
+          "title": "Product Id",
+          "type": "string"
+        },
+        "product_name": {
+          "title": "Product Name",
+          "type": "string"
+        },
+        "usage_period_id": {
+          "minLength": 1,
+          "title": "Usage Period Id",
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "relative",
+            "custom"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "days_before_finish": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Days Before Finish"
+        },
+        "reminder_date": {
+          "format": "date",
+          "title": "Reminder Date",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "planned",
+            "completed",
+            "dismissed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "product_id",
+        "product_name",
+        "usage_period_id",
+        "mode",
+        "reminder_date",
+        "status",
+        "created_at"
+      ],
+      "title": "ExportRestockPlanItem",
+      "type": "object"
+    },
+    "ExportSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "total_products": {
+          "minimum": 0,
+          "title": "Total Products",
+          "type": "integer"
+        },
+        "total_purchases": {
+          "minimum": 0,
+          "title": "Total Purchases",
+          "type": "integer"
+        },
+        "active_essentials": {
+          "minimum": 0,
+          "title": "Active Essentials",
+          "type": "integer"
+        },
+        "unopened_purchases": {
+          "minimum": 0,
+          "title": "Unopened Purchases",
+          "type": "integer"
+        },
+        "completed_usage_cycles": {
+          "minimum": 0,
+          "title": "Completed Usage Cycles",
+          "type": "integer"
+        },
+        "estimated_monthly_consumption": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Estimated Monthly Consumption"
+        },
+        "categories": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Categories",
+          "type": "array"
+        },
+        "category_breakdown": {
+          "items": {
+            "$ref": "#/$defs/ExportCategoryBreakdown"
+          },
+          "title": "Category Breakdown",
+          "type": "array"
+        }
+      },
+      "required": [
+        "total_products",
+        "total_purchases",
+        "active_essentials",
+        "unopened_purchases",
+        "completed_usage_cycles",
+        "categories",
+        "category_breakdown"
+      ],
+      "title": "ExportSummary",
+      "type": "object"
+    },
+    "ExportUsageItem": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "product_id": {
+          "minLength": 1,
+          "title": "Product Id",
+          "type": "string"
+        },
+        "product_name": {
+          "title": "Product Name",
+          "type": "string"
+        },
+        "purchase_id": {
+          "minLength": 1,
+          "title": "Purchase Id",
+          "type": "string"
+        },
+        "opened_date": {
+          "format": "date",
+          "title": "Opened Date",
+          "type": "string"
+        },
+        "finished_date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finished Date"
+        },
+        "status": {
+          "enum": [
+            "completed",
+            "active"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "days_used": {
+          "minimum": 0,
+          "title": "Days Used",
+          "type": "integer"
+        },
+        "purchase_price": {
+          "minimum": 0,
+          "title": "Purchase Price",
+          "type": "number"
+        },
+        "currency": {
+          "minLength": 1,
+          "title": "Currency",
+          "type": "string"
+        },
+        "cost_per_day": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cost Per Day"
+        }
+      },
+      "required": [
+        "id",
+        "product_id",
+        "product_name",
+        "purchase_id",
+        "opened_date",
+        "status",
+        "days_used",
+        "purchase_price",
+        "currency"
+      ],
+      "title": "ExportUsageItem",
+      "type": "object"
+    },
+    "ExportUser": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "email": {
+          "title": "Email",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "email"
+      ],
+      "title": "ExportUser",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Exact mirror of `generateJsonBackup` in `src/lib/export/json.ts`.",
+  "properties": {
+    "version": {
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Version",
+      "type": "string"
+    },
+    "exported_at": {
+      "format": "date-time",
+      "title": "Exported At",
+      "type": "string"
+    },
+    "user": {
+      "$ref": "#/$defs/ExportUser"
+    },
+    "summary": {
+      "$ref": "#/$defs/ExportSummary"
+    },
+    "products": {
+      "items": {
+        "$ref": "#/$defs/ExportProductItem"
+      },
+      "title": "Products",
+      "type": "array"
+    },
+    "purchases": {
+      "items": {
+        "$ref": "#/$defs/ExportPurchaseItem"
+      },
+      "title": "Purchases",
+      "type": "array"
+    },
+    "usage_periods": {
+      "items": {
+        "$ref": "#/$defs/ExportUsageItem"
+      },
+      "title": "Usage Periods",
+      "type": "array"
+    },
+    "inventory": {
+      "items": {
+        "$ref": "#/$defs/ExportInventoryItem"
+      },
+      "title": "Inventory",
+      "type": "array"
+    },
+    "analytics": {
+      "items": {
+        "$ref": "#/$defs/ExportAnalyticsItem"
+      },
+      "title": "Analytics",
+      "type": "array"
+    },
+    "insights": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Insights",
+      "type": "array"
+    },
+    "restock_plans": {
+      "items": {
+        "$ref": "#/$defs/ExportRestockPlanItem"
+      },
+      "title": "Restock Plans",
+      "type": "array"
+    }
+  },
+  "required": [
+    "version",
+    "exported_at",
+    "user",
+    "summary",
+    "products",
+    "purchases",
+    "usage_periods",
+    "inventory",
+    "analytics",
+    "insights"
+  ],
+  "title": "NittooExportBackup",
+  "type": "object"
+}

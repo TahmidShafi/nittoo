@@ -1,0 +1,7 @@
+nittoo_lab:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('NITTOO_DUCKDB_PATH', '../data/nittoo.duckdb') }}"
+      threads: 4

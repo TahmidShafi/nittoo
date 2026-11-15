@@ -1,0 +1,69 @@
+name: Analytics Pipeline
+
+on:
+  push:
+    paths:
+      - "analytics/**"
+      - "src/types/**"
+      - "src/lib/export/**"
+      - "src/lib/demo/**"
+      - "scripts/export-demo-fixture.ts"
+      - ".github/workflows/analytics.yml"
+  pull_request:
+    paths:
+      - "analytics/**"
+      - "src/types/**"
+      - "src/lib/export/**"
+      - "src/lib/demo/**"
+      - "scripts/export-demo-fixture.ts"
+      - ".github/workflows/analytics.yml"
+
+jobs:
+  analytics-lab:
+    name: Contract, Lint, Pytest & Forecast Lab E2E
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install Node dependencies & regenerate demo fixture
+        run: |
+          npm ci
+          npx tsx scripts/export-demo-fixture.ts
+
+      - name: Setup uv & Python 3.12
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.12"
+          working-directory: analytics
+
+      - name: Install Python dependencies
+        working-directory: analytics
+        run: uv sync --locked
+
+      - name: Lint Python with ruff
+        working-directory: analytics
+        run: uv run ruff check .
+
+      - name: Run pytest (including contract test)
+        working-directory: analytics
+        run: uv run pytest
+
+      - name: Run Forecast Lab pipeline at CI scale (50 households)
+        working-directory: analytics
+        run: uv run lab all --households 50
+
+      - name: Upload data-quality report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: analytics-reports
+          path: analytics/reports/
+          retention-days: 14

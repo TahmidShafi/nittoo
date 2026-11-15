@@ -1,0 +1,41 @@
+[project]
+name = "nittoo-forecast-lab"
+version = "0.1.0"
+description = "DuckDB + dbt-core + Python data engineering & analytics lab for Nittoo"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "dbt-core>=1.8,<2",
+  "dbt-duckdb>=1.8,<2",
+  "duckdb>=1.1,<2",
+  "numpy>=2.0,<3",
+  "pydantic>=2.9,<3",
+  "typer>=0.12,<1",
+]
+
+[dependency-groups]
+dev = [
+  "jsonschema>=4.23,<5",
+  "pytest>=8.3,<9",
+  "ruff>=0.7,<1",
+]
+
+[project.scripts]
+lab = "nittoo_lab.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nittoo_lab"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
