@@ -109,19 +109,41 @@ export const LoginPage: React.FC = () => {
           </div>
 
           {/* Primary Action: Try the Demo */}
-          <div className="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-3">
+          <div className="w-full sm:w-auto flex flex-col items-center lg:items-start gap-2.5">
+            <div className="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-3">
+              <button
+                type="button"
+                onClick={handleTryDemo}
+                disabled={submitting}
+                className="btn-press w-full sm:w-auto px-6 py-3 rounded-xl bg-[#2D6A4F] hover:bg-[#24563F] text-white text-sm font-semibold transition-colors shadow-xs disabled:opacity-60 inline-flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>Try the demo</span>
+                <span aria-hidden="true">→</span>
+              </button>
+              <span className="text-xs font-medium text-neutral-600">
+                No sign-up needed · 12 sample products
+              </span>
+            </div>
             <button
               type="button"
-              onClick={handleTryDemo}
-              disabled={submitting}
-              className="btn-press w-full sm:w-auto px-6 py-3 rounded-xl bg-[#2D6A4F] hover:bg-[#24563F] text-white text-sm font-semibold transition-colors shadow-xs disabled:opacity-60 inline-flex items-center justify-center gap-2 cursor-pointer"
+              onClick={() => {
+                const emailInput = document.getElementById('login-email');
+                if (emailInput) {
+                  const prefersReduced =
+                    typeof window !== 'undefined' &&
+                    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                  emailInput.scrollIntoView({
+                    behavior: prefersReduced ? 'auto' : 'smooth',
+                    block: 'center',
+                  });
+                  emailInput.focus();
+                }
+              }}
+              className="lg:hidden text-xs text-neutral-600 hover:text-neutral-900 cursor-pointer"
             >
-              <span>Try the demo</span>
-              <span aria-hidden="true">→</span>
+              Already have an account?{' '}
+              <span className="font-semibold text-[#2D6A4F] underline">Sign in</span>
             </button>
-            <span className="text-xs font-medium text-neutral-600">
-              No sign-up needed · 12 sample products
-            </span>
           </div>
 
           {/* 3 Short Feature Highlights */}
