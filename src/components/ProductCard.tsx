@@ -10,6 +10,7 @@ import { usePrediction } from '../hooks/usePrediction';
 import { calculateConfidence } from '../lib/confidence';
 import { formatRunOutRange, getEffectiveSize } from '../lib/prediction';
 import { calculateExpectedFinishDate } from '../lib/restock';
+import { LifespanBar } from './LifespanBar';
 import type { ProductWithDetails } from '../types';
 
 interface ProductCardProps {
@@ -29,7 +30,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     validCompletedCycles,
     costPerDay,
     pricePerUnit,
-    progressPercent,
     isOverdue,
     overdueDays,
     urgencyState,
@@ -142,23 +142,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             </p>
           )}
 
-          {/* Slim Visual Progress Line */}
-          <div className="h-1.5 w-full bg-neutral-100 rounded-full overflow-hidden">
-            {progressPercent !== null ? (
-              <div
-                className={`h-full rounded-full animate-progress-fill ${
-                  isOverdue
-                    ? 'bg-status-critical-fill w-full'
-                    : predictedRemainingDays !== null && predictedRemainingDays < 14
-                    ? 'bg-status-attention-fill'
-                    : 'bg-[#2D6A4F]'
-                }`}
-                style={{ width: `${progressPercent}%` }}
-              />
-            ) : (
-              <div className="h-full w-full bg-neutral-200/50 rounded-full" />
-            )}
-          </div>
+          {/* Slim Visual Progress Line with P10-P90 Range Band */}
+          <LifespanBar
+            daysUsed={daysUsed}
+            expectedLifespan={averageLifespan}
+            runOutRange={runOutRange}
+            isOverdue={isOverdue}
+            predictedRemainingDays={predictedRemainingDays}
+            heightClass="h-1.5"
+          />
         </div>
 
         {/* Prominent Daily Cost & Unit Rate */}

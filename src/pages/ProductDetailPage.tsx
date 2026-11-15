@@ -38,6 +38,7 @@ import {
   recalculatePlanReminderDate,
 } from '../lib/restock';
 import { FinishUsageModal } from '../components/FinishUsageModal';
+import { LifespanBar } from '../components/LifespanBar';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { EditInventoryModal } from '../components/EditInventoryModal';
 import { EditCompletedCycleModal } from '../components/EditCompletedCycleModal';
@@ -677,22 +678,14 @@ export const ProductDetailPage: React.FC = () => {
                 </span>
               ) : null}
             </div>
-            <div className="h-2 w-full bg-neutral-100 rounded-full overflow-hidden">
-              {activeUsageData.progress !== null ? (
-                <div
-                  className={`h-full rounded-full animate-progress-fill ${
-                    activeUsageData.isOverdue
-                      ? 'bg-status-critical-fill w-full'
-                      : activeUsageData.predictedRemaining !== null && activeUsageData.predictedRemaining < 14
-                      ? 'bg-status-attention-fill'
-                      : 'bg-[#2D6A4F]'
-                  }`}
-                  style={{ width: `${activeUsageData.progress}%` }}
-                />
-              ) : (
-                <div className="h-full w-full bg-neutral-200/50 rounded-full" />
-              )}
-            </div>
+            <LifespanBar
+              daysUsed={activeUsageData.daysUsed}
+              expectedLifespan={activeUsageData.avgDuration}
+              runOutRange={activeUsageData.runOutRange}
+              isOverdue={activeUsageData.isOverdue}
+              predictedRemainingDays={activeUsageData.predictedRemaining}
+              heightClass="h-2"
+            />
 
             {/* EXPECTED LIFESPAN PREDICTION */}
             <div className="pt-3 border-t border-neutral-100/80">

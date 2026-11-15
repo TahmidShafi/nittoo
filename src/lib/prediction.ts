@@ -267,6 +267,58 @@ export function calculateProgressPercent(
   return Math.min(100, Math.max(0, Math.round(percent)));
 }
 
+export interface LifespanTrackLayout {
+  domainMax: number;
+  fillPercent: number;
+  expectedPercent: number;
+  bandStartPercent: number | null;
+  bandWidthPercent: number | null;
+}
+
+/**
+ * Maps daysUsed, expectedLifespan, and optional P10-P90 runOutRange onto a shared
+ * [0 .. max(highDays, daysUsed)] track domain so the band and expected tick are never clipped.
+ */
+export function computeLifespanTrackLayout(params: {
+  daysUsed: number;
+  expectedLifespan: number | null;
+  runOutRange: RunOutRange | null;
+}): LifespanTrackLayout | null {
+  const { daysUsed, expectedLifespan, runOutRange } = params;
+  if (expectedLifespan === null || expectedLifespan <= 0) {
+    return null;
+  }
+
+  const highBound = runOutRange ? runOutRange.highDays : expectedLifespan;
+  const domainMax = Math.max(highBound, daysUsed, 1);
+  const toPct = (days: number) =>
+    Math.min(100, Math.max(0, Math.round((days / domainMax) * 10000) / 100));
+
+  const fillPercent = toPct(daysUsed);
+  const expectedPercent = toPct(expectedLifespan);
+
+  if (!runOutRange) {
+    return {
+      domainMax,
+      fillPercent,
+      expectedPercent,
+      bandStartPercent: null,
+      bandWidthPercent: null,
+    };
+  }
+
+  const bandStartPercent = toPct(runOutRange.lowDays);
+  const bandEndPercent = toPct(runOutRange.highDays);
+
+  return {
+    domainMax,
+    fillPercent,
+    expectedPercent,
+    bandStartPercent,
+    bandWidthPercent: Math.max(0, Math.round((bandEndPercent - bandStartPercent) * 100) / 100),
+  };
+}
+
 /**
  * Calculates estimated monthly consumption cost for a product:
  * price ÷ average_lifespan × 30

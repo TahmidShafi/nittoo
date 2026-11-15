@@ -119,6 +119,20 @@ body {
   animation: progressFill var(--duration-slow) var(--ease-out) backwards;
 }
 
+/* Forecast Range Band Fade-In (shortly after bar fill) */
+@keyframes rangeBandFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-range-band {
+  animation: rangeBandFadeIn var(--duration-base) var(--ease-out) var(--duration-base) backwards;
+}
+
 /* Demo Banner Slide-In */
 @keyframes bannerSlideIn {
   from {
@@ -266,6 +280,7 @@ input, select, textarea {
   .animate-page-in,
   .animate-stagger-in,
   .animate-progress-fill,
+  .animate-range-band,
   .animate-banner-in,
   .animate-modal-in,
   .animate-modal-out,
