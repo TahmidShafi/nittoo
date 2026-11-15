@@ -341,7 +341,7 @@ export const AnalyticsPage: React.FC = () => {
                 </div>
 
                 <div className="text-left sm:text-right shrink-0 pt-1 sm:pt-0">
-                  <span className="text-[10px] uppercase font-semibold text-neutral-500 block tracking-wider">Estimated next rebuy</span>
+                  <span className="text-[11px] font-medium text-neutral-500 block">Estimated next rebuy</span>
                   <div className="font-bold text-neutral-900 text-base tabular-nums">
                     ৳{Math.round(item.estimatedNextPrice).toLocaleString()}
                   </div>
@@ -402,8 +402,8 @@ export const AnalyticsPage: React.FC = () => {
       <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 sm:p-7 shadow-xs space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#2D6A4F] block mb-1">
-              Category Spending
+            <span className="text-xs font-medium text-[#2D6A4F] block mb-0.5">
+              Category spending
             </span>
             <h2 className="text-base sm:text-lg font-bold text-neutral-900">
               Estimated Consumption by Category

@@ -270,8 +270,8 @@ export const InventoryPage: React.FC = () => {
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-500">
-                  ACTIVE
+                <h2 className="text-xs font-semibold text-neutral-600">
+                  Active
                 </h2>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EBF4F0] text-[#2D6A4F]">
                   {inventory.active.length}
@@ -430,8 +430,8 @@ export const InventoryPage: React.FC = () => {
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-500">
-                  UNOPENED
+                <h2 className="text-xs font-semibold text-neutral-600">
+                  Unopened
                 </h2>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-700">
                   {inventory.unopened.length}

@@ -206,7 +206,7 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
         {/* Header */}
         <div className="flex items-start justify-between pb-3 border-b border-neutral-100">
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#2D6A4F] block mb-0.5">
+            <span className="text-[10px] font-medium text-[#2D6A4F] block mb-0.5">
               Inventory Management
             </span>
             <h2 className="text-lg font-bold text-neutral-900 tracking-tight">{title}</h2>
@@ -233,7 +233,7 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
         <form onSubmit={handleSave} className="space-y-5 text-xs">
           {/* Section: Product Details */}
           <div className="space-y-3">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block border-b border-neutral-100 pb-1">
+            <span className="text-[11px] font-medium text-neutral-500 block border-b border-neutral-100 pb-1">
               Product Details
             </span>
 
@@ -325,7 +325,7 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
 
           {/* Section: Purchase Details */}
           <div className="space-y-3 pt-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block border-b border-neutral-100 pb-1">
+            <span className="text-[11px] font-medium text-neutral-500 block border-b border-neutral-100 pb-1">
               Purchase Details
             </span>
 
@@ -420,7 +420,7 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
           {/* Section: Usage Details (Active Bottle Only) */}
           {mode === 'active_bottle' && (
             <div className="space-y-3 pt-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block border-b border-neutral-100 pb-1">
+              <span className="text-[11px] font-medium text-neutral-500 block border-b border-neutral-100 pb-1">
                 Usage Details
               </span>
 

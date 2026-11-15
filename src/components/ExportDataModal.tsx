@@ -89,7 +89,7 @@ export const ExportDataModal: React.FC<ExportDataModalProps> = ({ isOpen, onClos
         {/* Header */}
         <div className="p-5 sm:p-6 border-b border-neutral-100 flex items-start justify-between">
           <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#2D6A4F] block mb-1">
+            <span className="text-[11px] font-medium text-[#2D6A4F] block mb-1">
               EXPORT YOUR DATA
             </span>
             <h2 id="export-dialog-title" className="text-xl font-bold tracking-tight text-neutral-900">

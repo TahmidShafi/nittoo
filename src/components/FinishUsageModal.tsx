@@ -80,7 +80,7 @@ export const FinishUsageModal: React.FC<FinishUsageModalProps> = ({
     <ModalShell isOpen={open} onClose={onClose} ariaLabel={`Mark ${effectiveProduct.name} Finished`}>
         <div className="flex items-start justify-between">
           <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">
+            <span className="text-[11px] font-medium text-neutral-500 block mb-1">
               Mark Essential Finished
             </span>
             <h3 className="text-lg font-bold text-neutral-900 tracking-tight">

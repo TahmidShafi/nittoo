@@ -82,7 +82,7 @@ export const DeleteCompletedCycleModal: React.FC<DeleteCompletedCycleModalProps>
           <div className="w-10 h-10 rounded-xl bg-status-attention-bg text-status-attention-text border border-status-attention-border flex items-center justify-center text-lg font-bold">
             ⚠️
           </div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block pt-1">
+          <span className="text-[11px] font-medium text-neutral-500 block pt-1">
             {cycleNumber ? `Cycle #${cycleNumber}` : 'Historical Cycle'}
           </span>
           <h2 id="delete-cycle-title" className="text-xl font-bold tracking-tight text-neutral-900">

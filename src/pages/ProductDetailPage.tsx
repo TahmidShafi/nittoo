@@ -696,8 +696,8 @@ export const ProductDetailPage: React.FC = () => {
 
             {/* EXPECTED LIFESPAN PREDICTION */}
             <div className="pt-3 border-t border-neutral-100/80">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">
-                EXPECTED LIFESPAN
+              <span className="text-xs font-medium text-neutral-500 block mb-1">
+                Expected lifespan
               </span>
               {activeUsageData.avgDuration !== null ? (
                 <div className="space-y-1">
@@ -745,8 +745,8 @@ export const ProductDetailPage: React.FC = () => {
             {/* RESTOCK PLANNING SECTION (Stage 21) */}
             <div className="pt-3 border-t border-neutral-100/80 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
-                  RESTOCK
+                <span className="text-xs font-medium text-neutral-500">
+                  Restock
                 </span>
                 {effectiveRestockPlan && effectiveRestockPlan.status === 'planned' && (
                   <span
@@ -912,8 +912,8 @@ export const ProductDetailPage: React.FC = () => {
 
           {/* Expected Lifespan Section when no bottle is in use */}
           <div className="pt-3 border-t border-[#2D6A4F]/15">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block mb-1">
-              EXPECTED LIFESPAN
+            <span className="text-xs font-medium text-neutral-500 block mb-1">
+              Expected lifespan
             </span>
             {summaryStats?.averageDuration !== null ? (
               <div className="space-y-1">
@@ -988,8 +988,8 @@ export const ProductDetailPage: React.FC = () => {
         <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 sm:p-7 shadow-xs space-y-4">
           <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
             <div>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block mb-0.5">
-                Unopened Purchases
+              <span className="text-xs font-semibold text-neutral-700 block mb-0.5">
+                Unopened purchases
               </span>
               <p className="text-xs text-neutral-500">
                 {history.unopened_purchases.length} backup bottle{history.unopened_purchases.length === 1 ? '' : 's'} stored and waiting to be opened
@@ -1263,13 +1263,13 @@ export const ProductDetailPage: React.FC = () => {
 
                 <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 sm:gap-6 sm:text-right">
                   <div>
-                    <span className="text-neutral-400 block text-[10px] uppercase font-semibold tracking-wider">Duration</span>
+                    <span className="text-neutral-500 block text-[11px] font-medium">Duration</span>
                     <span className="font-bold text-neutral-900 text-sm">
                       {cycle.duration} days
                     </span>
                   </div>
                   <div>
-                    <span className="text-neutral-400 block text-[10px] uppercase font-semibold tracking-wider">Cycle Cost/Day</span>
+                    <span className="text-neutral-500 block text-[11px] font-medium">Cycle cost/day</span>
                     {cycle.cycleCostPerDay !== null ? (
                       <span className="font-bold text-[#2D6A4F] text-sm">
                         ৳{cycle.cycleCostPerDay}/day

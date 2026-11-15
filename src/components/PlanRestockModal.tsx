@@ -177,7 +177,7 @@ export const PlanRestockModal: React.FC<PlanRestockModalProps> = ({
         {/* Header */}
         <div className="flex items-start justify-between">
           <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">
+            <span className="text-[11px] font-medium text-neutral-500 block mb-1">
               {existingPlan ? 'Edit Restock Plan' : 'Plan Restock'}
             </span>
             <h3 id="plan-restock-title" className="text-lg font-bold text-neutral-900 tracking-tight">

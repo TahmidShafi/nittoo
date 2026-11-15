@@ -115,7 +115,7 @@ export const EditCompletedCycleModal: React.FC<EditCompletedCycleModalProps> = (
         {/* Header */}
         <div className="flex items-start justify-between">
           <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">
+            <span className="text-[11px] font-medium text-neutral-500 block mb-1">
               {cycleNumber ? `Cycle #${cycleNumber}` : 'Historical Cycle'}
             </span>
             <h2 id="edit-cycle-title" className="text-lg font-bold text-neutral-900 tracking-tight">

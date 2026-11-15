@@ -71,7 +71,7 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
           <div className="w-10 h-10 rounded-xl bg-status-critical-bg text-status-critical-text border border-status-critical-border flex items-center justify-center text-lg font-bold">
             ⚠️
           </div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-status-critical-text block pt-1">
+          <span className="text-[11px] font-semibold text-status-critical-text block pt-1">
             PERMANENT ACTION
           </span>
           <h2 id="delete-account-title" className="text-xl font-bold tracking-tight text-neutral-900">

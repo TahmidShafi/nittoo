@@ -179,7 +179,7 @@ export const RestoreDataModal: React.FC<RestoreDataModalProps> = ({
         {/* Modal Header */}
         <div className="p-5 sm:p-6 border-b border-neutral-100 flex items-start justify-between gap-4">
           <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#2D6A4F] block">
+            <span className="text-[11px] font-medium text-[#2D6A4F] block">
               RESTORE NITTOO DATA
             </span>
             <h2 id="restore-dialog-title" className="text-lg font-bold text-neutral-900 mt-0.5">
@@ -317,7 +317,7 @@ export const RestoreDataModal: React.FC<RestoreDataModalProps> = ({
 
               {/* Ready to restore summary cards */}
               <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-500 block mb-2">
+                <span className="text-[11px] font-medium text-neutral-500 block mb-2">
                   DATA TO RESTORE
                 </span>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -508,7 +508,7 @@ export const RestoreDataModal: React.FC<RestoreDataModalProps> = ({
               </div>
 
               <div className="p-3.5 bg-neutral-50 border border-neutral-200/80 rounded-xl space-y-2 text-xs">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block">
+                <span className="text-[11px] font-medium text-neutral-500 block">
                   SUCCESSFULLY RESTORED
                 </span>
                 <div className="grid grid-cols-2 gap-2 text-neutral-700">

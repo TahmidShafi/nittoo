@@ -159,8 +159,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         {/* Prominent Daily Cost & Unit Rate */}
         <div className="mt-4 pt-3 border-t border-neutral-100/80 flex items-baseline justify-between">
           <div>
-            <span className="text-[10px] uppercase font-semibold tracking-wider text-neutral-500 block mb-0.5">
-              Cost Per Day
+            <span className="text-[11px] font-medium text-neutral-500 block mb-0.5">
+              Cost per day
             </span>
             {costPerDay !== null ? (
               <div className="flex items-baseline gap-1">
@@ -176,8 +176,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
           {pricePerUnit !== null && (
             <div className="text-right">
-              <span className="text-[10px] uppercase font-semibold tracking-wider text-neutral-500 block mb-0.5">
-                Unit Rate
+              <span className="text-[11px] font-medium text-neutral-500 block mb-0.5">
+                Unit rate
               </span>
               <span className="text-xs font-medium text-neutral-600">
                 ৳{pricePerUnit} / {getEffectiveSize(product.active_purchase ?? product.latest_purchase, product).size_unit}

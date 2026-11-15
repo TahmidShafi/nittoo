@@ -66,7 +66,7 @@ export const SignOutAllSessionsModal: React.FC<SignOutAllSessionsModalProps> = (
       backdropClassName="bg-black/40 backdrop-blur-xs"
     >
         <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">
+          <span className="text-[11px] font-medium text-neutral-500 block mb-1">
             SESSION SECURITY
           </span>
           <h2 id="sign-out-all-title" className="text-xl font-bold tracking-tight text-neutral-900">

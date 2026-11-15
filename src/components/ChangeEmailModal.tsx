@@ -93,7 +93,7 @@ export const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({
       backdropClassName="bg-black/40 backdrop-blur-xs"
     >
         <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">
+          <span className="text-[11px] font-medium text-neutral-500 block mb-1">
             ACCOUNT SECURITY
           </span>
           <h2 id="change-email-title" className="text-xl font-bold tracking-tight text-neutral-900">
