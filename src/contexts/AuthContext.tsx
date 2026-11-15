@@ -559,11 +559,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // 2. Delete auth.users record via Supabase Edge Function & sign out
       if (isSupabaseConfigured && supabase) {
-        const { error: fnError } = await supabase.functions.invoke('delete-account', {
-          method: 'POST',
-        });
-        if (fnError) {
-          throw new Error(fnError.message || 'Failed to delete authentication account.');
+        const { data, error: fnError } = await supabase.functions.invoke<{ success?: boolean; error?: string }>(
+          'delete-account',
+          { method: 'POST' }
+        );
+        if (fnError || !data?.success) {
+          throw new Error(fnError?.message || data?.error || 'Failed to delete authentication account.');
         }
         await supabase.auth.signOut({ scope: 'global' });
       } else {

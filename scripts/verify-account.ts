@@ -268,6 +268,47 @@ async function runAccountVerification() {
     'DeleteAccountModal has permanent consequence warning'
   );
 
+  // ----------------------------------------------------------------------------
+  // Test 12: delete-account Edge Function CORS, Status Codes, and Client Ordering
+  // ----------------------------------------------------------------------------
+  console.log('\n--- 12. delete-account Edge Function & client error/signOut safety ---');
+  const edgeFnContent = fs.readFileSync(
+    path.resolve(process.cwd(), 'supabase/functions/delete-account/index.ts'),
+    'utf-8'
+  );
+  assert(
+    edgeFnContent.includes("req.method === 'OPTIONS'") && edgeFnContent.includes('corsHeaders'),
+    'delete-account handles OPTIONS preflight with corsHeaders'
+  );
+  const responseCount = (edgeFnContent.match(/new Response\(/g) || []).length;
+  const corsUsageCount = (edgeFnContent.match(/corsHeaders/g) || []).length;
+  // corsHeaders appears once in declaration + at least once per Response(...)
+  assert(
+    corsUsageCount >= responseCount + 1,
+    `Every Response in delete-account includes corsHeaders (${responseCount} responses)`
+  );
+  assert(
+    edgeFnContent.includes('status: 401') &&
+      edgeFnContent.includes('status: 200') &&
+      edgeFnContent.includes('status: 500'),
+    'delete-account returns explicit 401, 200, and 500 status codes'
+  );
+
+  const authCtxContent = fs.readFileSync(
+    path.resolve(process.cwd(), 'src/contexts/AuthContext.tsx'),
+    'utf-8'
+  );
+  const invokeIdx = authCtxContent.indexOf("functions.invoke");
+  const signOutAfterInvokeIdx = authCtxContent.indexOf('signOut', invokeIdx);
+  const deletedFlagIdx = authCtxContent.indexOf('deletedSuccessfully = true', invokeIdx);
+  assert(
+    invokeIdx > -1 &&
+      signOutAfterInvokeIdx > invokeIdx &&
+      deletedFlagIdx > signOutAfterInvokeIdx &&
+      authCtxContent.includes('if (fnError || !data?.success)'),
+    'AuthContext only signs out and clears user AFTER 200 { success: true } from delete-account'
+  );
+
   console.log('\n=================================================================');
   console.log('✅ ALL 11 NITTOO STAGE 13 ACCOUNT SETTINGS VERIFICATIONS PASSED 100%!');
   console.log('=================================================================\n');
