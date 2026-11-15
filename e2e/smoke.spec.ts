@@ -83,4 +83,38 @@ test.describe('Nittoo E2E (demo/mock mode)', () => {
     );
     expect(becameInteractable).toBe(false);
   });
+
+  test('d. Analytics, Inventory, and non-active product details render without crashing in demo mode', async ({
+    page,
+  }) => {
+    await page.goto('/login');
+    await page.getByRole('button', { name: /Try the demo/i }).click();
+    await expect(page).toHaveURL(/\/dashboard/);
+
+    // 1. Analytics renders KPI + charts without hitting ErrorBoundary
+    await page.goto('/analytics');
+    await expect(page).toHaveURL(/\/analytics/);
+    await expect(page.getByText(/Something went wrong on this page/i)).not.toBeVisible();
+    await expect(page.getByText(/Estimated Monthly Consumption/i)).toBeVisible();
+    await expect(page.locator('.recharts-wrapper').first()).toBeVisible();
+
+    // 2. Inventory renders cleanly with unopened-only and active products
+    await page.goto('/inventory');
+    await expect(page).toHaveURL(/\/inventory/);
+    await expect(page.getByText(/Something went wrong on this page/i)).not.toBeVisible();
+    await expect(page.getByText(/Original Liquid Handwash Refill/i).first()).toBeVisible();
+
+    // 3. Open detail page of both new non-active products (all-finished + unopened-only)
+    await page.goto('/product/demo-prod-vaseline-lotion');
+    await expect(page.getByText(/Something went wrong on this page/i)).not.toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: /Intensive Care Cocoa Glow Lotion/i })
+    ).toBeVisible();
+
+    await page.goto('/product/demo-prod-dettol-handwash');
+    await expect(page.getByText(/Something went wrong on this page/i)).not.toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: /Original Liquid Handwash Refill/i })
+    ).toBeVisible();
+  });
 });

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  getCurrentPurchase,
   getLatestPurchasePrice,
   getActiveOrLatestPurchasePrice,
   calculateEstimatedNextPrice,
@@ -403,5 +404,75 @@ describe('analytics', () => {
 
     expect(analyticsTotal).toBe(400); // 400 / 30 * 30 = 400 (uses active purchase, not 900 backup)
     expect(dashboardTotal).toBe(analyticsTotal);
+  });
+
+  it('handles products with all-finished cycles, unopened-only stock, or no purchases without crashing and reconciles category spending', () => {
+    const activeProduct = makeProductHistory(); // Skincare, active, 500/mo
+
+    const allFinished = makeProductHistory({
+      product: {
+        ...makeProductHistory().product,
+        id: 'p-finished-only',
+        name: 'Body Lotion',
+        category: 'Body Care',
+      },
+      active_usage: null,
+      usage_periods: makeProductHistory().finished_periods,
+    });
+
+    const unopenedOnly = makeProductHistory({
+      product: {
+        ...makeProductHistory().product,
+        id: 'p-unopened-only',
+        name: 'Handwash Refill',
+        category: 'Household Cleaning',
+      },
+      active_usage: null,
+      finished_periods: [],
+      usage_periods: [],
+      unopened_purchases: makeProductHistory().purchases,
+    });
+
+    const noPurchases = makeProductHistory({
+      product: {
+        ...makeProductHistory().product,
+        id: 'p-no-purchases',
+        name: 'Empty Item',
+        category: 'Other',
+      },
+      purchases: [],
+      active_usage: null,
+      finished_periods: [],
+      usage_periods: [],
+    });
+
+    const all = [activeProduct, allFinished, unopenedOnly, noPurchases];
+
+    expect(getCurrentPurchase(allFinished)?.id).toBe('pu-backup');
+    expect(getCurrentPurchase(unopenedOnly)?.id).toBe('pu-backup');
+    expect(getCurrentPurchase(noPurchases)).toBeNull();
+
+    expect(getActiveOrLatestPurchasePrice(allFinished)).toBe(650);
+    expect(getActiveOrLatestPurchasePrice(unopenedOnly)).toBe(650);
+    expect(getActiveOrLatestPurchasePrice(noPurchases)).toBeNull();
+
+    expect(calculateEstimatedNextPrice(noPurchases.purchases)).toBe(0);
+    expect(getUpcomingPurchases(all, '2026-08-25').length).toBeGreaterThanOrEqual(0);
+
+    // Rankings include finished-only via latest purchase, exclude unopened-only & no-purchases
+    const rankings = getCostEfficiencyRankings(all);
+    expect(rankings.mostEfficient.map((r) => r.product.id)).toEqual(
+      expect.arrayContaining(['p1', 'p-finished-only'])
+    );
+    expect(rankings.mostEfficient).toHaveLength(2);
+    expect(getCostComparisonChartData(all)).toHaveLength(2);
+
+    // Category spending includes only active products and reconciles with monthly total
+    const monthlyTotal = calculateEstimatedMonthlyConsumption(all);
+    const categories = getCategorySpending(all);
+    const categorySum = categories.reduce((sum, c) => sum + c.monthlyCost, 0);
+    expect(monthlyTotal).toBeCloseTo(500, 5);
+    expect(categorySum).toBeCloseTo(monthlyTotal ?? 0, 5);
+    expect(categories.map((c) => c.category)).toEqual(['Skincare']);
   });
 });
