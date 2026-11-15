@@ -49,3 +49,48 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 14
+
+  supabase-rls:
+    name: Local Supabase Migrations & RLS Isolation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Initialize local Supabase config if absent
+        run: |
+          if [ ! -f supabase/config.toml ]; then
+            supabase init --with-vscode-settings=false --with-intellij-settings=false
+          fi
+
+      - name: Start local Supabase & reset database with migrations
+        run: |
+          supabase start
+          supabase db reset
+
+      - name: Run RLS isolation verification against local Supabase
+        run: |
+          supabase status -o env > /tmp/supabase.env
+          API_URL=$(grep '^API_URL=' /tmp/supabase.env | cut -d= -f2- | tr -d '"')
+          ANON_KEY=$(grep '^ANON_KEY=' /tmp/supabase.env | cut -d= -f2- | tr -d '"')
+          printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_ANON_KEY=%s\n' "$API_URL" "$ANON_KEY" > .env
+          npx tsx scripts/integration/verify-supabase-rls.ts
+
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop || true
