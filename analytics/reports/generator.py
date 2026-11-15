@@ -21,6 +21,7 @@ class ReportResult:
     rejects_by_reason: dict[str, int]
     dbt_tests_total: int
     dbt_tests_passed: int
+    dbt_tests_warned: int
     dbt_tests_failed: int
     elapsed_seconds: float
 
@@ -103,7 +104,8 @@ def generate_data_quality_report(
     dbt_tests = _collect_dbt_tests(run_results_path)
     tests_total = len(dbt_tests)
     tests_passed = sum(1 for t in dbt_tests if t["status"] in ("pass", "success"))
-    tests_failed = tests_total - tests_passed
+    tests_warned = sum(1 for t in dbt_tests if t["status"] == "warn")
+    tests_failed = tests_total - tests_passed - tests_warned
 
     lines: list[str] = [
         "# Nittoo Forecast Lab — Data Quality Report",
@@ -144,6 +146,7 @@ def generate_data_quality_report(
             "",
             f"- **Total tests:** {tests_total}",
             f"- **Passed:** {tests_passed}",
+            f"- **Warned:** {tests_warned}",
             f"- **Failed:** {tests_failed}",
             "",
         ]
@@ -170,6 +173,7 @@ def generate_data_quality_report(
         rejects_by_reason=rejects_by_reason,
         dbt_tests_total=tests_total,
         dbt_tests_passed=tests_passed,
+        dbt_tests_warned=tests_warned,
         dbt_tests_failed=tests_failed,
         elapsed_seconds=elapsed,
     )

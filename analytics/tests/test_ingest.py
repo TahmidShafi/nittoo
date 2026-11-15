@@ -26,6 +26,8 @@ def test_ingest_loads_valid_rows_quarantines_faults_and_is_idempotent(tmp_path: 
     assert s1.files_failed_schema == 1
     assert s1.products_loaded == sim_stats.products
     assert s1.rejects_by_reason.get("INVALID_EXPORT_SCHEMA") == 1
+    for dbt_handled in ("ZERO_DAY_CYCLE", "OUTLIER_1000_DAY", "DUPLICATE_PURCHASE"):
+        assert dbt_handled not in s1.rejects_by_reason
 
     # Idempotent re-run: counts in DuckDB must not increase
     s2 = ingest_exports(exports_dir=exports_dir, db_path=db_path)

@@ -11,5 +11,9 @@ select
     size_unit,
     consumption_rate_per_day,
     purchase_price,
-    cost_per_day
-from {{ ref('int_usage_enriched') }}
+    cost_per_day,
+    is_zero_day,
+    is_duration_outlier,
+    mad_z_score,
+    is_valid_for_forecasting
+from {{ ref('int_cycle_quality') }}
