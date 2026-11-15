@@ -189,12 +189,40 @@ const DEMO_TEMPLATES: ProductTemplate[] = [
     cycleDays: [55, 58, 54],
     activeDaysAgo: 12,
   },
+  {
+    // All-finished product (no active bottle) for analytics & detail-page regression coverage
+    slug: 'vaseline-lotion',
+    name: 'Intensive Care Cocoa Glow Lotion',
+    brand: 'Vaseline',
+    category: 'Body Care',
+    size_value: 400,
+    size_unit: 'ml',
+    basePrice: 680,
+    vendor: 'Shwapno',
+    cycleDays: [82, 85, 80],
+  },
+  {
+    // Unopened-only stock (no usage periods) for analytics & inventory regression coverage
+    slug: 'dettol-handwash',
+    name: 'Original Liquid Handwash Refill',
+    brand: 'Dettol',
+    category: 'Household Cleaning',
+    size_value: 500,
+    size_unit: 'ml',
+    basePrice: 260,
+    vendor: 'Agora',
+    cycleDays: [],
+    hasUnopenedBackup: true,
+  },
 ];
+
+export const DEMO_PRODUCT_COUNT = DEMO_TEMPLATES.length;
 
 /**
  * Pure deterministic demo dataset generator.
- * Produces 12 products across 10 categories with 12-18 months of historical
- * purchases & finished cycles, 1 unopened backup, and 1 active restock plan.
+ * Produces 14 products across categories with 12-18 months of historical
+ * purchases & finished cycles, unopened backups, an all-finished item, an unopened-only item,
+ * and an active restock plan.
  */
 export function buildDemoSeedData(
   userId: string,

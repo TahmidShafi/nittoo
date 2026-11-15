@@ -8,6 +8,7 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { NittooLogo } from './NittooLogo';
+import { ErrorBoundary } from './ErrorBoundary';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -189,7 +190,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Main Content Viewport */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 mb-20 md:mb-8">
         <div key={location.pathname} className="animate-page-in">
-          {children}
+          <ErrorBoundary resetKey={location.pathname}>
+            {children}
+          </ErrorBoundary>
         </div>
       </main>
 

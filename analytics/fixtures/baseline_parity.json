@@ -512,6 +512,36 @@
       ],
       "average_lifespan": 55.7,
       "predicted_duration": 56
+    },
+    {
+      "product_id": "demo-prod-vaseline-lotion",
+      "k": 1,
+      "history_durations": [
+        82
+      ],
+      "average_lifespan": 82,
+      "predicted_duration": 82
+    },
+    {
+      "product_id": "demo-prod-vaseline-lotion",
+      "k": 2,
+      "history_durations": [
+        82,
+        85
+      ],
+      "average_lifespan": 83.5,
+      "predicted_duration": 84
+    },
+    {
+      "product_id": "demo-prod-vaseline-lotion",
+      "k": 3,
+      "history_durations": [
+        82,
+        85,
+        80
+      ],
+      "average_lifespan": 82.3,
+      "predicted_duration": 82
     }
   ]
 }

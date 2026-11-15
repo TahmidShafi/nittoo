@@ -53,14 +53,15 @@ export const AddInventoryPage: React.FC = () => {
   // Load user essentials and inventory
   useEffect(() => {
     if (!user) return;
+    const userId = user.id;
     let mounted = true;
 
     async function loadInitialData() {
       try {
         setLoading(true);
         const [products, inv] = await Promise.all([
-          db.getAllUserProducts(user!.id),
-          db.getUserInventory(user!.id),
+          db.getAllUserProducts(userId),
+          db.getUserInventory(userId),
         ]);
 
         if (!mounted) return;

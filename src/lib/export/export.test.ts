@@ -3,6 +3,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
 import { MockDatabase, InMemoryStorageAdapter, DEFAULT_MOCK_USER_ID } from '../mock-db';
+import { buildDemoSeedData } from '../demo/seed';
 import { buildExportData } from './normalizer';
 import { generateJsonBackup } from './json';
 import { generateCsvZip } from './csv';
@@ -140,5 +141,41 @@ describe('export', () => {
     const purchaseRows = XLSX.utils.sheet_to_json(wb.Sheets['Purchases'], { header: 1 }) as unknown[][];
     expect(purchaseRows[0]).toEqual(expect.arrayContaining(['Pack Size', 'Unit', 'Size Override']));
     expect(purchaseRows.some((r) => r.includes(473) && r.includes('ml') && r.includes('Yes'))).toBe(true);
+  });
+
+  it('produces byte-identical demo export JSON with explicit asOfDate across midnight and timezones', async () => {
+    const fixedDate = '2026-11-15';
+    const userId = 'demo-fixture-user';
+
+    const generateWithClock = async (isoNow: string, tz: string): Promise<string> => {
+      const prevTz = process.env.TZ;
+      process.env.TZ = tz;
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(isoNow));
+      try {
+        const db = new MockDatabase(new InMemoryStorageAdapter());
+        await db.resetUserData(userId);
+        const bundle = buildDemoSeedData(userId, fixedDate);
+        await db.importUserData(userId, {
+          products: bundle.products,
+          purchases: bundle.purchases,
+          usage_periods: bundle.usage_periods,
+          restock_plans: bundle.restock_plans,
+        });
+        const exportData = await buildExportData(userId, 'demo@nittoo.local', db, fixedDate);
+        return generateJsonBackup(exportData);
+      } finally {
+        vi.useRealTimers();
+        if (prevTz === undefined) delete process.env.TZ;
+        else process.env.TZ = prevTz;
+      }
+    };
+
+    const utcBeforeMidnight = await generateWithClock('2026-11-15T18:30:00.000Z', 'UTC');
+    const dhakaAfterMidnight = await generateWithClock('2026-11-15T18:30:00.000Z', 'Asia/Dhaka');
+    const nextDayUtc = await generateWithClock('2026-11-16T00:05:00.000Z', 'UTC');
+
+    expect(dhakaAfterMidnight).toBe(utcBeforeMidnight);
+    expect(nextDayUtc).toBe(utcBeforeMidnight);
   });
 });

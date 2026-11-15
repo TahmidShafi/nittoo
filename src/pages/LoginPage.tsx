@@ -9,6 +9,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { isMockMode } from '../lib/dataSource';
+import { DEMO_PRODUCT_COUNT } from '../lib/demo/seed';
 import { NittooLogo } from '../components/NittooLogo';
 
 const DemoProductPreview = lazy(() => import('../components/DemoProductPreview'));
@@ -121,7 +122,7 @@ export const LoginPage: React.FC = () => {
                 <span aria-hidden="true">→</span>
               </button>
               <span className="text-xs font-medium text-neutral-600">
-                No sign-up needed · 12 sample products
+                No sign-up needed · {DEMO_PRODUCT_COUNT} sample products
               </span>
             </div>
             <button

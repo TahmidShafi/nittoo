@@ -187,8 +187,9 @@ export const ProductDetailPage: React.FC = () => {
     const { product, purchases, finished_periods } = history;
 
     // 1. Predicted Lifespan (valid finished periods, rate-normalized when sized)
-    const activePurchase = history.active_usage
-      ? purchases.find((p) => p.id === history.active_usage!.purchase_id) || null
+    const activeUsage = history.active_usage;
+    const activePurchase = activeUsage
+      ? purchases.find((p) => p.id === activeUsage.purchase_id) || null
       : null;
     const latestPurchase = purchases[0] || null;
     const currentPurchase = activePurchase || latestPurchase;

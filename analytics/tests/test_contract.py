@@ -18,9 +18,9 @@ def test_demo_export_fixture_matches_pydantic_contract() -> None:
     parsed = NittooExportBackup.model_validate(raw)
 
     assert parsed.version == "1.1.0"
-    assert len(parsed.products) == 12
-    assert len(parsed.purchases) == 61
-    assert len(parsed.usage_periods) == 60
+    assert len(parsed.products) == 14
+    assert len(parsed.purchases) == 65
+    assert len(parsed.usage_periods) == 63
     assert len(parsed.restock_plans) == 1
 
 

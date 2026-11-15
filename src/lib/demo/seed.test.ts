@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildDemoSeedData } from './seed';
+import { buildDemoSeedData, DEMO_PRODUCT_COUNT } from './seed';
 import { calculatePredictedLifespan, calculateRunOutRange } from '../prediction';
 import { MockDatabase, InMemoryStorageAdapter, mockDb } from '../mock-db';
 import {
@@ -48,11 +48,25 @@ function classifySeed(todayStr: string) {
 describe('demo/seed', () => {
   it('generates 12 products, 12-18 months of cycles, BDT prices, backup, and restock plan', () => {
     const bundle = buildDemoSeedData(DEMO_USER_ID, '2026-11-15');
-    expect(bundle.products).toHaveLength(12);
-    expect(bundle.purchases.length).toBeGreaterThan(12);
+    expect(bundle.products).toHaveLength(DEMO_PRODUCT_COUNT);
+    expect(DEMO_PRODUCT_COUNT).toBe(14);
+    expect(bundle.purchases.length).toBeGreaterThan(DEMO_PRODUCT_COUNT);
     expect(bundle.usage_periods.some((u) => u.status === 'finished')).toBe(true);
     expect(bundle.restock_plans.length).toBeGreaterThanOrEqual(1);
     expect(bundle.purchases.every((p) => p.currency === 'BDT')).toBe(true);
+
+    // Includes an all-finished product (no active usage) and an unopened-only product
+    const hasFinishedOnly = bundle.products.some((p) => {
+      const periods = bundle.usage_periods.filter((u) => u.product_id === p.id);
+      return periods.length > 0 && periods.every((u) => u.status === 'finished');
+    });
+    const hasUnopenedOnly = bundle.products.some((p) => {
+      const periods = bundle.usage_periods.filter((u) => u.product_id === p.id);
+      const pus = bundle.purchases.filter((pu) => pu.product_id === p.id);
+      return periods.length === 0 && pus.length > 0;
+    });
+    expect(hasFinishedOnly).toBe(true);
+    expect(hasUnopenedOnly).toBe(true);
   });
 
   it('produces identical state mix across two distant today dates without unintended overdue', () => {
@@ -70,7 +84,7 @@ describe('demo/seed', () => {
     const db = new MockDatabase(new InMemoryStorageAdapter());
     db.seedDemoUser(DEMO_USER_ID, buildDemoSeedData(DEMO_USER_ID, '2026-11-15'));
 
-    expect(await db.getAllUserProducts(DEMO_USER_ID)).toHaveLength(12);
+    expect(await db.getAllUserProducts(DEMO_USER_ID)).toHaveLength(DEMO_PRODUCT_COUNT);
     const inv = await db.getUserInventory(DEMO_USER_ID);
     expect(inv.unopened.length).toBeGreaterThanOrEqual(1);
 

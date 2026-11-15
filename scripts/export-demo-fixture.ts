@@ -24,9 +24,12 @@ async function main() {
     restock_plans: bundle.restock_plans,
   });
 
-  const exportData = await buildExportData(FIXED_USER_ID, FIXED_USER_EMAIL, db);
-  // Pin exported_at so fixture regeneration is deterministic across runs
-  exportData.exported_at = `${FIXED_REFERENCE_DATE}T10:00:00.000Z`;
+  const exportData = await buildExportData(
+    FIXED_USER_ID,
+    FIXED_USER_EMAIL,
+    db,
+    FIXED_REFERENCE_DATE
+  );
 
   const jsonString = generateJsonBackup(exportData);
   mkdirSync(dirname(OUTPUT_PATH), { recursive: true });

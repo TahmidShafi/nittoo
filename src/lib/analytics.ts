@@ -14,7 +14,7 @@
 //   calculateEstimatedNextPrice (historical average purchase price).
 // ==============================================================================
 
-import type { Product, UsagePeriod, ProductWithDetails, ProductWithHistory } from '../types';
+import type { Product, Purchase, UsagePeriod, ProductWithDetails, ProductWithHistory } from '../types';
 import {
   calculateCostPerDay,
   calculateCurrentDaysUsed,
@@ -61,23 +61,39 @@ export function getLatestPurchasePrice(purchases: ProductWithHistory['purchases'
 }
 
 /**
+ * Resolves the current purchase for a product:
+ * 1) the active usage period's linked purchase when an active usage exists,
+ * 2) otherwise the latest purchase by purchase_date DESC,
+ * 3) or null if the product has no purchases.
+ */
+export function getCurrentPurchase(item: ProductWithHistory): Purchase | null {
+  if (item.active_usage) {
+    const activePurchase = item.purchases.find(
+      (p) => p.id === item.active_usage?.purchase_id
+    );
+    if (activePurchase) return activePurchase;
+  }
+  if (!item.purchases || item.purchases.length === 0) return null;
+  const sorted = [...item.purchases].sort((a, b) =>
+    b.purchase_date.localeCompare(a.purchase_date)
+  );
+  return sorted[0] ?? null;
+}
+
+/**
  * Current-Cost Price Basis Helper (matches usePrediction):
  * Uses the active usage period's linked purchase price when an active usage exists,
  * falling back to getLatestPurchasePrice when no active usage is present.
  */
 export function getActiveOrLatestPurchasePrice(item: ProductWithHistory): number | null {
-  if (item.active_usage) {
-    const activePurchase = item.purchases.find(
-      (p) => p.id === item.active_usage!.purchase_id
-    );
-    if (
-      activePurchase &&
-      typeof activePurchase.price === 'number' &&
-      !isNaN(activePurchase.price) &&
-      activePurchase.price >= 0
-    ) {
-      return activePurchase.price;
-    }
+  const currentPurchase = getCurrentPurchase(item);
+  if (
+    currentPurchase &&
+    typeof currentPurchase.price === 'number' &&
+    !isNaN(currentPurchase.price) &&
+    currentPurchase.price >= 0
+  ) {
+    return currentPurchase.price;
   }
   return getLatestPurchasePrice(item.purchases);
 }
@@ -174,10 +190,7 @@ export function calculateEstimatedMonthlyConsumption(
   for (const item of productsWithHistory) {
     if (!item.active_usage) continue;
 
-    const activePurchase =
-      item.purchases.find((p) => p.id === item.active_usage!.purchase_id) ??
-      item.purchases[0] ??
-      null;
+    const activePurchase = getCurrentPurchase(item);
     const averageLifespan = calculatePredictedLifespan({
       usagePeriods: item.finished_periods,
       product: item.product,
@@ -245,10 +258,10 @@ export function getCostEfficiencyRankings(
   const eligible: ProductCostEfficiency[] = [];
 
   for (const item of productsWithHistory) {
-    const activePurchase =
-      item.purchases.find((p) => p.id === item.active_usage!.purchase_id) ??
-      item.purchases[0] ??
-      null;
+    // Products without an active bottle remain eligible in cost-efficiency rankings
+    // using their latest purchase (via getCurrentPurchase), so historical cost/day
+    // stays available even when a user is temporarily between bottles.
+    const activePurchase = getCurrentPurchase(item);
     const averageLifespan = calculatePredictedLifespan({
       usagePeriods: item.finished_periods,
       product: item.product,
@@ -337,10 +350,11 @@ export function getCategorySpending(
   let totalEligibleMonthly = 0;
 
   for (const item of productsWithHistory) {
-    const activePurchase =
-      item.purchases.find((p) => p.id === item.active_usage!.purchase_id) ??
-      item.purchases[0] ??
-      null;
+    // Include only products with an active usage period so category totals
+    // reconcile 1:1 with calculateEstimatedMonthlyConsumption.
+    if (!item.active_usage) continue;
+
+    const activePurchase = getCurrentPurchase(item);
     const averageLifespan = calculatePredictedLifespan({
       usagePeriods: item.finished_periods,
       product: item.product,

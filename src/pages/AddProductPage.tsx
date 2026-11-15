@@ -84,11 +84,12 @@ export const AddProductPage: React.FC = () => {
   // Load current user's existing products for client-side search & auto-select preselected product
   useEffect(() => {
     if (!user) return;
+    const userId = user.id;
     let mounted = true;
 
     async function loadProducts() {
       try {
-        const products = await db.getAllUserProducts(user!.id);
+        const products = await db.getAllUserProducts(userId);
         if (mounted) {
           setExistingProducts(products);
           if (preselectedId) {

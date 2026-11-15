@@ -32,8 +32,10 @@ export default tseslint.config(
   },
   {
     files: ['src/lib/**/*.{ts,tsx}'],
+    ignores: ['src/lib/**/*.test.{ts,tsx}'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-non-null-assertion': 'error',
     },
   }
 );
