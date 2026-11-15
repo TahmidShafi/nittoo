@@ -43,6 +43,7 @@ export const AddInventoryPage: React.FC = () => {
   const [price, setPrice] = useState('');
   const [currency, setCurrency] = useState('BDT');
   const [storeVendor, setStoreVendor] = useState('');
+  const [purchaseSizeValue, setPurchaseSizeValue] = useState('');
   const [usageOption, setUsageOption] = useState<'keep_unopened' | 'start_today'>('keep_unopened');
 
   // Status & Error
@@ -86,6 +87,14 @@ export const AddInventoryPage: React.FC = () => {
       mounted = false;
     };
   }, [user, preselectedId]);
+
+  useEffect(() => {
+    setPurchaseSizeValue(
+      selectedProduct?.size_value !== null && selectedProduct?.size_value !== undefined
+        ? String(selectedProduct.size_value)
+        : ''
+    );
+  }, [selectedProduct]);
 
   // Active status and unopened counts map
   const activeProductMap = useMemo(() => {
@@ -153,6 +162,15 @@ export const AddInventoryPage: React.FC = () => {
       setSubmitting(true);
       setError(null);
 
+      const parsedPurchaseSize =
+        purchaseSizeValue.trim() !== '' ? Number(purchaseSizeValue) : null;
+      if (parsedPurchaseSize !== null && (isNaN(parsedPurchaseSize) || parsedPurchaseSize <= 0)) {
+        setError('Pack size must be a valid number greater than 0.');
+        return;
+      }
+      const isDifferentSize =
+        parsedPurchaseSize !== null && parsedPurchaseSize !== (selectedProduct.size_value ?? null);
+
       // 1. Create Purchase
       const purchase = await db.createPurchase(user.id, {
         product_id: selectedProduct.id,
@@ -160,6 +178,8 @@ export const AddInventoryPage: React.FC = () => {
         price: numPrice,
         currency: currency.trim() || 'BDT',
         store_vendor: storeVendor.trim() ? storeVendor.trim() : null,
+        size_value: isDifferentSize ? parsedPurchaseSize : null,
+        size_unit: isDifferentSize ? (selectedProduct.size_unit ?? null) : null,
       });
 
       // 2. Start usage if requested and permitted
@@ -444,6 +464,33 @@ export const AddInventoryPage: React.FC = () => {
                 />
                 <p className="text-[11px] text-neutral-400 mt-1">
                   Optional — where you bought this purchase.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-neutral-700 mb-1.5" htmlFor="purchase-size-value">
+                  Pack size (if different)
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    id="purchase-size-value"
+                    type="number"
+                    step="any"
+                    min="0.01"
+                    value={purchaseSizeValue}
+                    onChange={(e) => setPurchaseSizeValue(e.target.value)}
+                    placeholder={selectedProduct.size_value ? String(selectedProduct.size_value) : 'Optional'}
+                    disabled={submitting}
+                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#2D6A4F]/10 transition-all bg-neutral-50/40 placeholder:text-neutral-400"
+                  />
+                  {selectedProduct.size_unit && (
+                    <span className="px-3 py-2.5 rounded-xl border border-neutral-200 bg-neutral-100 text-xs font-semibold text-neutral-600">
+                      {selectedProduct.size_unit}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-neutral-400 mt-1">
+                  Prefilled with the product default. Only saved on this purchase if changed.
                 </p>
               </div>
             </div>

@@ -317,6 +317,10 @@ export const ProductDetailPage: React.FC = () => {
           purchaseDate: linkedPurchase ? formatDisplayDate(linkedPurchase.purchase_date) : '—',
           price: linkedPurchase ? linkedPurchase.price : null,
           storeVendor: linkedPurchase?.store_vendor || null,
+          effectiveSize: linkedPurchase ? getEffectiveSize(linkedPurchase, history.product) : null,
+          hasSizeOverride:
+            Boolean(linkedPurchase?.size_value != null) &&
+            linkedPurchase?.size_value !== history.product.size_value,
           cycleCostPerDay,
         };
       });
@@ -581,6 +585,17 @@ export const ProductDetailPage: React.FC = () => {
                     <span>
                       ৳{activePurchase.price.toLocaleString()} {activePurchase.currency || 'BDT'}
                     </span>
+                    {(() => {
+                      const eff = getEffectiveSize(activePurchase, product);
+                      return eff.size_value ? (
+                        <>
+                          <span className="text-neutral-300 mx-1.5">•</span>
+                          <span>
+                            {eff.size_value} {eff.size_unit}
+                          </span>
+                        </>
+                      ) : null;
+                    })()}
                     {activePurchase.store_vendor && (
                       <>
                         <span className="text-neutral-300 mx-1.5">•</span>
@@ -967,6 +982,22 @@ export const ProductDetailPage: React.FC = () => {
                     <span className="font-bold text-neutral-900">
                       ৳{purchase.price.toLocaleString()} {purchase.currency || 'BDT'}
                     </span>
+                    {(() => {
+                      const eff = getEffectiveSize(purchase, product);
+                      const isOverride =
+                        purchase.size_value !== undefined &&
+                        purchase.size_value !== null &&
+                        purchase.size_value !== product.size_value;
+                      return eff.size_value ? (
+                        <>
+                          <span className="text-neutral-300">•</span>
+                          <span className="font-medium text-neutral-700">
+                            {eff.size_value} {eff.size_unit}
+                            {isOverride ? ' (pack override)' : ''}
+                          </span>
+                        </>
+                      ) : null;
+                    })()}
                     <span className="text-neutral-300">•</span>
                     <span className="text-[10px] font-semibold text-neutral-600 bg-neutral-100 px-2.5 py-0.5 rounded-full border border-neutral-200/60">
                       Unopened
@@ -1185,6 +1216,9 @@ export const ProductDetailPage: React.FC = () => {
                   <p className="text-neutral-400 text-[11px]">
                     Purchased on {cycle.purchaseDate}
                     {cycle.price !== null ? ` for ৳${cycle.price}` : ''}
+                    {cycle.effectiveSize?.size_value
+                      ? ` • ${cycle.effectiveSize.size_value} ${cycle.effectiveSize.size_unit}${cycle.hasSizeOverride ? ' (pack override)' : ''}`
+                      : ''}
                     {cycle.storeVendor ? ` • Store / Vendor: ${cycle.storeVendor}` : ''}
                   </p>
                 </div>
