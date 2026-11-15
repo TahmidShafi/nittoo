@@ -30,7 +30,7 @@ group_mads as (
         m.median_rate,
         greatest(
             median(abs(b.consumption_rate_per_day - m.median_rate)),
-            0.05 * m.median_rate
+            {{ var('mad_floor_frac', 0.10) }} * m.median_rate
         ) as mad_rate
     from base as b
     inner join group_medians as m
@@ -77,7 +77,7 @@ scored as (
              and gm.cycle_count >= {{ var('min_cycles_for_mad', 4) }}
              and gm.mad_rate is not null
              and gm.mad_rate > 0
-                then (0.6745 * abs(b.consumption_rate_per_day - gm.median_rate) / gm.mad_rate) > {{ var('mad_z_threshold', 3.5) }}
+                then (0.6745 * abs(b.consumption_rate_per_day - gm.median_rate) / gm.mad_rate) > {{ var('mad_z_threshold', 4.5) }}
             when b.status = 'completed'
              and b.duration_days is not null
              and b.duration_days > 0

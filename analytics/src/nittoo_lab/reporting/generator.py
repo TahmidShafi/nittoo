@@ -22,7 +22,12 @@ class FaultRecallRow:
     injected: int
     rejected_at_contract: int
     flagged_in_dbt: int
+    tp: int
+    fp: int
+    fn: int
+    precision_pct: float
     recall_pct: float
+    f1_pct: float
 
 
 @dataclass(frozen=True)
@@ -31,6 +36,9 @@ class ReportResult:
     layer_counts: dict[str, dict[str, int]]
     rejects_by_reason: dict[str, int]
     fault_recall: list[FaultRecallRow]
+    clean_cycle_fp: int
+    clean_cycle_total: int
+    clean_cycle_fpr_pct: float
     dbt_tests_total: int
     dbt_tests_passed: int
     dbt_tests_warned: int
@@ -100,71 +108,132 @@ def _collect_dbt_tests(run_results_path: Path) -> list[dict[str, object]]:
     return tests
 
 
-def _collect_dbt_flag_counts(con: duckdb.DuckDBPyConnection) -> dict[str, int]:
-    zero_day = 0
-    outlier = 0
-    dup_purchases = 0
+def _collect_detected_sets(
+    con: duckdb.DuckDBPyConnection,
+) -> tuple[dict[str, set[str]], set[str], set[str]]:
     tables = {
         (r[0], r[1])
         for r in con.execute(
             "SELECT table_schema, table_name FROM information_schema.tables"
         ).fetchall()
     }
+    reject_finished_before_opened: set[str] = {
+        str(r[0])
+        for r in con.execute(
+            """
+            SELECT record_id FROM raw.rejects
+            WHERE reason_code = 'FINISHED_BEFORE_OPENED' AND record_id IS NOT NULL
+            """
+        ).fetchall()
+    }
+    zero_day_ids: set[str] = set()
+    extreme_1000d_ids: set[str] = set()
+    rate_outlier_ids: set[str] = set()
+    completed_ids: set[str] = set()
+    flagged_any_ids: set[str] = set()
+    dup_purchase_ids: set[str] = set()
+
     if ("main_marts", "fact_consumption_cycle") in tables:
-        row = con.execute(
+        for uid, status, is_zero, is_1000d, is_rate, is_dur in con.execute(
             """
             SELECT
-                COALESCE(SUM(CASE WHEN is_zero_day THEN 1 ELSE 0 END), 0),
-                COALESCE(SUM(CASE WHEN is_duration_outlier THEN 1 ELSE 0 END), 0)
+                usage_period_id,
+                status,
+                is_zero_day,
+                is_extreme_duration_1000d,
+                is_rate_outlier,
+                is_duration_outlier
             FROM main_marts.fact_consumption_cycle
             """
-        ).fetchone()
-        zero_day = int(row[0])
-        outlier = int(row[1])
+        ).fetchall():
+            uid_s = str(uid)
+            if status == "completed":
+                completed_ids.add(uid_s)
+            if is_zero:
+                zero_day_ids.add(uid_s)
+            if is_1000d:
+                extreme_1000d_ids.add(uid_s)
+            if is_rate:
+                rate_outlier_ids.add(uid_s)
+            if is_zero or is_dur:
+                flagged_any_ids.add(uid_s)
+
     if ("main_staging", "stg_purchase_duplicates") in tables:
-        dup_purchases = int(
-            con.execute("SELECT COUNT(*) FROM main_staging.stg_purchase_duplicates").fetchone()[0]
-        )
-    return {
-        "zero_day_cycle": zero_day,
-        "outlier_1000_day": outlier,
-        "duplicate_purchase": dup_purchases,
+        dup_purchase_ids = {
+            str(r[0])
+            for r in con.execute(
+                "SELECT purchase_id FROM main_staging.stg_purchase_duplicates"
+            ).fetchall()
+        }
+
+    detected_sets = {
+        "finished_before_opened": reject_finished_before_opened,
+        "zero_day_cycle": zero_day_ids,
+        "outlier_1000_day": extreme_1000d_ids,
+        "subtle_duration_outlier": rate_outlier_ids,
+        "duplicate_purchase": dup_purchase_ids,
     }
+    return detected_sets, completed_ids, flagged_any_ids
 
 
-def _compute_fault_recall(
+def _compute_fault_metrics(
     faults_manifest_path: Path,
-    rejects_by_reason: dict[str, int],
-    dbt_flags: dict[str, int],
-) -> list[FaultRecallRow]:
+    detected_sets: dict[str, set[str]],
+    completed_ids: set[str],
+    flagged_any_ids: set[str],
+) -> tuple[list[FaultRecallRow], int, int, float]:
     if not faults_manifest_path.exists():
-        return []
+        return [], 0, len(completed_ids), 0.0
     manifest = json.loads(faults_manifest_path.read_text(encoding="utf-8"))
-    counts: dict[str, int] = {str(k): int(v) for k, v in manifest.get("counts", {}).items()}
+    faults = manifest.get("faults", [])
 
-    mapping: list[tuple[str, str | None, str | None]] = [
-        ("finished_before_opened", "FINISHED_BEFORE_OPENED", None),
-        ("zero_day_cycle", None, "zero_day_cycle"),
-        ("outlier_1000_day", None, "outlier_1000_day"),
-        ("duplicate_purchase", None, "duplicate_purchase"),
+    injected_by_type: dict[str, set[str]] = {}
+    all_usage_fault_ids: set[str] = set()
+    for f in faults:
+        ftype = str(f["fault_type"])
+        rec_id = str(f["record_id"])
+        injected_by_type.setdefault(ftype, set()).add(rec_id)
+        if f.get("entity_type") == "usage_period":
+            all_usage_fault_ids.add(rec_id)
+
+    order = [
+        "finished_before_opened",
+        "zero_day_cycle",
+        "outlier_1000_day",
+        "subtle_duration_outlier",
+        "duplicate_purchase",
     ]
     rows: list[FaultRecallRow] = []
-    for fault_type, reject_code, dbt_key in mapping:
-        injected = counts.get(fault_type, 0)
-        rejected = rejects_by_reason.get(reject_code, 0) if reject_code else 0
-        flagged = dbt_flags.get(dbt_key, 0) if dbt_key else 0
-        detected = rejected + flagged
-        recall = round(100.0 * min(detected, injected) / injected, 1) if injected > 0 else 100.0
+    for fault_type in order:
+        truth = injected_by_type.get(fault_type, set())
+        pred = detected_sets.get(fault_type, set())
+        tp = len(truth & pred)
+        fp = len(pred - truth)
+        fn = len(truth - pred)
+        precision = (100.0 * tp / (tp + fp)) if (tp + fp) > 0 else 100.0
+        recall = (100.0 * tp / (tp + fn)) if (tp + fn) > 0 else 100.0
+        f1 = (2.0 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0.0
+        is_contract = fault_type == "finished_before_opened"
         rows.append(
             FaultRecallRow(
                 fault_type=fault_type,
-                injected=injected,
-                rejected_at_contract=rejected,
-                flagged_in_dbt=flagged,
-                recall_pct=recall,
+                injected=len(truth),
+                rejected_at_contract=len(pred) if is_contract else 0,
+                flagged_in_dbt=0 if is_contract else len(pred),
+                tp=tp,
+                fp=fp,
+                fn=fn,
+                precision_pct=round(precision, 1),
+                recall_pct=round(recall, 1),
+                f1_pct=round(f1, 1),
             )
         )
-    return rows
+
+    clean_completed = completed_ids - all_usage_fault_ids
+    clean_fp = len(clean_completed & flagged_any_ids)
+    clean_total = len(clean_completed)
+    clean_fpr_pct = round(100.0 * clean_fp / clean_total, 2) if clean_total > 0 else 0.0
+    return rows, clean_fp, clean_total, clean_fpr_pct
 
 
 def generate_data_quality_report(
@@ -181,11 +250,13 @@ def generate_data_quality_report(
     try:
         layer_counts = _collect_layer_counts(con)
         rejects_by_reason = _collect_rejects(con)
-        dbt_flags = _collect_dbt_flag_counts(con)
+        detected_sets, completed_ids, flagged_any_ids = _collect_detected_sets(con)
     finally:
         con.close()
 
-    fault_recall = _compute_fault_recall(faults_manifest_path, rejects_by_reason, dbt_flags)
+    fault_recall, clean_fp, clean_total, clean_fpr_pct = _compute_fault_metrics(
+        faults_manifest_path, detected_sets, completed_ids, flagged_any_ids
+    )
 
     dbt_tests = _collect_dbt_tests(run_results_path)
     tests_total = len(dbt_tests)
@@ -251,22 +322,30 @@ def generate_data_quality_report(
     lines.extend(
         [
             "",
-            "## 3. Fault-Detection Recall (Ground Truth vs Detected)",
+            "## 3. Fault-Detection Precision, Recall & F1 (Record-Level)",
             "",
         ]
     )
     if fault_recall:
         lines.extend(
             [
-                "| Fault Type | Injected | Rejected at Contract | Flagged in dbt | Recall (%) |",
-                "| :--- | ---: | ---: | ---: | ---: |",
+                "| Fault Type | Injected | TP | FP | FN | Precision (%) | Recall (%) | F1 (%) |",
+                "| :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
             ]
         )
         for row in fault_recall:
             lines.append(
-                f"| `{row.fault_type}` | {row.injected:,} | {row.rejected_at_contract:,} "
-                f"| {row.flagged_in_dbt:,} | {row.recall_pct:.1f}% |"
+                f"| `{row.fault_type}` | {row.injected:,} | {row.tp:,} | {row.fp:,} "
+                f"| {row.fn:,} | {row.precision_pct:.1f}% | {row.recall_pct:.1f}% "
+                f"| {row.f1_pct:.1f}% |"
             )
+        lines.extend(
+            [
+                "",
+                f"- **Clean-cycle false-positive rate (FPR):** "
+                f"{clean_fp:,} / {clean_total:,} ({clean_fpr_pct:.2f}%)",
+            ]
+        )
     else:
         lines.append("_No injected-faults manifest found._")
 
@@ -303,6 +382,9 @@ def generate_data_quality_report(
         layer_counts=layer_counts,
         rejects_by_reason=rejects_by_reason,
         fault_recall=fault_recall,
+        clean_cycle_fp=clean_fp,
+        clean_cycle_total=clean_total,
+        clean_cycle_fpr_pct=clean_fpr_pct,
         dbt_tests_total=tests_total,
         dbt_tests_passed=tests_passed,
         dbt_tests_warned=tests_warned,
