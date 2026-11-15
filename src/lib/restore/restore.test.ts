@@ -51,6 +51,82 @@ describe('restore', () => {
 
     // Error handling when userId is missing
     await expect(executeRestore(plan2, '', targetDb)).rejects.toThrow();
+
+    // Multi-tenant isolation: sourceDb (DEFAULT_MOCK_USER_ID) unaffected by targetDb restore
+    const sourceProducts = await sourceDb.getAllUserProducts(DEFAULT_MOCK_USER_ID);
+    expect(sourceProducts).toHaveLength(3);
+  });
+
+  it('preserves existing active bottle on conflict and saves backup bottle as unopened', async () => {
+    const sourceDb = new MockDatabase(new InMemoryStorageAdapter());
+    const exportBundle = await buildExportData(DEFAULT_MOCK_USER_ID, 'src@nittoo.local', sourceDb);
+    const jsonString = generateJsonBackup(exportBundle);
+    const validation = validateBackupFile(jsonString);
+    expect(validation.valid).toBe(true);
+    if (!validation.valid) return;
+
+    const sourceActive = await sourceDb.getActiveProducts(DEFAULT_MOCK_USER_ID);
+    const cerave = sourceActive.find((p) => p.name.includes('CeraVe'))!;
+
+    const targetDb = new MockDatabase(new InMemoryStorageAdapter());
+    const targetUser = 'conflict-user';
+    const firstPlan = await buildImportPlan(validation.backupData, targetUser, targetDb);
+    await executeRestore(firstPlan, targetUser, targetDb);
+
+    // Second backup has a different active purchase & usage for the same CeraVe product ID
+    const secondBackup = structuredClone(validation.backupData);
+    secondBackup.purchases.push({
+      id: 'pur-conflict-new',
+      product_id: cerave.id,
+      product_name: cerave.name,
+      brand: cerave.brand ?? 'CeraVe',
+      category: cerave.category,
+      purchase_date: '2026-10-05',
+      price: 1500,
+      currency: 'BDT',
+      store_vendor: null,
+    });
+    secondBackup.usage_history = secondBackup.usage_history.map((u) =>
+      u.product_id === cerave.id && u.status === 'active'
+        ? {
+            ...u,
+            id: 'up-conflict-new',
+            purchase_id: 'pur-conflict-new',
+            opened_date: '2026-10-06',
+          }
+        : u
+    );
+
+    const plan = await buildImportPlan(secondBackup, targetUser, targetDb);
+    expect(plan.activeConflicts.length).toBeGreaterThanOrEqual(1);
+    const result = await executeRestore(plan, targetUser, targetDb);
+    expect(result.success).toBe(true);
+
+    // Original active bottle remained active; conflicting backup bottle became unopened
+    const inv = await targetDb.getUserInventory(targetUser);
+    const activeCerave = inv.active.find((a) => a.name === cerave.name);
+    expect(activeCerave?.active_usage?.purchase_id).not.toBe('pur-conflict-new');
+    expect(inv.unopened.some((u) => u.product.name === cerave.name)).toBe(true);
+  });
+
+  it.each([
+    ['unsupported version', { version: '2.0.0', products: [], purchases: [], usage_periods: [] }],
+    ['sensitive password key', { version: '1.0.0', password: '123', products: [], purchases: [], usage_periods: [] }],
+    ['sensitive service_role key', { version: '1.0.0', service_role: 'abc', products: [], purchases: [], usage_periods: [] }],
+    ['missing products array', { version: '1.0.0', purchases: [], usage_periods: [] }],
+    ['missing purchases array', { version: '1.0.0', products: [], usage_periods: [] }],
+    [
+      'dangling purchase product_id',
+      {
+        version: '1.0.0',
+        exported_at: '2026-09-01T00:00:00Z',
+        products: [{ id: 'p1', name: 'Soap', category: 'Skincare' }],
+        purchases: [{ id: 'pur1', product_id: 'missing', purchase_date: '2026-09-01', price: 100 }],
+        usage_periods: [],
+      },
+    ],
+  ])('rejects invalid backup payload (%s)', (_label, payload) => {
+    expect(validateBackupFile(JSON.stringify(payload)).valid).toBe(false);
   });
 
   it('rejects malformed backup JSON and invalid restock plan modes', () => {

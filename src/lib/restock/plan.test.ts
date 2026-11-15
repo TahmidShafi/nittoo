@@ -98,4 +98,68 @@ describe('restock/plan', () => {
     expect(getRestockStatusInfo('dismissed').label).toBe('Restock Dismissed');
     expect(getRestockStatusInfo('inactive').label).toBe('No Restock Plan');
   });
+
+  it.each([
+    ['2026-10-16', 'active', 'planned', 'planned', false],
+    ['2026-10-17', 'active', 'planned', 'due', true],
+    ['2026-10-20', 'active', 'planned', 'due', true],
+    ['2026-10-17', 'active', 'completed', 'completed', false],
+    ['2026-10-17', 'active', 'dismissed', 'dismissed', false],
+    ['2026-10-17', 'finished', 'planned', 'inactive', false],
+  ] as const)(
+    'evaluates display status & due state on %s (%s, %s) -> %s',
+    (refDate, usageStatus, planStatus, expectedDisplay, expectedDue) => {
+      const plan: RestockPlan = {
+        id: 'rp',
+        user_id: 'u1',
+        product_id: 'p1',
+        usage_period_id: 'up1',
+        mode: 'relative',
+        days_before_finish: 7,
+        reminder_date: '2026-10-17',
+        status: planStatus,
+        created_at: '2026-09-01T00:00:00Z',
+        completed_at: null,
+      };
+      expect(getRestockDisplayStatus(plan, usageStatus, refDate)).toBe(expectedDisplay);
+      if (planStatus === 'planned' && usageStatus === 'active') {
+        expect(isReminderDue(plan.reminder_date, refDate)).toBe(expectedDue);
+      }
+    }
+  );
+
+  it('rejects restock plan on finished usage period and supports complete/dismiss/delete', async () => {
+    const db = new MockDatabase(new InMemoryStorageAdapter());
+    const active = await db.getActiveProducts(DEFAULT_MOCK_USER_ID);
+    const cerave = active.find((p) => p.name.includes('CeraVe'))!;
+
+    const plan = await db.createRestockPlan(DEFAULT_MOCK_USER_ID, {
+      product_id: cerave.id,
+      usage_period_id: cerave.active_usage!.id,
+      mode: 'relative',
+      days_before_finish: 7,
+      reminder_date: '2026-10-17',
+    });
+    expect((await db.getRestockPlanForUsagePeriod(DEFAULT_MOCK_USER_ID, cerave.active_usage!.id))?.id).toBe(
+      plan.id
+    );
+
+    const dismissed = await db.dismissRestockPlan(DEFAULT_MOCK_USER_ID, plan.id);
+    expect(dismissed.status).toBe('dismissed');
+
+    await db.deleteRestockPlan(DEFAULT_MOCK_USER_ID, plan.id);
+    expect(await db.getRestockPlanForUsagePeriod(DEFAULT_MOCK_USER_ID, cerave.active_usage!.id)).toBeNull();
+
+    // Cannot attach to finished period
+    const finishedId = cerave.finished_periods![0].id;
+    await expect(
+      db.createRestockPlan(DEFAULT_MOCK_USER_ID, {
+        product_id: cerave.id,
+        usage_period_id: finishedId,
+        mode: 'custom',
+        days_before_finish: null,
+        reminder_date: '2026-11-01',
+      })
+    ).rejects.toThrow(/active/i);
+  });
 });

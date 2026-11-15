@@ -195,4 +195,84 @@ describe('discovery & GS1 barcode', () => {
     const cachedBarcode = await lookupExternalProductByBarcode('3600541358522');
     expect(cachedBarcode?.name).toBe(results[0].name);
   });
+
+  it.each([
+    ['3600541358522', true, 'EAN-13'],
+    ['012345678905', true, 'UPC-A'],
+    ['96385074', true, 'EAN-8'],
+    ['10012345678902', true, 'GTIN-14'],
+    ['0012345678905', true, 'EAN-13'],
+    ['3600541358529', false, null],
+    ['12345', false, null],
+    ['', false, null],
+  ])('validates barcode %s -> valid=%s format=%s', (code, expectedValid, expectedFormat) => {
+    const res = validateBarcode(code);
+    expect(res.valid).toBe(expectedValid);
+    if (expectedValid) {
+      expect(res.format).toBe(expectedFormat);
+    }
+  });
+
+  it.each([
+    ['236 ml', { sizeValue: 236, sizeUnit: 'ml' }],
+    ['150g', { sizeValue: 150, sizeUnit: 'g' }],
+    ['30 count', { sizeValue: 30, sizeUnit: 'count' }],
+    ['invalid', {}],
+    ['', {}],
+  ])('parses size "%s"', (input, expected) => {
+    expect(parseSize(input)).toEqual(expected);
+  });
+
+  it.each([
+    ['en:face-cleansers', 'Skincare'],
+    ['en:shampoos', 'Haircare'],
+    ['en:toothpastes', 'Oral Care'],
+    ['en:beverages', 'Food & Beverage'],
+    ['en:unknown-thing', undefined],
+  ])('maps category tag "%s" -> %s', (tag, expected) => {
+    expect(mapCategory(tag)).toBe(expected);
+  });
+
+  it('expires discoveryCache entries after 5 minutes and falls back across providers', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-01T00:00:00Z'));
+    discoveryCache.clear();
+    discoveryCache.set('cleanser', [
+      {
+        externalId: '1',
+        source: 'openbeautyfacts',
+        name: 'Cleanser',
+        brand: 'CeraVe',
+        category: 'Skincare',
+        sizeValue: 236,
+        sizeUnit: 'ml',
+      },
+    ]);
+    expect(discoveryCache.get('cleanser')).toHaveLength(1);
+    vi.advanceTimersByTime(5 * 60 * 1000 + 1000);
+    expect(discoveryCache.get('cleanser')).toBeNull();
+    vi.useRealTimers();
+
+    // OBF 404 -> falls back to OFF hit
+    const obfMiss = new OpenBeautyFactsProvider({
+      fetchFn: async () => new Response(JSON.stringify({ status: 0 }), { status: 200 }),
+    });
+    const offHit = new OpenFoodFactsProvider({
+      fetchFn: async () =>
+        new Response(
+          JSON.stringify({
+            status: 1,
+            product: { code: '012345678905', product_name: 'Green Tea', brands: 'Twinings' },
+          }),
+          { status: 200 }
+        ),
+    });
+    const composite = new CompositeDiscoveryProvider({
+      beautyProvider: obfMiss,
+      foodProvider: offHit,
+    });
+    const found = await composite.lookupByBarcode('012345678905');
+    expect(found?.name).toBe('Green Tea');
+    expect(found?.source).toBe('openfoodfacts');
+  });
 });

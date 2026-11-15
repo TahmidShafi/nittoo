@@ -108,4 +108,97 @@ describe('MockDatabase lifecycle & isolation', () => {
     await db.resetUserData(DEFAULT_MOCK_USER_ID);
     expect(await db.getAllUserProducts(DEFAULT_MOCK_USER_ID)).toHaveLength(3);
   });
+
+  it.each([
+    ['Shajgoj', 'Shajgoj'],
+    ['  Daraz Mall  ', 'Daraz Mall'],
+    ['   ', null],
+    [null, null],
+    [undefined, null],
+  ])('normalizes store_vendor (%s -> %s) on create and update', async (rawVendor, expected) => {
+    const db = new MockDatabase(new InMemoryStorageAdapter());
+    const prod = await db.createProduct('v-user', { name: 'Sunscreen', category: 'Skincare' });
+    const pur = await db.createPurchase('v-user', {
+      product_id: prod.id,
+      purchase_date: '2026-09-01',
+      price: 800,
+      store_vendor: rawVendor,
+    });
+    expect(pur.store_vendor).toBe(expected);
+
+    // Clear vendor back to null on update
+    const cleared = await db.updatePurchase('v-user', pur.id, {
+      purchase_date: '2026-09-01',
+      price: 800,
+      currency: 'BDT',
+      store_vendor: '   ',
+    });
+    expect(cleared.store_vendor).toBeNull();
+  });
+
+  it('enforces history edit date rules and preserves purchase when deleting finished cycle', async () => {
+    const db = new MockDatabase(new InMemoryStorageAdapter());
+    const u = 'hist-user';
+    const prod = await db.createProduct(u, { name: 'Toner', category: 'Skincare' });
+    const pur = await db.createPurchase(u, {
+      product_id: prod.id,
+      purchase_date: '2026-09-05',
+      price: 600,
+    });
+    const up = await db.startUsagePeriod(u, {
+      product_id: prod.id,
+      purchase_id: pur.id,
+      opened_date: '2026-09-06',
+    });
+    const finished = await db.finishUsagePeriod(u, up.id, '2026-09-26');
+
+    await expect(
+      db.updateUsagePeriod(u, finished.id, {
+        opened_date: '2026-09-01', // earlier than purchase_date 2026-09-05
+        finished_date: '2026-09-26',
+      })
+    ).rejects.toThrow(/purchase/i);
+
+    await expect(
+      db.updateUsagePeriod(u, finished.id, {
+        opened_date: '2026-09-20',
+        finished_date: '2026-09-10', // earlier than opened_date
+      })
+    ).rejects.toThrow(/earlier/i);
+
+    await db.deleteUsagePeriod(u, finished.id);
+    const inv = await db.getUserInventory(u);
+    expect(inv.unopened.some((item) => item.purchase.id === pur.id)).toBe(true);
+  });
+
+  it('transitions backup purchase from unopened to active after finishing current bottle', async () => {
+    const db = new MockDatabase(new InMemoryStorageAdapter());
+    const u = 'unopened-user';
+    const prod = await db.createProduct(u, { name: 'Serum', category: 'Skincare' });
+    const p1 = await db.createPurchase(u, { product_id: prod.id, purchase_date: '2026-08-01', price: 500 });
+    const p2 = await db.createPurchase(u, { product_id: prod.id, purchase_date: '2026-08-15', price: 650 });
+
+    const up1 = await db.startUsagePeriod(u, {
+      product_id: prod.id,
+      purchase_id: p1.id,
+      opened_date: '2026-08-02',
+    });
+
+    let inv = await db.getUserInventory(u);
+    expect(inv.active).toHaveLength(1);
+    expect(inv.unopened).toHaveLength(1);
+    expect(inv.unopened[0].purchase.id).toBe(p2.id);
+
+    await db.finishUsagePeriod(u, up1.id, '2026-09-01');
+    const up2 = await db.startUsagePeriod(u, {
+      product_id: prod.id,
+      purchase_id: p2.id,
+      opened_date: '2026-09-02',
+    });
+    expect(up2.status).toBe('active');
+
+    inv = await db.getUserInventory(u);
+    expect(inv.unopened).toHaveLength(0);
+    expect(inv.active[0].active_purchase?.price).toBe(650);
+  });
 });
