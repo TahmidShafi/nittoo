@@ -72,7 +72,23 @@ async function obtainAccount(client: SupabaseClient, label: string) {
     return { client, user: data.user, email: configuredEmail };
   }
 
-  throw new Error(`Credentials for Account ${label} (${envEmailKey}, ${envPasswordKey}) not found in environment or .env`);
+  // Fallback for local Supabase stacks (e.g. CI): create an ephemeral test user via signUp
+  const ephemeralEmail = `rls-${label.toLowerCase()}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}@nittoo.local`;
+  const ephemeralPassword = `RlsTest!${Date.now()}${label}`;
+  const { data, error } = await client.auth.signUp({
+    email: ephemeralEmail,
+    password: ephemeralPassword,
+  });
+  if (error) {
+    throw new Error(`Failed to sign up ephemeral Account ${label} (${ephemeralEmail}): ${error.message}`);
+  }
+  if (!data.session || !data.user) {
+    throw new Error(
+      `Sign up succeeded for Account ${label} (${ephemeralEmail}), but no session was returned (is email confirmation enabled?). ` +
+      `Set ${envEmailKey} and ${envPasswordKey} in .env or disable enable_confirmations for local RLS runs.`
+    );
+  }
+  return { client, user: data.user, email: ephemeralEmail };
 }
 
 export async function runRlsVerification() {
