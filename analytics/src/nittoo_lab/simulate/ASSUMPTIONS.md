@@ -11,6 +11,7 @@ All parameters below are **synthetic modeling assumptions** chosen to approximat
 - **Household heterogeneity (assumption):** Each household-product pair draws a multiplier `clip(lognormal(mean=0, sigma=0.22), 0.55, 1.85)` around the archetype baseline.
 - **Cycle-to-cycle noise (assumption):** Per-cycle usage rate varies by `clip(normal(1.0, 0.08), 0.75, 1.30)`.
 - **Pack-size switching (assumption):** `15%` probability on each repurchase (`cycle > 1`) of switching to an alternate pack size from `tpl.sizes` (e.g., `200ml → 400ml`). Larger packs are priced with a `0.92` bulk-discount elasticity `(size / base_size) ** 0.92`. Whenever `current_size != tpl.sizes[0]` (the product default), the purchase emits `size_value` and `size_unit` in the `1.1.0` export (otherwise `null`).
+- **Pack-size elasticity of consumption (`ε`, assumption):** Daily consumption scales as `(current_size / base_size) ** ε`. The baseline simulator uses `DEFAULT_PACK_SIZE_ELASTICITY = 0.0` (size-invariant daily consumption rate). To stress-test this assumption in the forecasting backtest, the generator also supports non-zero `ε` (evaluated at `0.3` and `0.6`, where larger packs are consumed faster).
 
 ## Pricing, Inflation & Vendors
 - **Annualized inflation (assumption):** Category-level drift between `6%` (`0.06`) and `11%` (`0.11`) per year, compounded continuously over `days_since_start / 365`, plus `normal(1.0, 0.025)` purchase-level noise.

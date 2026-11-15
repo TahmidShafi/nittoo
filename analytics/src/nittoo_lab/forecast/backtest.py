@@ -77,9 +77,20 @@ class BacktestTarget:
     k: int
     actual_days: float
     size_changed_from_previous: bool
+    has_constant_size_history: bool
     is_rule_clean: bool
     is_oracle_clean: bool
     preds: dict[tuple[str, str], float]
+
+
+@dataclass(frozen=True)
+class SizeSwitchStats:
+    total_purchases: int
+    override_purchases: int
+    purchase_override_pct: float
+    total_products: int
+    switched_products: int
+    product_switch_pct: float
 
 
 def _load_bounds(con: duckdb.DuckDBPyConnection) -> dict[tuple[str, str], tuple[float, float]]:
@@ -301,6 +312,9 @@ def run_rolling_backtest(
 
             is_rule_clean = (not nxt.is_zero_day) and (not nxt.is_extreme_duration_1000d)
             is_oracle_clean = is_rule_clean and (nxt.usage_period_id not in oracle_fault_ids)
+            has_constant_size_history = (
+                len({(c.effective_size_value, c.effective_size_unit) for c in [*prefix, nxt]}) == 1
+            )
             targets.append(
                 BacktestTarget(
                     usage_period_id=nxt.usage_period_id,
@@ -310,6 +324,7 @@ def run_rolling_backtest(
                     k=k,
                     actual_days=float(nxt.duration_days),
                     size_changed_from_previous=nxt.size_changed_from_previous,
+                    has_constant_size_history=has_constant_size_history,
                     is_rule_clean=is_rule_clean,
                     is_oracle_clean=is_oracle_clean,
                     preds=preds,
@@ -319,3 +334,47 @@ def run_rolling_backtest(
     if not targets:
         raise ValueError("No rolling-origin backtest targets produced (history too short).")
     return targets
+
+
+def load_size_switch_stats(db_path: Path) -> SizeSwitchStats:
+    con = duckdb.connect(str(db_path), read_only=True)
+    try:
+        pur_row = con.execute(
+            """
+            SELECT
+                COUNT(*),
+                COALESCE(SUM(CASE WHEN size_value IS NOT NULL THEN 1 ELSE 0 END), 0)
+            FROM raw.purchases
+            """
+        ).fetchone()
+        prod_row = con.execute(
+            """
+            SELECT
+                COUNT(*),
+                COALESCE(SUM(has_switch), 0)
+            FROM (
+                SELECT
+                    user_id,
+                    product_id,
+                    MAX(CASE WHEN size_changed_from_previous THEN 1 ELSE 0 END) AS has_switch
+                FROM main_marts.fact_consumption_cycle
+                WHERE status = 'completed'
+                GROUP BY 1, 2
+            ) t
+            """
+        ).fetchone()
+    finally:
+        con.close()
+
+    total_pur = int(pur_row[0]) if pur_row else 0
+    over_pur = int(pur_row[1]) if pur_row else 0
+    total_prod = int(prod_row[0]) if prod_row else 0
+    sw_prod = int(prod_row[1]) if prod_row else 0
+    return SizeSwitchStats(
+        total_purchases=total_pur,
+        override_purchases=over_pur,
+        purchase_override_pct=(100.0 * over_pur / total_pur) if total_pur else 0.0,
+        total_products=total_prod,
+        switched_products=sw_prod,
+        product_switch_pct=(100.0 * sw_prod / total_prod) if total_prod else 0.0,
+    )

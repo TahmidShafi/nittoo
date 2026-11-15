@@ -22,6 +22,8 @@ from nittoo_lab.forecast.backtest import (
     ALL_METHOD_VARIANTS,
     CANDIDATE_VARIANTS,
     BacktestTarget,
+    SizeSwitchStats,
+    load_size_switch_stats,
     run_rolling_backtest,
 )
 from nittoo_lab.forecast.metrics import (
@@ -53,6 +55,7 @@ class DatasetEval:
     winner: tuple[str, str]
     by_k_bucket: dict[tuple[str, str, str], MetricSummary]
     by_size_changed: dict[tuple[str, str, bool], MetricSummary]
+    by_constant_size: dict[tuple[str, str, bool], MetricSummary]
     by_category: dict[tuple[str, str, str], MetricSummary]
 
 
@@ -149,6 +152,14 @@ def evaluate_targets(
             for mv, m in sub.items():
                 by_size_changed[(mv[0], mv[1], changed)] = m
 
+    by_constant_size: dict[tuple[str, str, bool], MetricSummary] = {}
+    for const_sz in (True, False):
+        cs_rows = [r for r in rc_rows if r.has_constant_size_history is const_sz]
+        if cs_rows:
+            sub = _eval_subset(cs_rows, quantiles)
+            for mv, m in sub.items():
+                by_constant_size[(mv[0], mv[1], const_sz)] = m
+
     by_category: dict[tuple[str, str, str], MetricSummary] = {}
     categories = sorted({r.category for r in rc_rows})
     focus_mvs = list(dict.fromkeys([("baseline", "none"), ("baseline", "rule_only"), winner]))
@@ -171,6 +182,7 @@ def evaluate_targets(
         winner=winner,
         by_k_bucket=by_k_bucket,
         by_size_changed=by_size_changed,
+        by_constant_size=by_constant_size,
         by_category=by_category,
     )
 
@@ -204,6 +216,9 @@ def render_forecast_report(
     seed_label: str,
     scale_label: str,
     extra_evals: Sequence[DatasetEval] = (),
+    size_stats: SizeSwitchStats | None = None,
+    elasticity_evals: Sequence[DatasetEval] = (),
+    alpha_breakdown: dict[str, tuple[float, float, float]] | None = None,
 ) -> str:
     ci_pct = FORECAST_BONFERRONI_CI_LEVEL * 100.0
     lines: list[str] = [
@@ -346,6 +361,86 @@ def render_forecast_report(
             vals = " | ".join(f"{ev.rule_clean_metrics[mv].mae:.2f}" for ev in extra_evals)
             lines.append(f"| `{mv[0]}` | `{mv[1]}` | {vals} |")
 
+    lines.extend(
+        [
+            "",
+            "## 5. Size-History Decomposition (Primary Rule-Clean Targets)",
+            "",
+        ]
+    )
+    const_m = primary_eval.by_constant_size.get(("baseline", "none", True))
+    any_m = primary_eval.by_constant_size.get(("baseline", "none", False))
+    n_const = const_m.n if const_m else 0
+    n_any = any_m.n if any_m else 0
+    n_tot = max(1, n_const + n_any)
+    lines.append(
+        f"- **Group (a) `constant_size`** (no switch in `1..k` and `k+1` equals history size): "
+        f"`{n_const:,}` targets (`{100.0 * n_const / n_tot:.1f}%`)"
+    )
+    lines.append(
+        f"- **Group (b) `any_size_change`** (at least one switch in `1..k` or `k+1`): "
+        f"`{n_any:,}` targets (`{100.0 * n_any / n_tot:.1f}%`)"
+    )
+    if size_stats is not None:
+        lines.append(
+            f"- **Purchase size overrides (`raw.purchases.size_value IS NOT NULL`):** "
+            f"`{size_stats.override_purchases:,} / {size_stats.total_purchases:,}` "
+            f"(`{size_stats.purchase_override_pct:.1f}%`)"
+        )
+        lines.append(
+            f"- **Products with >= 1 size switch:** "
+            f"`{size_stats.switched_products:,} / {size_stats.total_products:,}` "
+            f"(`{size_stats.product_switch_pct:.1f}%`)"
+        )
+    lines.extend(
+        [
+            "",
+            "| Method | Variant | (a) Constant Size MAE (d) | (b) Any Size Change MAE (d) |",
+            "| :--- | :--- | ---: | ---: |",
+        ]
+    )
+    for mv in ALL_METHOD_VARIANTS:
+        ca = primary_eval.by_constant_size.get((mv[0], mv[1], True))
+        cb = primary_eval.by_constant_size.get((mv[0], mv[1], False))
+        ca_s = f"{ca.mae:.2f}" if ca else "n/a"
+        cb_s = f"{cb.mae:.2f}" if cb else "n/a"
+        lines.append(f"| `{mv[0]}` | `{mv[1]}` | {ca_s} | {cb_s} |")
+
+    if elasticity_evals:
+        lines.extend(
+            [
+                "",
+                "## 6. Pack-Size Elasticity Robustness (`rate proportional to size^eps`, 500 x 24)",
+                "",
+                "Evaluation-only stress test with frozen config (no re-selection).",
+                "",
+                "| Method | Variant | "
+                + " | ".join(ev.label for ev in elasticity_evals)
+                + " |",
+                "| :--- | :--- | " + " | ".join("---:" for _ in elasticity_evals) + " |",
+            ]
+        )
+        for mv in ALL_METHOD_VARIANTS:
+            vals = " | ".join(f"{ev.rule_clean_metrics[mv].mae:.2f}" for ev in elasticity_evals)
+            lines.append(f"| `{mv[0]}` | `{mv[1]}` | {vals} |")
+
+    if alpha_breakdown:
+        lines.extend(
+            [
+                "",
+                "## 7. Why `EWMA_DURATION_ALPHA = 0.85` Is High",
+                "",
+                "Comparison of `ewma_duration (rule_only)` at `alpha=0.25` vs `alpha=0.85` "
+                "against `baseline (rule_only)` on rule-clean targets:",
+                "",
+                "| History Group | `baseline (rule_only)` MAE | `ewma (alpha=0.25)` MAE "
+                "| `ewma (alpha=0.85)` MAE |",
+                "| :--- | ---: | ---: | ---: |",
+            ]
+        )
+        for grp, (b_mae, e25_mae, e85_mae) in alpha_breakdown.items():
+            lines.append(f"| `{grp}` | {b_mae:.2f} | {e25_mae:.2f} | {e85_mae:.2f} |")
+
     b_no_switch = primary_eval.by_size_changed.get(("baseline", "none", False))
     w_no_switch = primary_eval.by_size_changed.get((w[0], w[1], False))
     w_switch = primary_eval.by_size_changed.get((w[0], w[1], True))
@@ -354,7 +449,7 @@ def render_forecast_report(
     lines.extend(
         [
             "",
-            "## 5. Plain-English Summary",
+            "## 8. Plain-English Summary",
             "",
             (
                 "- **Data cleaning vs method choice:** "
@@ -386,6 +481,16 @@ def render_forecast_report(
                     else "duration-only methods cannot adapt when pack size changes."
                 )
             ),
+            "",
+            "## 9. Limitations",
+            "",
+            "- **Synthetic data assumption:** These results come from a synthetic generator "
+            "whose baseline (`eps=0.0`) assumes a stable per-household daily consumption rate "
+            "independent of pack size — the exact property that rate-based methods exploit. "
+            "The magnitude of the improvement on real Nittoo user histories is therefore unknown.",
+            "- **Sensitivity to pack-size elasticity:** When consumption scales with pack size "
+            "(`eps=0.3` and `eps=0.6` in Section 6), rate-based MAE degrades substantially "
+            "because a constant daily rate no longer transfers across pack sizes.",
         ]
     )
     return "\n".join(lines) + "\n"
@@ -416,7 +521,13 @@ def run_forecast_evaluation(
         faults_manifest_path=faults_manifest_path,
     )
     ev = evaluate_targets(label=f"Seed {seed_label}", targets=targets)
-    md = render_forecast_report(ev, seed_label=seed_label, scale_label=scale_label)
+    size_stats = load_size_switch_stats(db_path)
+    md = render_forecast_report(
+        ev,
+        seed_label=seed_label,
+        scale_label=scale_label,
+        size_stats=size_stats,
+    )
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(md, encoding="utf-8")
 

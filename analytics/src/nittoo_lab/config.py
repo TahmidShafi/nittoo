@@ -39,6 +39,11 @@ RATE_OUTLIER_MIN_PRECISION_TO_EXCLUDE: float = 0.50
 # Baseline simulator cycle-to-cycle noise std dev.
 DEFAULT_CYCLE_NOISE_STD: float = 0.08
 
+# Pack-size elasticity of consumption (rate proportional to (size / base_size) ** epsilon).
+DEFAULT_PACK_SIZE_ELASTICITY: float = 0.0
+ELASTICITY_SWEEP_LEVELS: tuple[float, ...] = (0.3, 0.6)
+ELASTICITY_SWEEP_SEEDS: tuple[int, ...] = (4003, 4004)
+
 # Robustness sweep noise levels (baseline, ~2.5x, ~4x).
 ROBUSTNESS_NOISE_LEVELS: tuple[float, ...] = (0.08, 0.20, 0.32)
 
