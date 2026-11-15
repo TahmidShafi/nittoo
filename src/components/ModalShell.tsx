@@ -1,8 +1,24 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 
-export const MODAL_EXIT_DURATION_MS = 150;
+export const MODAL_EXIT_FALLBACK_MS = 140;
 export const MODAL_EXIT_BUFFER_MS = 50;
+
+export function getModalExitDurationMs(): number {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return MODAL_EXIT_FALLBACK_MS;
+  }
+  const raw = window
+    .getComputedStyle(document.documentElement)
+    .getPropertyValue('--duration-modal-out')
+    .trim();
+  if (!raw) return MODAL_EXIT_FALLBACK_MS;
+  const parsed = Number.parseFloat(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return MODAL_EXIT_FALLBACK_MS;
+  }
+  return raw.endsWith('s') && !raw.endsWith('ms') ? parsed * 1000 : parsed;
+}
 
 interface ModalShellProps {
   isOpen: boolean;
@@ -58,7 +74,7 @@ export const ModalShell: React.FC<ModalShellProps> = ({
     const fallbackTimer = window.setTimeout(() => {
       setShouldRender(false);
       setIsClosing(false);
-    }, MODAL_EXIT_DURATION_MS + MODAL_EXIT_BUFFER_MS);
+    }, getModalExitDurationMs() + MODAL_EXIT_BUFFER_MS);
 
     return () => {
       window.clearTimeout(fallbackTimer);

@@ -168,26 +168,26 @@ CANVAS (#FBFBFB)
 ### 5.3 Typography Neutral Palette
 - **Text Primary:** `#111827` (Near-black with a touch of blue-gray for optimal contrast and readability).
 - **Text Secondary:** `#4B5563` (Supportive descriptions, form labels, secondary data points).
-- **Text Muted:** `#8B95A5` (Eyebrow headers, unit labels, inactive icons, timestamps).
+- **Text Muted:** `#6B7280` (Eyebrow headers, unit labels, inactive icons, timestamps — WCAG AA ≥ 4.5:1 on white and `#FBFBFB`).
 
 ### 5.4 Semantic Status System
 
-Color signifies real-world physical states. Every status indicator pairs a specific foreground text color with a lightened background tint and a matching 1px border.
+Color signifies real-world physical states. Every status indicator pairs a specific foreground text color with a lightened background tint and a matching 1px border (all verified ≥ 4.5:1 text contrast on their tint and white, and ≥ 3.0:1 progress-bar fill contrast on `#F3F4F6`).
 
 ```text
 ┌─────────────────┬──────────────┬──────────────┬──────────────────────────────────────────┐
 │ Status State    │ Text Color   │ Background   │ Physical Meaning                         │
 ├─────────────────┼──────────────┼──────────────┼──────────────────────────────────────────┤
 │ Healthy Active  │ #2D6A4F      │ #EBF4F0      │ Container in use; ample lifespan remains │
-│ Attention Soon  │ #D97706      │ #FEF3C7      │ Projected to run out in < 14 days        │
-│ Overdue / Alert │ #E11D48      │ #FFE4E6      │ Usage exceeds average historical cycle   │
-│ Learning Data   │ #737373      │ #F5F5F5      │ Cycle 1 in progress; baseline forming    │
+│ Attention Soon  │ #B45309      │ #FFF7E6      │ Projected to run out in < 14 days        │
+│ Overdue / Alert │ #BE123C      │ #FFF1F2      │ Usage exceeds expected lifespan          │
+│ Learning Data   │ #4B5563      │ #F3F4F6      │ Cycle 1 in progress; baseline forming    │
 │ Unopened Stock  │ #4B5563      │ #F3F4F6      │ Stored backup container; seal unbroken   │
 └─────────────────┴──────────────┴──────────────┴──────────────────────────────────────────┘
 ```
 
 #### Color Usage Governance
-- **Prohibited:** Never use `#E11D48` (Rose) or `#D97706` (Amber) for decorative styling. If red appears, something is overdue or about to be permanently deleted.
+- **Prohibited:** Never use `#BE123C` (Critical Ruby) or `#B45309` (Attention Amber) for decorative styling. If red appears, something is overdue or about to be permanently deleted.
 - **Prohibited:** Never use full-bleed dark backgrounds for large workspace cards. Nittoo is an airy, natural, paper-white experience.
 - **Prohibited:** Never display naked numbers without unit binding (e.g., always write `৳24.50/day`, never just `24.50`).
 
@@ -613,11 +613,11 @@ The user is explicitly told: *“Historical trends appear automatically after ma
 
 ### 19.2 The Metrics Suite
 
-#### 1. Average Lifespan
+#### 1. Expected Lifespan
 ```text
-average_lifespan = sum(duration_days of finished periods) / count(finished periods)
+expected_lifespan = active_effective_size / mean(valid_cycle_consumption_rates)
 ```
-Displayed in whole days (e.g., `62 days`).
+Where valid finished cycles exclude 0-day and ≥1000-day outliers and match the active container's unit (falling back to rule-cleaned mean duration when sizes are unavailable). Displayed in rounded days (e.g., `~46-day expected`) alongside a P10–P90 forecast range when ≥2 valid cycles exist.
 
 #### 2. Predicted Remaining Days
 ```text
@@ -792,13 +792,17 @@ DURATION:      140ms – 220ms                   (Sub-perceptual latency)
 ```
 
 ### 23.1 Motion Tokens
-- **Page Entry Transition:** Opacity fades from 0 to 1 with an upward drift of `6px` over `220ms`.
-- **Modal Dialog Scale-In:** Opacity fades from 0 to 1 with a gentle scale from `0.97` to `1.0` and `4px` upward translation over `180ms`.
-- **Backdrop Fade:** Blackout backdrop fades to `40% opacity` over `160ms`.
-- **Tactile Button Press:** Button scales down to `0.98` on `:active` over `140ms`.
-- **Interactive Card Hover:** Subtle elevation translation `-1.5px` with shadow expansion over `200ms`.
-- **Loading Skeleton Shimmer:** A 2-stage gradient shimmer smoothly sweeps horizontally every `1.6s`.
-- **Reduced Motion Compliance:** When `prefers-reduced-motion: reduce` is active, all animation durations collapse to `0.01ms`, preserving accessibility for motion-sensitive users.
+- **Page Entry Transition:** Opacity fades from 0 to 1 with an upward drift of `6px` over `220ms` (`--duration-page`).
+- **Modal Dialog Scale-In / Exit:** Opacity fades from 0 to 1 with a gentle scale from `0.97` to `1.0` and `4px` upward translation over `180ms` (`--duration-modal-in`); exits faster (`1.0` to `0.97`) over `140ms` (`--duration-modal-out`).
+- **Backdrop Fade:** Blackout backdrop fades to `40% opacity` over `160ms` (`--duration-backdrop`) and exits over `140ms`.
+- **Tactile Button Press:** Button scales down to `0.98` on `:active` over `140ms` (`--duration-press`).
+- **Interactive Card Hover:** Subtle elevation translation `-1.5px` with shadow expansion over `200ms` (`--duration-hover`), scoped to `@media (hover: hover)`.
+- **List Card Stagger:** Initial-load cards stagger by `40ms` per item, capped at 8 items (`280ms` max delay); subsequent filter/search/refresh updates do not replay.
+- **Progress Bar Fill:** Lifespan bar animates `scaleX(0 → 1)` over `300ms` (`--duration-progress`) on mount; P10–P90 forecast range band and expected tick fade in after `220ms`.
+- **KPI Count-Up:** Headline KPI numbers count up once over `500ms` (`--duration-countup`) with `tabular-nums` when their first real value arrives.
+- **Calm Finish Check Draw:** SVG check-mark draws over `400ms` (`--duration-check-draw`) alongside a polite status toast (`role="status"`).
+- **Loading Skeleton Shimmer:** A 2-stage gradient shimmer smoothly sweeps horizontally every `1.6s` (`--duration-shimmer`).
+- **Reduced Motion Compliance:** When `prefers-reduced-motion: reduce` is active, CSS animations are disabled (`animation: none`), transition durations collapse to `0.01ms`, count-ups/charts render final values immediately, and modals unmount without delay.
 
 ---
 

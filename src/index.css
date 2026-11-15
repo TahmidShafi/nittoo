@@ -49,10 +49,18 @@
   --color-status-learning-bg: #F3F4F6;
   --color-status-learning-border: #E5E7EB;
 
-  /* Motion tokens */
+  /* Motion tokens (synced with design.md §23) */
+  --duration-press: 140ms;
+  --duration-modal-out: 140ms;
   --duration-fast: 150ms;
+  --duration-backdrop: 160ms;
+  --duration-modal-in: 180ms;
+  --duration-hover: 200ms;
   --duration-base: 220ms;
+  --duration-page: 220ms;
+  --duration-progress: 300ms;
   --duration-slow: 300ms;
+  --duration-check-draw: 400ms;
   --duration-countup: 500ms;
   --duration-shimmer: 1600ms;
 
@@ -84,7 +92,7 @@ body {
 }
 
 .animate-page-in {
-  animation: pageFadeIn var(--duration-base) var(--ease-out) backwards;
+  animation: pageFadeIn var(--duration-page) var(--ease-out) backwards;
 }
 
 /* Staggered List Card Entrance (delay supplied via --stagger-delay) */
@@ -116,7 +124,7 @@ body {
 
 .animate-progress-fill {
   transform-origin: left center;
-  animation: progressFill var(--duration-slow) var(--ease-out) backwards;
+  animation: progressFill var(--duration-progress) var(--ease-out) backwards;
 }
 
 /* Forecast Range Band Fade-In (shortly after bar fill) */
@@ -146,7 +154,7 @@ body {
 .animate-check-draw {
   stroke-dasharray: 24;
   stroke-dashoffset: 0;
-  animation: checkDraw 400ms var(--ease-out) backwards;
+  animation: checkDraw var(--duration-check-draw) var(--ease-out) backwards;
 }
 
 /* Demo Banner Slide-In */
@@ -169,7 +177,7 @@ body {
 @keyframes modalScaleIn {
   from {
     opacity: 0;
-    transform: scale(0.98) translateY(4px);
+    transform: scale(0.97) translateY(4px);
   }
   to {
     opacity: 1;
@@ -184,16 +192,16 @@ body {
   }
   to {
     opacity: 0;
-    transform: scale(0.98) translateY(2px);
+    transform: scale(0.97) translateY(2px);
   }
 }
 
 .animate-modal-in {
-  animation: modalScaleIn var(--duration-base) var(--ease-out) backwards;
+  animation: modalScaleIn var(--duration-modal-in) var(--ease-out) backwards;
 }
 
 .animate-modal-out {
-  animation: modalScaleOut var(--duration-fast) var(--ease-in) forwards;
+  animation: modalScaleOut var(--duration-modal-out) var(--ease-in) forwards;
 }
 
 /* Backdrop Enter & Exit Fade */
@@ -216,11 +224,11 @@ body {
 }
 
 .animate-backdrop-in {
-  animation: backdropFade var(--duration-fast) var(--ease-out) backwards;
+  animation: backdropFade var(--duration-backdrop) var(--ease-out) backwards;
 }
 
 .animate-backdrop-out {
-  animation: backdropFadeOut var(--duration-fast) var(--ease-in) forwards;
+  animation: backdropFadeOut var(--duration-modal-out) var(--ease-in) forwards;
 }
 
 /* Shimmer Loading Effect */
@@ -241,11 +249,11 @@ body {
 
 /* Tactile Button Response */
 .btn-press {
-  transition: transform var(--duration-fast) var(--ease-out),
-              box-shadow var(--duration-fast) var(--ease-standard),
-              background-color var(--duration-fast) var(--ease-standard),
-              border-color var(--duration-fast) var(--ease-standard),
-              opacity var(--duration-fast) var(--ease-standard);
+  transition: transform var(--duration-press) var(--ease-out),
+              box-shadow var(--duration-press) var(--ease-standard),
+              background-color var(--duration-press) var(--ease-standard),
+              border-color var(--duration-press) var(--ease-standard),
+              opacity var(--duration-press) var(--ease-standard);
 }
 
 .btn-press:active:not(:disabled) {
@@ -254,9 +262,9 @@ body {
 
 /* Subtle Interactive Card Elevation (hover only on pointer devices) */
 .card-interactive {
-  transition: transform var(--duration-base) var(--ease-out),
-              box-shadow var(--duration-base) var(--ease-out),
-              border-color var(--duration-base) var(--ease-standard);
+  transition: transform var(--duration-hover) var(--ease-out),
+              box-shadow var(--duration-hover) var(--ease-out),
+              border-color var(--duration-hover) var(--ease-standard);
 }
 
 @media (hover: hover) {

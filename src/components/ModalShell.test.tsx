@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   ModalShell,
   MODAL_EXIT_BUFFER_MS,
-  MODAL_EXIT_DURATION_MS,
+  getModalExitDurationMs,
 } from './ModalShell';
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -57,9 +57,9 @@ describe('ModalShell', () => {
     // Still mounted while exit animation runs
     expect(container.querySelector('[role="dialog"]')).not.toBeNull();
 
-    // Advance past exit duration + buffer without dispatching animationend
+    // Advance past --duration-modal-out + buffer without dispatching animationend
     act(() => {
-      vi.advanceTimersByTime(MODAL_EXIT_DURATION_MS + MODAL_EXIT_BUFFER_MS + 10);
+      vi.advanceTimersByTime(getModalExitDurationMs() + MODAL_EXIT_BUFFER_MS + 10);
     });
     expect(container.querySelector('[role="dialog"]')).toBeNull();
 
