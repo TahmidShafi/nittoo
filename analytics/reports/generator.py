@@ -75,11 +75,12 @@ def _collect_dbt_tests(run_results_path: Path) -> list[dict[str, object]]:
         uid = str(r.get("unique_id", ""))
         if not uid.startswith("test."):
             continue
+        parts = uid.split(".")
         tests.append(
             {
-                "name": uid.split(".")[-2] if uid.count(".") >= 2 else uid,
+                "name": parts[2] if len(parts) >= 3 else uid,
                 "status": str(r.get("status", "unknown")),
-                "failures": r.get("failures", 0),
+                "failures": r.get("failures") or 0,
                 "execution_time": round(float(r.get("execution_time", 0.0)), 3),
             }
         )
@@ -101,7 +102,7 @@ def generate_data_quality_report(
 
     dbt_tests = _collect_dbt_tests(run_results_path)
     tests_total = len(dbt_tests)
-    tests_passed = sum(1 for t in dbt_tests if t["status"] == "pass")
+    tests_passed = sum(1 for t in dbt_tests if t["status"] in ("pass", "success"))
     tests_failed = tests_total - tests_passed
 
     lines: list[str] = [

@@ -75,6 +75,13 @@ def run_dbt_pipeline(
     models_passed = sum(1 for r in run_results if r["status"] == "success")
     models_failed = sum(1 for r in run_results if r["status"] != "success")
 
+    docs_ok = False
+    if generate_docs:
+        docs_proc = _run_dbt_cmd(["docs", "generate"], dbt_dir, db_path)
+        if docs_proc.returncode != 0:
+            raise RuntimeError(f"dbt docs generate failed:\n{docs_proc.stdout}\n{docs_proc.stderr}")
+        docs_ok = (target_dir / "catalog.json").exists() and (target_dir / "manifest.json").exists()
+
     test_proc = _run_dbt_cmd(["test"], dbt_dir, db_path)
     test_results = _parse_run_results(target_dir)
     tests_total = len(test_results)
@@ -82,13 +89,6 @@ def run_dbt_pipeline(
     tests_failed = tests_total - tests_passed
     if test_proc.returncode != 0:
         raise RuntimeError(f"dbt test failed:\n{test_proc.stdout}\n{test_proc.stderr}")
-
-    docs_ok = False
-    if generate_docs:
-        docs_proc = _run_dbt_cmd(["docs", "generate"], dbt_dir, db_path)
-        if docs_proc.returncode != 0:
-            raise RuntimeError(f"dbt docs generate failed:\n{docs_proc.stdout}\n{docs_proc.stderr}")
-        docs_ok = (target_dir / "catalog.json").exists() and (target_dir / "manifest.json").exists()
 
     elapsed = round(time.perf_counter() - t0, 3)
     return DbtResult(
