@@ -1,0 +1,19 @@
+# Python / uv
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Generated synthetic data, ground truth & DuckDB
+data/
+*.duckdb
+*.duckdb.wal
+
+# dbt build artifacts & logs
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+
+# Generated reports
+reports/data_quality.md
