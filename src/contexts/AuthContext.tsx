@@ -70,6 +70,31 @@ export function generateDeterministicMockUserId(email: string): string {
   return `mock-user-${slug}-${hex}`;
 }
 
+export const AUTH_INIT_TIMEOUT_MS = 4000;
+
+/**
+ * Races an async auth initialization call against a timeout so an unreachable
+ * Supabase host can never leave `loading` stuck forever or emit an unhandled rejection.
+ */
+export async function withAuthTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number = AUTH_INIT_TIMEOUT_MS
+): Promise<T> {
+  let timerId: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_resolve, reject) => {
+    timerId = setTimeout(() => {
+      reject(new Error(`Auth initialization timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timerId !== undefined) {
+      clearTimeout(timerId);
+    }
+  }
+}
+
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -109,7 +134,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (isSupabaseConfigured && supabase) {
         try {
-          const { data: { session }, error } = await supabase.auth.getSession();
+          const { data: { session }, error } = await withAuthTimeout(
+            supabase.auth.getSession()
+          );
           if (error) throw error;
 
           if (mounted && session?.user) {
@@ -136,34 +163,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         // Listen for Supabase auth state changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          (_event, session) => {
-            if (!mounted) return;
-            if (session?.user) {
-              setUser((prev) => {
-                if (
-                  prev &&
-                  prev.id === session.user.id &&
-                  prev.email === (session.user.email ?? '') &&
-                  prev.created_at === session.user.created_at
-                ) {
-                  return prev;
-                }
-                return {
-                  id: session.user.id,
-                  email: session.user.email ?? '',
-                  created_at: session.user.created_at,
-                };
-              });
-            } else {
-              dataCache.clearAll();
-              setUser(null);
+        try {
+          const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            (_event, session) => {
+              if (!mounted) return;
+              if (session?.user) {
+                setUser((prev) => {
+                  if (
+                    prev &&
+                    prev.id === session.user.id &&
+                    prev.email === (session.user.email ?? '') &&
+                    prev.created_at === session.user.created_at
+                  ) {
+                    return prev;
+                  }
+                  return {
+                    id: session.user.id,
+                    email: session.user.email ?? '',
+                    created_at: session.user.created_at,
+                  };
+                });
+              } else {
+                dataCache.clearAll();
+                setUser(null);
+              }
+              setLoading(false);
             }
-            setLoading(false);
-          }
-        );
+          );
 
-        authSubscription = subscription;
+          authSubscription = subscription;
+        } catch (err) {
+          console.error('Failed to subscribe to Supabase auth changes:', err);
+        }
       } else {
         // Mock mode session restoration
         try {

@@ -6,8 +6,10 @@
 import {
   generateDeterministicMockUserId,
   MOCK_SESSION_KEY,
+  withAuthTimeout,
   type AuthUser,
 } from '../src/contexts/AuthContext';
+import { createClient } from '@supabase/supabase-js';
 import {
   MockDatabase,
   InMemoryStorageAdapter,
@@ -260,6 +262,46 @@ async function runAuthVerification() {
     } else {
       (globalThis as { window?: unknown }).window = originalWindow;
     }
+  }
+
+  // ----------------------------------------------------------------------------
+  // 7. UNREACHABLE SUPABASE RESILIENCE (TIMEOUT & ERROR CATCHING)
+  // ----------------------------------------------------------------------------
+  console.log('\n--- 7. Verifying Unreachable Supabase Timeout & Resilience ---');
+  let unhandledFired = false;
+  const onUnhandled = () => {
+    unhandledFired = true;
+  };
+  process.on('unhandledRejection', onUnhandled);
+  try {
+    // 7a. Hanging promise must reject cleanly within timeout
+    const hanging = new Promise<string>(() => {
+      // intentionally never settles
+    });
+    let timedOut = false;
+    try {
+      await withAuthTimeout(hanging, 50);
+    } catch (err) {
+      timedOut = err instanceof Error && err.message.includes('timed out');
+    }
+    assert(timedOut === true, 'withAuthTimeout rejects hanging auth init within timeout');
+
+    // 7b. Unreachable dead-host Supabase client getSession() must not throw unhandled rejection
+    const deadSupabase = createClient(
+      'https://dead-host-nittoo-test.invalid',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiJ9.fake'
+    );
+    let deadSettled = false;
+    try {
+      await withAuthTimeout(deadSupabase.auth.getSession(), 200);
+      deadSettled = true;
+    } catch {
+      deadSettled = true;
+    }
+    assert(deadSettled === true, 'Dead-host Supabase getSession() settles cleanly without hanging');
+    assert(unhandledFired === false, 'No unhandled promise rejections emitted during dead-host auth init');
+  } finally {
+    process.off('unhandledRejection', onUnhandled);
   }
 
   console.log('\n=================================================================');
