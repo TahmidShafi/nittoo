@@ -10,6 +10,7 @@ from nittoo_lab.forecast.export import export_calibration, export_forecast_parit
 from nittoo_lab.forecast.report import run_forecast_evaluation, run_full_forecast_suite
 from nittoo_lab.ingest.loader import DEFAULT_DB_PATH, ingest_exports
 from nittoo_lab.reporting.generator import generate_data_quality_report
+from nittoo_lab.reporting.readme_results import update_readme_results
 from nittoo_lab.reporting.reproduce import reproduce_all_reports
 from nittoo_lab.reporting.robustness import run_robustness_sweep
 from nittoo_lab.simulate.generator import simulate_households
@@ -121,6 +122,27 @@ def reproduce_reports_cmd(
         typer.echo(f"All committed reports match regenerated output ({res.elapsed_seconds:.2f}s).")
     else:
         typer.echo(f"Regenerated all committed reports in {res.elapsed_seconds:.2f}s.")
+
+
+@app.command("readme-results")
+def readme_results_cmd(
+    check: Annotated[
+        bool,
+        typer.Option(
+            "--check",
+            help="Fail if README results block is stale vs forecast_results.json",
+        ),
+    ] = False,
+) -> None:
+    """Update or check the auto-generated forecasting results block in README.md."""
+    res = update_readme_results(check=check)
+    if check:
+        if not res.ok:
+            typer.echo(f"README results block is stale:\n{res.diff_text}", err=True)
+            raise typer.Exit(code=1)
+        typer.echo("README results block matches analytics/reports/forecast_results.json.")
+    else:
+        typer.echo("Updated README.md results block from analytics/reports/forecast_results.json.")
 
 
 @app.command("export-calibration")

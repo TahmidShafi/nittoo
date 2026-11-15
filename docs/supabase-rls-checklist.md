@@ -1,9 +1,9 @@
 # Supabase Row-Level Security (RLS) Verification Protocol & Checklist
 
-> [!WARNING]
-> **Status**: RLS has not yet been verified against a live Supabase instance because the remote project has not yet been provisioned. Nittoo is currently running in full local-first mock mode with simulated user isolation and schema enforcement.
+> [!NOTE]
+> **Status — Verified in CI:** Tenant isolation via Supabase Row-Level Security (RLS) is automatically verified on every push/PR in the `supabase-rls` job of [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) by applying all migrations (`supabase db reset`) and executing [`scripts/integration/verify-supabase-rls.ts`](../scripts/integration/verify-supabase-rls.ts) against a local Supabase instance.
 
-This document defines the strict, reproducible 11-step verification procedure to execute immediately once a live Supabase project is connected and the schema in [`supabase/schema.sql`](file:///d:/nittoo/supabase/schema.sql) is applied in the Supabase SQL Editor.
+This document defines the 11-step manual verification protocol for validating a newly provisioned remote Supabase project after applying the schema and migrations.
 
 ---
 
@@ -14,7 +14,7 @@ This document defines the strict, reproducible 11-step verification procedure to
    VITE_SUPABASE_URL=https://your-project.supabase.co
    VITE_SUPABASE_ANON_KEY=your-actual-anon-key
    ```
-2. Apply the complete schema in [`supabase/schema.sql`](file:///d:/nittoo/supabase/schema.sql).
+2. Apply the complete schema in [`supabase/schema.sql`](../supabase/schema.sql).
 3. Ensure RLS is enabled on all tables:
    - `public.products` (`ALTER TABLE products ENABLE ROW LEVEL SECURITY;`)
    - `public.purchases` (`ALTER TABLE purchases ENABLE ROW LEVEL SECURITY;`)
@@ -96,7 +96,7 @@ This document defines the strict, reproducible 11-step verification procedure to
 
 ## 3. RLS Policies Applied in Schema
 
-The corresponding SQL policies in [`supabase/schema.sql`](file:///d:/nittoo/supabase/schema.sql) guarantee isolation:
+The corresponding SQL policies in [`supabase/schema.sql`](../supabase/schema.sql) guarantee isolation:
 - `products`:
   - `CREATE POLICY "Users can only manage their own products" ON products FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);`
 - `purchases`:

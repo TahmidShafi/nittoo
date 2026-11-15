@@ -1,508 +1,193 @@
 # Nittoo
 
-<div align="center">
-
 **Track what you use. Know what it costs.**
 
-A modern, high-precision personal essentials tracker for everyday consumables: skincare, haircare, oral care, household supplies, and daily essentials.
+A personal consumables tracker and forecasting app that turns everyday purchases into container lifespans, true daily costs, and calibrated run-out windows.
+
+**[Live Demo — Try the demo, no sign-up](https://nittoo.vercel.app)**
 
 [![CI](https://github.com/TahmidShafi/nittoo/actions/workflows/ci.yml/badge.svg)](https://github.com/TahmidShafi/nittoo/actions/workflows/ci.yml)
-[![Coverage](https://img.shields.io/badge/Coverage-80.65%25_src%2Flib-2D6A4F)](.github/workflows/ci.yml)
-[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Vite](https://img.shields.io/badge/Vite-6-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com/)
-[![Vercel](https://img.shields.io/badge/Deployed-Vercel-000000?logo=vercel&logoColor=white)](https://vercel.com/)
-[![RLS Verified](https://img.shields.io/badge/Security-RLS_Verified-2D6A4F?logo=shield)](docs/supabase-rls-checklist.md)
-
-</div>
+[![Analytics Pipeline](https://github.com/TahmidShafi/nittoo/actions/workflows/analytics.yml/badge.svg)](https://github.com/TahmidShafi/nittoo/actions/workflows/analytics.yml)
+[![License](https://img.shields.io/github/license/TahmidShafi/nittoo)](LICENSE)
 
 ---
 
-## 📌 Table of Contents
+<p align="center">
+  <img src="docs/images/dashboard-desktop.jpg" alt="Nittoo desktop dashboard showing active essentials, lifespan bars, and restock reminders" width="72%" />
+  &nbsp;
+  <img src="docs/images/dashboard-mobile.jpg" alt="Nittoo mobile dashboard at 390px viewport" width="22%" />
+</p>
 
-- [The Nittoo Philosophy](#-the-nittoo-philosophy)
-- [How Predictions Work](#-how-predictions-work)
-- [Key Features](#-key-features)
-- [Product Lifecycle & User Flow](#-product-lifecycle--user-flow)
-- [Calculation & Prediction Engine](#-calculation--prediction-engine)
-- [System Architecture](#-system-architecture)
-- [Tech Stack](#-tech-stack)
-- [Project Directory Structure](#-project-directory-structure)
-- [Getting Started Locally](#-getting-started-locally)
-- [Supabase Configuration & Schema](#-supabase-configuration--schema)
-- [Automated Verification & Test Suite](#-automated-verification--test-suite)
-- [Deployment (Vercel)](#-deployment-vercel)
-- [Security & Row Level Security (RLS)](#-security--row-level-security-rls)
-- [Product Roadmap](#-product-roadmap)
+## What It Does
+
+- **Container-level tracking:** Follows each bottle or pack from purchase to finish (`active`, `finished`, and unopened `backup` stock) with per-purchase pack-size overrides.
+- **Run-out forecasting:** Estimates remaining days and a calibrated P10–P90 run-out window from completed cycle history, with zero fabricated metrics on first-time items.
+- **True daily economics:** Separates daily cost of ownership (`৳/day` from the active bottle's price) from bulk unit price (`৳/ml`, `৳/g`), and aggregates an estimated monthly run rate.
+- **Restock planning:** Supports relative (`N` days before expected finish) and custom-date reminders that adapt automatically as forecasts update.
+- **Data portability & instant demo:** Runs offline-first in Demo Mode (`localStorage`, 12 sample products) or synced via Supabase, with JSON, CSV, Excel, and PDF exports plus validated JSON restore.
 
 ---
 
-## 💡 The Nittoo Philosophy
+## Highlights for Reviewers
 
-Traditional inventory applications ask warehouse-style questions:
-> *"How many units do I currently have in stock?"*
+### Data Engineering
+[`analytics/`](analytics/README.md) houses an end-to-end **Forecast Lab** built alongside the app: a strict Pydantic + JSON Schema export contract (`nittoo_export.schema.json`), a seeded NumPy household simulator, idempotent DuckDB ingestion with a `raw.rejects` quarantine table, a `dbt-core` + `dbt-duckdb` warehouse (`staging` -> `intermediate` -> `marts`) with singular and warning SQL tests, rolling-origin backtesting, and automated export of calibrated interval quantiles ([`calibration.json`](src/lib/forecast/calibration.json)) and TypeScript/Python parity fixtures ([`forecast_parity.json`](analytics/fixtures/forecast_parity.json)) back into the web app.
 
-For everyday personal consumables (facewash, shampoo, sunscreen, toothpaste, dish soap, moisturizer), that question is rarely helpful. Nittoo was built around **real consumption behavior** to answer the questions that actually matter:
+### Forecasting Results
+Switching from raw average duration to rule-cleaned, size-normalized consumption rates (`rate_mean (rule_only)`) cuts forecast MAE substantially across pack-size changes on synthetic evaluation histories while maintaining calibrated P10–P90 interval coverage near the nominal 80% target. Full numbers and caveats are generated automatically in [Forecasting Results](#forecasting-results).
 
-1. **"How long does this bottle or container actually last me?"**
-2. **"What is its true cost per day to use?"**
-3. **"When will I run out and need to rebuy?"**
-4. **"What is my true monthly consumption budget across all my essentials?"**
+### Engineering Quality
+- **Automated verification:** Vitest unit/contrast/parity tests, Playwright end-to-end and reduced-motion tests, Python `ruff` + `pytest` + contract tests, and a scheduled report-reproducibility workflow.
+- **Database & security:** Idempotent SQL migrations under [`supabase/migrations/`](supabase/migrations/), Row-Level Security (RLS) tenant isolation verified in CI against a local Supabase instance ([`verify-supabase-rls.ts`](scripts/integration/verify-supabase-rls.ts)), and full account deletion via a Supabase Edge Function ([`delete-account`](supabase/functions/delete-account/index.ts)).
 
-Nittoo replaces guesswork with data-driven personal consumption intelligence.
-
----
-
-## 🔮 How predictions work
-
-Nittoo estimates how long your active bottle will last from your own finished-cycle history:
-
-- **Size-normalized daily pace:** For each valid finished cycle (excluding `0`-day accidental logs and `>= 1000`-day stale entries), Nittoo computes your daily usage rate (`effective pack size ÷ days used`), averages those rates across matching-unit cycles, and divides your active bottle's effective pack size by that average rate. If pack sizes aren't recorded, it falls back to your cleaned average cycle duration.
-- **Run-out range (`Runs out between ... and ...`):** Once you have at least 2 valid finished cycles, Nittoo shows a calibrated P10–P90 date window from [src/lib/forecast/calibration.json](src/lib/forecast/calibration.json) until the high date passes (after which the overdue badge is shown).
-- **Why predictions for existing users change after this release:** Previously, Nittoo averaged raw cycle durations without adjusting for pack-size changes or excluding `0`-day / `>= 1000`-day entries. Existing users who switched bottle sizes or have outlier logs will see updated lifespans, cost-per-day, monthly run-rate, and restock reminder dates.
-- **Limitation:** Rate normalization assumes a similar daily usage pace regardless of pack size; it may overestimate lifespan for larger packs if you tend to use bigger bottles faster. See the full evaluation in [analytics/reports/forecast_report.md](analytics/reports/forecast_report.md).
+### Design & Accessibility
+- Grounded in a documented visual specification ([`design.md`](design.md)) using Tailwind v4 `@theme` design tokens.
+- Semantic status tokens (`healthy`, `attention`, `critical`, `learning`) verified by automated WCAG contrast ratio unit tests ([`contrast.test.ts`](src/lib/contrast.test.ts)).
+- Consistent `prefers-reduced-motion` support across CSS transitions, `ModalShell`, `Toast`, `CountUpValue`, and Recharts, verified by Playwright (`reducedMotion: 'reduce'`).
 
 ---
 
-## ✨ Key Features
+## Architecture
 
-### 🧴 100% Free-Form Product Modeling
-- No restrictive product catalogs, arbitrary categories, or forced brand lists.
-- Track **any consumable**: local apothecary items, imported cosmetics, household cleaning supplies, prescription ointments, or daily groceries.
-- Custom quantities and units (`ml`, `g`, `oz`, `count`, `fl oz`, `units`).
+```mermaid
+flowchart LR
+  subgraph WebApp["Web App (React 19 + TypeScript)"]
+    UI["Pages & Components"]
+    PRED["prediction.ts<br/>rate_mean + calibration.json"]
+    UI --> PRED
+  end
 
-### 🔄 Repeat Purchases Without Duplication
-- Buy the same product again? Log a repeat purchase with its new purchase date, price, and store under the existing product record.
-- Preserves full price history and lifetime expenditure without cluttering your product list.
+  subgraph Persistence["Persistence"]
+    SB["Supabase Postgres + RLS<br/>& delete-account Edge Fn"]
+    LS["Demo Mode<br/>localStorage"]
+  end
 
-### ⏱️ Strict Finished-Periods-Only Lifespan Analytics
-- Nittoo calculates average lifespan using **only completed usage cycles**.
-- Zero fabricated metrics: if a product is on its first bottle and has never been finished before, Nittoo displays **"Not enough data"** rather than inventing a number.
-- When multiple bottles are completed, average lifespan is computed as the arithmetic mean of all finished cycles.
+  UI -->|Authenticated| SB
+  UI -->|Try the demo| LS
 
-### 🔮 Intelligent Run-Out Forecasting & Overdue Alerts
-- Calculates days used so far for active containers.
-- Compares active usage against historical average lifespan to predict remaining days.
-- If a container exceeds its historical lifespan, Nittoo flags it as **Overdue** with prominent visual indicators on the dashboard and product detail views.
+  subgraph Lab["Forecast Lab (analytics/)"]
+    EXP["Export JSON<br/>demo_export.json"] --> CON["Pydantic + JSON Schema<br/>contracts/"]
+    SIM["Seeded Simulator<br/>simulate/"] --> ING["DuckDB Ingest<br/>raw.* & raw.rejects"]
+    CON --> ING
+    ING --> DBT["dbt-duckdb<br/>staging -> int -> marts"]
+    DBT --> BT["Rolling Backtest<br/>forecast/"]
+    BT -->|uv run lab export-calibration| CAL["calibration.json"]
+    BT -->|uv run lab export-parity| PAR["forecast_parity.json"]
+  end
 
-### 📊 Unit Economics vs. Cost Per Day
-- **Cost Per Day**: Purchase price divided by lifespan in days (`৳/day`). Reflects actual usage value.
-- **Price Per Unit**: Purchase price divided by package volume/weight (`৳/ml`, `৳/g`). Reflects bulk buying efficiency.
-- Nittoo strictly separates these two metrics so users never confuse packaging density with daily cost.
-
-### 📈 Cross-Product Consumption Analytics
-- **Estimated Monthly Run Rate**: Normalized 30-day consumption expenditure across all active essentials (`(price ÷ lifespan) × 30`).
-- **Upcoming Rebuys Timeline**: Products predicted to run out within 30 days, sorted with overdue items first.
-- **Cost Efficiency Leaderboard**: Ranked comparison of most cost-effective vs. least cost-effective essentials.
-- **Visual Cost-Per-Day Comparison**: Interactive bar chart powered by Recharts.
-
-### ⚖️ Personal Product Comparison & Value Intelligence
-- **Head-to-Head Value Comparison**: Select any reference essential and compare against any other tracked product.
-- **Strict Observed vs. Predicted Isolation**: Historical observed metrics (lifespan, cost/day, monthly consumption) are strictly grounded in completed cycles. Predictions for currently active containers are displayed solely as non-historical context.
-- **Package Size & Unit Price Economics**: Calculates price per unit (`৳/ml`, `৳/g`) and validates unit compatibility to prevent false comparisons across mismatched units.
-- **Deterministic Value Insight Engine**: Produces objective, evidence-based conclusions without subjective marketing claims (no "better" or "superior"). Early or limited data is prominently flagged.
-
-### 🎯 Prediction Confidence & Evidence Maturity
-- **Deterministic Confidence States**: Categorizes every prediction into 5 evidence maturity states (`Not enough data`, `Early data`, `Developing`, `Reliable`, `Strong history`) based strictly on completed usage cycles.
-- **Zero Fabricated Certainty**: Strictly avoids arbitrary percentage scores (e.g. "92% confidence") or machine learning guesswork.
-- **Non-Invasive Architecture**: Confidence describes evidence maturity without modifying prediction math, observed lifespans, or daily costs.
-- **Cross-App Communication**: Integrated subtly across Dashboard cards, Product Detail hero views, Analytics upcoming rebuys, and Product Comparison.
-
-### 🛡️ Multi-Tenant Security & Dual Storage Engine
-- **Cloud Mode**: Backed by live Supabase PostgreSQL with strict Row Level Security (RLS). Each user's data is strictly isolated at the database engine level.
-- **Development Mock Mode**: Built-in, zero-dependency offline mock database in `localStorage` with deterministic user isolation for offline development and testing.
-
----
-
-## 🔄 Product Lifecycle & Domain Model
-
-Nittoo strictly distinguishes between product definitions, physical acquisitions, ongoing consumption, and historical analytics:
-
-```text
-ESSENTIALS          INVENTORY               USAGE                HISTORY
-(What you track)    (What you own)          (What you consume)   (What you finished)
-
-Product ───┬───────► Active Bottle ────────► Usage Period ─────► Finished Cycle
-           │         (Purchase #1)           (status: active)     (status: finished)
-           │
-           ├───────► Unopened Backup #1 ───► [Waiting in Inventory]
-           │         (Purchase #2)
-           │
-           └───────► Unopened Backup #2 ───► [Waiting in Inventory]
-                     (Purchase #3)
-```
-
-### Core Concepts & Domain Definitions
-
-| Concept | Definition | Underlying Data Model |
-| :--- | :--- | :--- |
-| **Essential** | A product the user tracks (e.g., CeraVe Cleanser, Olaplex Shampoo). | `products` table |
-| **Inventory** | Physical purchases the user currently owns (active + unopened). | `purchases` without finished usage |
-| **Active** | The single bottle or container currently being consumed. | `usage_periods` with `status = 'active'` (max 1 per product) |
-| **Unopened** | Physical purchases owned but not yet started (stored backups). | `purchases` with no linked `usage_periods` |
-| **History** | Completed consumption cycles used for lifespans and unit economics. | `usage_periods` with `status = 'finished'` |
-| **Prediction** | Data-driven runout forecasts derived strictly from finished history. | Pure math pipeline (`calculatePredictedRemainingDays`) |
-
-```text
-[ Buy Essential ]
-        │
-        ▼
-[ Add to Nittoo ] ──► (Optionally start using immediately or keep unopened)
-        │
-        ▼
-[ Start Using ] ────► Opens an active usage period (one active bottle at a time)
-        │
-        ▼
-[ Track Usage ] ────► Live counter: "Day 34 in use" • Real-time runout estimate
-        │
-        ▼
-[ Finish Bottle ] ──► Records finished date • Closes cycle • Computes cycle lifespan
-        │
-        ▼
-[ Activate Backup ] ─► Start using waiting unopened backup from /inventory
-        │
-        ▼
-[ Analyze & Forecast ] ──► Updates average lifespan, cost/day, and portfolio run rate
+  CAL --> PRED
+  PAR -.->|Vitest parity suite| PRED
 ```
 
 ---
 
-## 📐 Calculation & Prediction Engine
+## Forecasting Results
 
-All business logic is isolated in pure, deterministic TypeScript modules (`src/lib/prediction.ts`, `src/lib/analytics.ts`, `src/lib/dateUtils.ts`).
+<!-- results:start -->
+> **SYNTHETIC DATA NOTICE:** All metrics below come from the synthetic simulator (`500 households x 24 months`, rule-clean holdout `n=48,169` — constant-size `n=16,613`, size-change `n=31,556`). The blended gain depends on the simulator's synthetic switch frequency (83.2% of products switch sizes; 37.8% of purchases override).
 
-### 1. Usage Duration (Days)
-For any completed container:
-$$\text{duration} = \max(0, \text{finished\_date} - \text{opened\_date})$$
+| Method | Constant-Size MAE (d) | Size-Change MAE (d) | Overall Holdout MAE (d) |
+| :--- | ---: | ---: | ---: |
+| `baseline (none)` (original app) | 9.48 | 21.59 | 17.42 |
+| `baseline (rule_only)` (cleaned) | 4.02 | 17.29 | 12.71 |
+| **`rate_mean (rule_only)` (shipped)** | **3.88** | **4.88** | **4.53** |
 
-### 2. Historical Average Lifespan
-Calculated strictly across $N$ finished usage periods ($N \ge 1$):
-$$\text{average\_lifespan} = \frac{1}{N} \sum_{i=1}^{N} \text{duration}_i$$
-*If $N = 0$, returns `null` ("Not enough data").*
-
-### 3. Current Days Used
-$$\text{days\_used} = \max(0, \text{today} - \text{opened\_date})$$
-
-### 4. Predicted Remaining Days
-$$\text{predicted\_remaining} = \text{round}(\text{average\_lifespan} - \text{days\_used})$$
-- $\text{predicted\_remaining} > 7$: Normal active status.
-- $0 \le \text{predicted\_remaining} \le 7$: Warning / Restock soon.
-- $\text{predicted\_remaining} < 0$: **Overdue** by $|\text{predicted\_remaining}|$ days.
-
-### 5. Cost Per Day
-$$\text{cost\_per\_day} = \frac{\text{purchase\_price}}{\text{average\_lifespan}}$$
-
-### 6. Price Per Unit
-$$\text{price\_per\_unit} = \frac{\text{purchase\_price}}{\text{size\_value}}$$
-
-### 7. Normalized Monthly Consumption Run Rate
-Standardized to a 30-day month across all active products with historical lifespan data:
-$$\text{monthly\_consumption} = \sum_{\text{eligible products}} \left( \frac{\text{latest\_purchase\_price}}{\text{average\_lifespan}} \times 30 \right)$$
+- **Calibrated P10–P90 interval coverage (holdout):** `83.7%` observed for `rate_mean (rule_only)` (mean width `12.8` days) vs nominal `80%`.
+- **Pack-size elasticity caveat:** Rate normalization assumes consumption pace is independent of pack size (`eps=0.0`). When usage scales with pack size, `rate_mean (rule_only)` degrades from `5.84` d (`eps=0.3`, vs `ewma_duration` `7.39` d) to `7.91` d (`eps=0.6`, where `ewma_duration` crosses over at `5.34` d). Real user data is needed to measure true elasticity.
+- **Full reports:** [Forecast Backtest](analytics/reports/forecast_report.md) · [Data Quality](analytics/reports/data_quality.md) · [Detector Robustness](analytics/reports/detector_robustness.md) · [Machine-Readable Results](analytics/reports/forecast_results.json)
+<!-- results:end -->
 
 ---
 
-## 🏛️ System Architecture
+## How Predictions Work
 
-Nittoo uses a clean **Data Source Abstraction Pattern** that decouples the frontend user interface from the underlying database:
+Nittoo estimates how long your active bottle will last from your own completed cycles:
 
-```text
-                     ┌──────────────────────────────┐
-                     │          Nittoo UI           │
-                     │  (Pages, Components, Forms)  │
-                     └──────────────┬───────────────┘
-                                    │
-                                    ▼
-                     ┌──────────────────────────────┐
-                     │   src/lib/dataSource.ts      │
-                     │  (Unified Interface / Proxy) │
-                     └──────┬────────────────┬──────┘
-                            │                │
-          [isSupabaseConfigured === true]    [isSupabaseConfigured === false]
-                            │                │
-                            ▼                ▼
-             ┌─────────────────────────┐   ┌─────────────────────────┐
-             │     src/lib/db.ts       │   │   src/lib/mock-db.ts    │
-             │   (Live Supabase DB)    │   │  (Mock Storage Adapter) │
-             └────────────┬────────────┘   └────────────┬────────────┘
-                          │                             │
-                          ▼                             ▼
-                 PostgreSQL (Cloud)            Browser LocalStorage
-              Row-Level Security (RLS)         Deterministic User IDs
-```
+- **Size-normalized daily pace:** Excluding `0`-day accidental logs and `>= 1000`-day stale entries, Nittoo computes your daily usage rate (`effective pack size ÷ days used`) across matching-unit finished cycles, averages those rates, and divides the active bottle's effective pack size by that rate. If pack sizes aren't recorded, it falls back to your cleaned mean duration; first-time products with no finished cycles show *"First cycle • Learning"* rather than a guessed number.
+- **Calibrated run-out window:** Once at least 2 valid cycles exist, Nittoo displays a P10–P90 date range (`Runs out between ... and ...`) from [`calibration.json`](src/lib/forecast/calibration.json), shifting to *"Was expected ... · may last until ..."* if the point estimate passes before the P90 bound.
+- **Limitation:** Rate normalization assumes consumption pace does not scale with container size; if larger bottles are used noticeably faster, lifespan can be overestimated.
 
-### Core Database Entities
-
-1. **`products`**: Represents a user essential (name, brand, category, size, unit, favorite flag).
-2. **`purchases`**: Represents financial acquisition events (product ID, price, purchase date, store).
-3. **`usage_periods`**: Represents container lifecycles (product ID, opened date, finished date, status: `'active' | 'finished'`).
-
-### Database Constraints & Integrity Rules
-- **Single Active Period**: A partial unique index (`idx_usage_periods_single_active`) enforces at the database level that a product can **never** have more than one `active` usage period simultaneously.
-- **Date Chronology**: A check constraint (`chk_finished_date_valid`) ensures `finished_date >= opened_date`.
-- **Cascade Deletes**: Deleting a product automatically cascades to its purchases and usage records.
+For full entity definitions and formulas, see [Domain Model](docs/domain-model.md) and [Calculations & Prediction Engine](docs/calculations.md).
 
 ---
 
-## 💻 Tech Stack
+## Tech Stack
 
-| Domain | Technology | Version | Purpose |
-| :--- | :--- | :--- | :--- |
-| **Frontend Framework** | React | 19.0.0 | Modern component hierarchy, hooks, state |
-| **Language** | TypeScript | ~5.7.2 | End-to-end type safety, strict mode |
-| **Build Tool & Dev Server** | Vite | ^6.2.0 | Instant HMR, optimized production rollup |
-| **Styling** | Tailwind CSS | ^4.0.9 | Utility-first responsive design, modern token system |
-| **Routing** | React Router | ^7.3.0 | Client-side routing, protected and public route guards |
-| **Data Visualization** | Recharts | ^2.15.1 | Responsive SVG charts for cost-per-day analytics |
-| **Cloud Database & Auth** | Supabase | ^2.49.1 | PostgreSQL 15, Supabase Auth, Row Level Security |
-| **Verification & Testing** | tsx | ^4.23.13 | High-speed TypeScript test execution |
-| **Hosting & CDN** | Vercel | Production | Edge deployment with SPA rewrite rules |
+| Layer | Technologies |
+| :--- | :--- |
+| **Frontend** | React 19, TypeScript 5.7, Vite 6, Tailwind CSS v4, React Router, Recharts |
+| **Backend & Auth** | Supabase (PostgreSQL, Auth, Row-Level Security, Deno Edge Functions) |
+| **Analytics Lab** | Python 3.12 (`uv`), Pydantic v2, NumPy, DuckDB, `dbt-core` + `dbt-duckdb`, Typer |
+| **Testing & CI** | Vitest, Playwright, `eslint`, `ruff`, `pytest`, GitHub Actions, Local Supabase CLI |
+| **Hosting** | Vercel (SPA + security headers) |
 
 ---
 
-## 📁 Project Directory Structure
+## Running Locally
 
-```text
-nittoo/
-├── public/                    # Static web assets & favicons
-├── scripts/                   # Automated verification & audit test suite
-│   ├── verify-add-product.ts  # Add-product flow & validation
-│   ├── verify-analytics.ts    # Analytics, rankings, and run-rate calculations
-│   ├── verify-auth.ts         # Multi-user deterministic authentication
-│   ├── verify-dashboard.ts    # Dashboard metrics, filters, and overdue sorting
-│   ├── verify-data-layer.ts   # Core CRUD & relation isolation
-│   ├── verify-full-walkthrough.ts # End-to-end user lifecycle simulation
-│   ├── verify-live-audit.ts   # 9-domain comprehensive live architecture audit
-│   ├── verify-product-detail.ts # Bottle finishing, repeat buys, and history
-│   ├── verify-supabase-live.ts  # Live Supabase connection & schema tests
-│   └── verify-supabase-rls.ts   # Two-account multi-tenant security audit
-├── src/
-│   ├── components/            # Reusable UI components (Layout, ProtectedRoute, etc.)
-│   ├── contexts/              # AuthContext (session restoration & auth actions)
-│   ├── hooks/                 # Custom React hooks (useAuth)
-│   ├── lib/                   # Business logic, engines, and database abstraction
-│   │   ├── analytics.ts       # Cross-product analytics & efficiency ranking engine
-│   │   ├── dataSource.ts      # Storage proxy switching between Mock & Supabase
-│   │   ├── dateUtils.ts       # Deterministic date parsing, formatting, and diffing
-│   │   ├── db.ts              # Real Supabase database implementation
-│   │   ├── mock-db.ts         # In-memory / localStorage multi-user mock engine
-│   │   ├── prediction.ts      # Lifespan, remaining days, and cost-per-day engine
-│   │   └── supabase.ts        # Supabase client initializer & config detection
-│   ├── pages/                 # Application view components
-│   │   ├── AccountPage.tsx    # User settings, session info, and data reset
-│   │   ├── AddProductPage.tsx # Product creation & initial usage opening
-│   │   ├── AnalyticsPage.tsx  # Global consumption analytics & cost comparison
-│   │   ├── DashboardPage.tsx  # Main dashboard with active essentials & alerts
-│   │   ├── ForgotPasswordPage.tsx # Password recovery link dispatch
-│   │   ├── LoginPage.tsx      # Sign in (Email/Password & Magic Link)
-│   │   ├── ProductDetailPage.tsx # Product overview, bottle lifecycle & history
-│   │   ├── ResetPasswordPage.tsx # Password reset form
-│   │   └── SignupPage.tsx     # Account registration
-│   ├── types/                 # Shared TypeScript interfaces & types
-│   ├── App.tsx                # Route definitions & app providers
-│   ├── index.css              # Global styles & Tailwind v4 theme directives
-│   └── main.tsx               # Application bootstrap entry point
-├── supabase/
-│   └── schema.sql             # Production PostgreSQL schema, indexes & RLS policies
-├── docs/                      # Architectural docs & verification checklists
-├── .env.example               # Environment variable templates
-├── package.json               # Dependencies, scripts, and project metadata
-├── tsconfig.json              # TypeScript compiler configuration
-├── vercel.json                # Vercel SPA routing rewrite configuration
-├── vite.config.ts             # Vite build & server configuration
-└── README.md                  # Project documentation
-```
+**Prerequisites:** Node `22` (see [`.nvmrc`](.nvmrc)), Python `3.12`, and [`uv`](https://docs.astral.sh/uv/).
 
----
+### Web App (runs immediately in Demo Mode with no Supabase setup)
 
-## 🚀 Getting Started Locally
-
-### Prerequisites
-- **Node.js**: v18.0.0 or later (v20+ recommended)
-- **npm**: v9.0.0 or later
-
-### 1. Clone the Repository
 ```bash
-git clone https://github.com/TahmidShafi/nittoo.git
-cd nittoo
-```
-
-### 2. Install Dependencies
-```bash
-npm install
-```
-
-### 3. Environment Configuration
-Nittoo works out of the box in **Mock Mode** without any configuration. To connect to your real cloud Supabase instance, create a `.env` file in the project root:
-
-```env
-# Supabase Cloud Configuration
-VITE_SUPABASE_URL=https://your-project-id.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-publishable-key
-
-# Optional Credentials for Automated RLS Verification Scripts
-TEST_USER_A_EMAIL=nittoo-test-a@example.com
-TEST_USER_A_PASSWORD=YourPasswordA123!
-TEST_USER_B_EMAIL=nittoo-test-b@example.com
-TEST_USER_B_PASSWORD=YourPasswordB123!
-```
-
-> ⚠️ **Security Notice**: Never commit your `.env` file. It is ignored by `.gitignore`.
-
-### 4. Run Development Server
-```bash
+npm ci
 npm run dev
 ```
-Open your browser at `http://localhost:5173`.
 
-### 5. Typecheck & Build
+To connect a Supabase project, copy `.env.example` to `.env`, set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, and apply the migrations in [`supabase/migrations/`](supabase/migrations/).
+
+### Forecast Lab (`analytics/`)
+
 ```bash
-# Verify TypeScript strict compliance
-npx tsc --noEmit
-
-# Compile production bundle
-npm run build
+cd analytics
+uv sync
+uv run lab all                 # Simulate (500 x 24) -> ingest -> dbt -> reports
+uv run lab export-calibration  # Refresh src/lib/forecast/calibration.json
+uv run lab export-parity       # Refresh analytics/fixtures/forecast_parity.json
+uv run lab readme-results      # Refresh the README results block from forecast_results.json
 ```
 
 ---
 
-## 🗄️ Supabase Configuration & Schema
+## Testing & CI
 
-To connect Nittoo to a live Supabase backend:
-
-1. **Create a Supabase Project**: Create a new project at [supabase.com](https://supabase.com).
-2. **Apply Database Schema**: Open the **SQL Editor** in your Supabase dashboard, paste the contents of [`supabase/schema.sql`](supabase/schema.sql), and run it.
-   - This creates tables: `products`, `purchases`, `usage_periods`.
-   - Enables Row Level Security (RLS) on all tables.
-   - Sets up cascade foreign keys and partial unique indexes.
-3. **Configure Auth Settings**:
-   - In **Authentication > Providers > Email**, enable Email provider.
-   - For rapid testing, you can disable "Confirm email" or use auto-confirmed test accounts.
-4. **Copy API Credentials**:
-   - In **Project Settings > API**, copy the **Project URL** and **anon / public** API key into your `.env` file.
+| Workflow | Scope |
+| :--- | :--- |
+| [`ci.yml`](.github/workflows/ci.yml) (`ci`) | `tsc --noEmit`, `eslint`, Vitest unit/contrast/parity tests with coverage, Vite production build, Playwright E2E + `prefers-reduced-motion` specs. |
+| [`ci.yml`](.github/workflows/ci.yml) (`supabase-rls`) | Starts local Supabase, resets DB with all migrations, and runs [`verify-supabase-rls.ts`](scripts/integration/verify-supabase-rls.ts) to verify cross-tenant isolation. |
+| [`analytics.yml`](.github/workflows/analytics.yml) | Regenerates demo & parity fixtures, runs `ruff`, `pytest` (including contract validation), `calibration.json` / `forecast_parity.json` freshness, `lab all --households 50`, and `lab readme-results --check`. |
+| [`reproduce-reports.yml`](.github/workflows/reproduce-reports.yml) | Manual + weekly check running `uv run lab reproduce-reports --check` across all committed reports. |
 
 ---
 
-## 🧪 Automated Verification & Test Suite
+## Security & Data
 
-Nittoo uses **Vitest** for unit/domain tests, **Playwright** for end-to-end and SEO/PWA checks against the production build, **ESLint** + **TypeScript** for static checks, and standalone integration scripts in `scripts/integration/` for live Supabase and browser verification.
-
-| Command | Tool / Scope | What It Validates |
-| :--- | :--- | :--- |
-| `npm test` | Vitest | Unit and domain tests across `src/` (prediction, analytics, confidence, comparison, restock, restore, discovery, mock DB, SWR cache, auth, export, demo seed) |
-| `npm run test:coverage` | Vitest + V8 | Unit tests with coverage reporting across `src/lib/` |
-| `npm run test:e2e` | Playwright | End-to-end smoke, Supabase resilience, auth flash, and SEO/PWA checks against `vite preview` |
-| `npm run lint` | ESLint | Flat-config TypeScript and React Hooks lint rules |
-| `npm run integration:supabase` | Live Supabase | Database connectivity, schema verification, and client detection |
-| `npm run integration:rls` | Live/Local Supabase | **Two-account RLS audit**: verifies Account B cannot read, write, update, or delete Account A's data |
-| `npm run integration:audit` | Live Supabase | Comprehensive multi-domain integration audit |
-| `npm run integration:chrome` | Headless Chrome | Live browser smoke verification |
-
-### Running the Two-Account RLS Audit
-```bash
-npm run integration:rls
-```
-*Tests complete tenant isolation using two authenticated Supabase accounts (reads `TEST_USER_A_*` / `TEST_USER_B_*` from `.env`, or auto-registers ephemeral accounts via `signUp` on local Supabase).*
+- **Tenant isolation:** Every user-owned table enforces Supabase RLS (`auth.uid() = user_id`), tested automatically in CI against a local Supabase instance ([`docs/supabase-rls-checklist.md`](docs/supabase-rls-checklist.md)).
+- **Full account deletion:** Deleting an account invokes the [`delete-account`](supabase/functions/delete-account/index.ts) Edge Function with the user's JWT so both application rows and the `auth.users` record are removed.
+- **Export & restore:** Users can export their full history as JSON, CSV, Excel, or PDF (`src/lib/export/`), and restore from JSON backups through a two-phase planner/validator (`src/lib/restore/`).
 
 ---
 
-## 🌐 Deployment (Vercel)
+## Engineering Decisions & Lessons
 
-Nittoo is pre-configured for zero-friction deployment on [Vercel](https://vercel.com).
-
-### 1. Push to GitHub
-Ensure your repository is committed and pushed to GitHub:
-```bash
-git push origin main
-```
-
-### 2. Import to Vercel
-1. Log into your Vercel dashboard and click **Add New > Project**.
-2. Select your `nittoo` GitHub repository.
-3. Keep default build settings:
-   - **Framework Preset**: Vite
-   - **Build Command**: `tsc -b && vite build`
-   - **Output Directory**: `dist`
-   - **Install Command**: `npm install`
-
-### 3. Configure Production Environment Variables
-In Vercel's **Project Settings > Environment Variables**, add:
-- `VITE_SUPABASE_URL`: Your live Supabase URL (`https://xyz.supabase.co`)
-- `VITE_SUPABASE_ANON_KEY`: Your live Supabase public anon key
-
-### 4. SPA Route Rewrites (`vercel.json`)
-The included [`vercel.json`](vercel.json) handles client-side routing so deep links (such as `/products/:id`, `/analytics`, and `/login`) resolve correctly:
-```json
-{
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/"
-    }
-  ]
-}
-```
-
-### 📦 Professional Data Portability (Export & Restore)
-Nittoo provides complete ownership and portability of user consumption records across 4 specialized formats, backed by a secure, idempotent restore engine:
-
-#### Export Formats & Intent
-- **Excel (.xlsx)**: *Recommended for deep analysis*. Multi-sheet workbook (`Summary`, `Products`, `Purchases`, `Usage History`, `Inventory`, `Analytics`) formatted with freeze panes, column widths, and bold headers.
-- **CSV Archive (.zip)**: *Universal tabular data*. RFC 4180-compliant comma-separated tables with UTF-8 BOM (`\uFEFF`) for broad spreadsheet compatibility.
-- **PDF Report (.pdf)**: *Human-readable personal report*. Editorial layout with consumption cards, category breakdowns, observed metrics, and upcoming restock horizons.
-- **JSON Backup (.json)**: *Authoritative Nittoo restore format*. Machine-readable schema (Version `1.0.0`) capturing complete relational history.
-
-#### Restore & Import Guarantees
-- **Authoritative Format**: JSON is the sole restore format. Excel, CSV, and PDF are for analysis and reporting only.
-- **Supported Version**: Version `1.0.0`.
-- **Additive / Safe Merge**: Restore adds missing data and **never** deletes existing account data or resets the database.
-- **Security & Multi-Tenant Isolation**: Never trust backup user IDs. All imported records are strictly assigned to the currently authenticated user (`auth.uid()`).
-- **Zero Secrets**: Rejects any backups containing passwords, access tokens, or sensitive credentials.
-- **Idempotency**: Safe to run repeatedly; restoring the same backup twice produces 0 duplicate records.
-- **Active Container Conflict Resolution**: Enforces the single-active-bottle constraint (`idx_usage_periods_single_active`). If the account already has an active bottle for an item, current active status is kept, and the backup container is preserved as unopened inventory.
-- **Relational Integrity**: Foreign key links between products, purchases, and usage periods are strictly maintained; orphan records are prevented.
+- **Schema drift resolved via idempotent migrations:** Early manual schema edits drifted from `schema.sql`; consolidating into ordered, idempotent migrations under [`supabase/migrations/`](supabase/migrations/) and resetting a local Supabase in CI eliminated environment drift.
+- **Data contract caught an export format change:** Validating TypeScript exports against a shared Pydantic + JSON Schema contract (`nittoo_export.schema.json`) in CI catches silent field renames before downstream analytics break.
+- **Data-quality checks moved into dbt:** Shifting zero-day, outlier, and referential checks into dbt intermediate models and singular/warning SQL tests keeps raw ingestion fast while surfacing auditable quality metrics.
+- **Simulator bug caught by diagnosing detector false positives:** Investigating unexpected false positives in the MAD outlier detector uncovered an initialization bug in the simulator; fixing it and adding a regression test in [`tests/test_simulate.py`](analytics/tests/test_simulate.py) made synthetic benchmarks trustworthy.
+- **Honest dev/holdout evaluation & shipping the simpler model:** Selection was frozen on dev seed `7` and evaluated once on holdout seed `4001`. Although `rate_mean (rule_plus_rate_outlier)` was the mechanical winner, we shipped `rate_mean (rule_only)` because the extra gain was small (`95% CI` documented in the backtest report), degraded under noise and elasticity, and avoided porting an unreliable detector.
+- **Per-purchase pack size discovered through analysis:** Modeling pack sizes only on `products` distorted lifespans when users bought different bottle sizes; adding per-purchase `size_value`/`size_unit` overrides and rate normalization fixed cross-size forecasts.
+- **Account deletion via Edge Function:** Client-side deletion could only clear app tables; adding the `delete-account` Edge Function ensured the underlying Supabase Auth user is actually deleted.
 
 ---
 
-## 🔒 Security & Row Level Security (RLS)
+## Limitations & Roadmap
 
-Nittoo adheres to the principle of least privilege:
-
-1. **Database-Level Ownership**: All rows in `products`, `purchases`, and `usage_periods` store the owner's `user_id` linked to `auth.users(id)`.
-2. **PostgreSQL RLS Policies**:
-   ```sql
-   -- Example RLS Policy from schema.sql
-   CREATE POLICY "Users can only read own products"
-     ON products FOR SELECT
-     USING (auth.uid() = user_id);
-   ```
-3. **Anon Key Exclusivity**: The frontend client uses strictly the Supabase anonymous/publishable key. The administrative `service_role` key is **never** included in frontend builds or code.
-4. **Relational Tamper Protection**: An attacker cannot link a purchase or usage period to another user's product ID because the database RLS policies enforce ownership across relational foreign keys.
+- **Real-usage data for elasticity:** Synthetic stress tests show duration-based `ewma_duration` crosses over `rate_mean` between `eps=0.3` and `eps=0.6`; real opt-in usage data is needed to measure actual pack-size elasticity.
+- **Multi-currency formatting:** Currently defaults to `BDT` (`৳`) formatting; per-user currency preferences are planned.
+- **Web Push notifications:** Restock reminders currently surface in-app on Dashboard and Product Detail; background Web Push alerts are planned.
 
 ---
 
-## 🗺️ Product Roadmap
+## License
 
-- [ ] **Product Discovery & Enrichment**: Optional external product lookup to auto-fill brand, volume, and category while preserving manual entry flexibility.
-- [ ] **Barcode / UPC Scanning**: Instant container recognition via device camera.
-- [ ] **Restock Notifications**: Web push notifications and calendar export when an essential is predicted to run out.
-- [ ] **PWA & Offline Sync**: Installable progressive web app with background sync.
-- [ ] **Multi-Currency Support**: Support for USD (`$`), EUR (`€`), GBP (`£`), INR (`₹`), BDT (`৳`), and customizable localized currencies.
-- [x] **Export & Data Portability**: Full JSON export of products, purchases, inventory, and usage periods.
-
----
-
-## 📄 License
-
-This project is licensed under the [MIT License](LICENSE).
-
----
-
-<div align="center">
-
-Built with precision for conscious consumption.
-
-**[Nittoo on GitHub](https://github.com/TahmidShafi/nittoo)**
-
-</div>
+MIT — see [LICENSE](LICENSE). Historical build notes are archived in [`docs/archive/`](docs/archive/README.md).
