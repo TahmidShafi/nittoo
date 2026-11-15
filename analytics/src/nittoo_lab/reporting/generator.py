@@ -105,6 +105,7 @@ def _collect_dbt_tests(run_results_path: Path) -> list[dict[str, object]]:
                 "execution_time": round(float(r.get("execution_time", 0.0)), 3),
             }
         )
+    tests.sort(key=lambda t: str(t["name"]))
     return tests
 
 

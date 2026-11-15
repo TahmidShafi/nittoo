@@ -1,0 +1,30 @@
+name: Reproduce Analytics Reports
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * 0"
+
+jobs:
+  reproduce-reports:
+    name: Reproduce Committed Reports (--check)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup uv & Python 3.12
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.12"
+          working-directory: analytics
+
+      - name: Install Python dependencies
+        working-directory: analytics
+        run: uv sync --locked
+
+      - name: Verify committed reports are reproducible
+        working-directory: analytics
+        run: uv run lab reproduce-reports --check

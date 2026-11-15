@@ -40,6 +40,7 @@ ANALYTICS_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_DB_PATH = ANALYTICS_ROOT / "data" / "nittoo.duckdb"
 DEFAULT_FAULTS_MANIFEST_PATH = ANALYTICS_ROOT / "data" / "ground_truth" / "injected_faults.json"
 DEFAULT_FORECAST_REPORT_PATH = ANALYTICS_ROOT / "reports" / "forecast_report.md"
+DEFAULT_FORECAST_RESULTS_PATH = ANALYTICS_ROOT / "reports" / "forecast_results.json"
 
 
 @dataclass(frozen=True)
@@ -644,5 +645,253 @@ def run_forecast_evaluation(
         report_path=report_path,
         winner=ev.winner,
         rule_clean_targets=ev.rule_clean_targets,
+        elapsed_seconds=round(time.perf_counter() - t0, 3),
+    )
+
+
+def _metric_to_dict(m: MetricSummary) -> dict[str, object]:
+    return {
+        "n": m.n,
+        "mae": round(m.mae, 4),
+        "median_ae": round(m.median_ae, 4),
+        "mape_pct": round(m.mape_pct, 4),
+        "bias": round(m.bias, 4),
+        "coverage_pct": round(m.coverage_pct, 4) if m.coverage_pct is not None else None,
+        "mean_width": round(m.mean_width, 4) if m.mean_width is not None else None,
+    }
+
+
+def build_forecast_results_payload(
+    primary_eval: DatasetEval,
+    seed_label: str,
+    scale_label: str,
+    extra_evals: Sequence[DatasetEval] = (),
+    size_stats: SizeSwitchStats | None = None,
+    elasticity_evals: Sequence[DatasetEval] = (),
+) -> dict[str, object]:
+    """Build machine-readable forecast results JSON from evaluated backtest datasets."""
+    key_methods = [
+        ("baseline", "none"),
+        ("baseline", "rule_only"),
+        ("rate_mean", "rule_only"),
+        ("rate_mean", "rule_plus_rate_outlier"),
+        ("ewma_duration", "rule_only"),
+    ]
+
+    def _method_key(mv: tuple[str, str]) -> str:
+        return f"{mv[0]}:{mv[1]}"
+
+    holdout_overall = {
+        _method_key(mv): _metric_to_dict(primary_eval.rule_clean_metrics[mv])
+        for mv in key_methods
+        if mv in primary_eval.rule_clean_metrics
+    }
+    holdout_constant = {
+        _method_key(mv): _metric_to_dict(primary_eval.by_constant_size[(mv[0], mv[1], True)])
+        for mv in key_methods
+        if (mv[0], mv[1], True) in primary_eval.by_constant_size
+    }
+    holdout_size_change = {
+        _method_key(mv): _metric_to_dict(primary_eval.by_constant_size[(mv[0], mv[1], False)])
+        for mv in key_methods
+        if (mv[0], mv[1], False) in primary_eval.by_constant_size
+    }
+
+    elasticity_payload: list[dict[str, object]] = []
+    for ev in elasticity_evals:
+        elasticity_payload.append(
+            {
+                "label": ev.label,
+                "rule_clean_targets": ev.rule_clean_targets,
+                "methods": {
+                    _method_key(mv): _metric_to_dict(ev.rule_clean_metrics[mv])
+                    for mv in key_methods
+                    if mv in ev.rule_clean_metrics
+                },
+            }
+        )
+
+    extra_payload: list[dict[str, object]] = []
+    for ev in extra_evals:
+        extra_payload.append(
+            {
+                "label": ev.label,
+                "rule_clean_targets": ev.rule_clean_targets,
+                "methods": {
+                    _method_key(mv): _metric_to_dict(ev.rule_clean_metrics[mv])
+                    for mv in key_methods
+                    if mv in ev.rule_clean_metrics
+                },
+            }
+        )
+
+    shipped_mv = ("rate_mean", "rule_only")
+    mech_mv = primary_eval.winner
+    rm_ci_base = primary_eval.bootstrap_cis[shipped_mv]
+    rm_ci_paired = primary_eval.rate_mean_paired_ci
+
+    return {
+        "provenance": {
+            "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
+            "git_commit": _git_sha(),
+            "scale": scale_label,
+            "seeds": seed_label,
+            "dataset_type": "SYNTHETIC",
+        },
+        "size_switch_stats": (
+            {
+                "total_products": size_stats.total_products,
+                "switched_products": size_stats.switched_products,
+                "product_switch_pct": round(size_stats.product_switch_pct, 2),
+                "total_purchases": size_stats.total_purchases,
+                "override_purchases": size_stats.override_purchases,
+                "purchase_override_pct": round(size_stats.purchase_override_pct, 2),
+            }
+            if size_stats is not None
+            else None
+        ),
+        "nominal_interval_coverage_pct": 80.0,
+        "holdout": {
+            "label": primary_eval.label,
+            "total_targets": primary_eval.total_targets,
+            "rule_clean_targets": primary_eval.rule_clean_targets,
+            "overall": holdout_overall,
+            "constant_size_history": holdout_constant,
+            "size_change_history": holdout_size_change,
+        },
+        "extra_datasets": extra_payload,
+        "elasticity": elasticity_payload,
+        "shipping_decision": {
+            "mechanical_winner": f"{mech_mv[0]} ({mech_mv[1]})",
+            "shipped_method": f"{shipped_mv[0]} ({shipped_mv[1]})",
+            "shipped_vs_baseline_ci": {
+                "mae_improvement": round(rm_ci_base.mae_improvement, 4),
+                "ci_low": round(rm_ci_base.ci_low, 4),
+                "ci_high": round(rm_ci_base.ci_high, 4),
+                "ci_level": rm_ci_base.ci_level,
+            },
+            "shipped_vs_rate_outlier_ci": {
+                "mae_improvement": round(rm_ci_paired.mae_improvement, 4),
+                "ci_low": round(rm_ci_paired.ci_low, 4),
+                "ci_high": round(rm_ci_paired.ci_high, 4),
+                "ci_level": rm_ci_paired.ci_level,
+            },
+        },
+    }
+
+
+def run_full_forecast_suite(
+    households: int = 500,
+    months: int = 24,
+    report_path: Path = DEFAULT_FORECAST_REPORT_PATH,
+    results_json_path: Path = DEFAULT_FORECAST_RESULTS_PATH,
+) -> ForecastReportResult:
+    """Run the canonical 5-dataset forecast suite (7, 4001, 4002, 4003, 4004) in a temp dir."""
+    import tempfile
+
+    from nittoo_lab.ingest.loader import ingest_exports
+    from nittoo_lab.simulate.generator import simulate_households
+    from nittoo_lab.transform.runner import run_dbt_pipeline
+
+    t0 = time.perf_counter()
+
+    def _run_one(
+        tmp: Path,
+        name: str,
+        seed: int,
+        noise: float,
+        eps: float,
+    ) -> tuple[list[BacktestTarget], SizeSwitchStats]:
+        sub = tmp / name
+        exp_dir = sub / "exports"
+        gt_path = sub / "true_rates.json"
+        fm_path = sub / "injected_faults.json"
+        db_file = sub / "nittoo.duckdb"
+        simulate_households(
+            households=households,
+            months=months,
+            seed=seed,
+            exports_dir=exp_dir,
+            ground_truth_path=gt_path,
+            faults_manifest_path=fm_path,
+            cycle_noise_std=noise,
+            pack_size_elasticity=eps,
+        )
+        ingest_exports(exports_dir=exp_dir, db_path=db_file)
+        run_dbt_pipeline(db_path=db_file, generate_docs=False)
+        targets = run_rolling_backtest(
+            db_path=db_file,
+            ewma_duration_alpha=EWMA_DURATION_ALPHA,
+            ewma_rate_alpha=EWMA_RATE_ALPHA,
+            faults_manifest_path=fm_path,
+        )
+        stats = load_size_switch_stats(db_file)
+        return targets, stats
+
+    with tempfile.TemporaryDirectory(prefix="nittoo_fc_") as tmp_str:
+        tmp = Path(tmp_str)
+        dev_targets, _ = _run_one(tmp, "dev_7", 7, 0.08, 0.0)
+        holdout_targets, holdout_stats = _run_one(tmp, "holdout_4001", 4001, 0.08, 0.0)
+        alpha25_targets = run_rolling_backtest(
+            db_path=tmp / "holdout_4001" / "nittoo.duckdb",
+            ewma_duration_alpha=0.25,
+            ewma_rate_alpha=EWMA_RATE_ALPHA,
+            faults_manifest_path=tmp / "holdout_4001" / "injected_faults.json",
+        )
+        noise_targets, _ = _run_one(tmp, "noise_4002", 4002, 0.20, 0.0)
+        eps03_targets, _ = _run_one(tmp, "eps03_4003", 4003, 0.08, 0.3)
+        eps06_targets, _ = _run_one(tmp, "eps06_4004", 4004, 0.08, 0.6)
+
+    dev_eval = evaluate_targets("Dev (seed=7)", dev_targets)
+    holdout_eval = evaluate_targets("Holdout (seed=4001)", holdout_targets)
+    alpha25_eval = evaluate_targets("Holdout alpha=0.25", alpha25_targets)
+    noise_eval = evaluate_targets("2.5x Noise (seed=4002)", noise_targets)
+    eps00_eval = evaluate_targets("Elasticity eps=0.0 (seed=4001)", holdout_targets)
+    eps03_eval = evaluate_targets("Elasticity eps=0.3 (seed=4003)", eps03_targets)
+    eps06_eval = evaluate_targets("Elasticity eps=0.6 (seed=4004)", eps06_targets)
+
+    alpha_breakdown: dict[str, tuple[float, float, float]] = {
+        "constant_size": (
+            holdout_eval.by_constant_size[("baseline", "rule_only", True)].mae,
+            alpha25_eval.by_constant_size[("ewma_duration", "rule_only", True)].mae,
+            holdout_eval.by_constant_size[("ewma_duration", "rule_only", True)].mae,
+        ),
+        "any_size_change": (
+            holdout_eval.by_constant_size[("baseline", "rule_only", False)].mae,
+            alpha25_eval.by_constant_size[("ewma_duration", "rule_only", False)].mae,
+            holdout_eval.by_constant_size[("ewma_duration", "rule_only", False)].mae,
+        ),
+    }
+
+    seed_label = "4001 (holdout) / 7 (dev) / 4002 (2.5x noise) / 4003 (eps=0.3) / 4004 (eps=0.6)"
+    scale_label = f"{households} households x {months} months"
+
+    payload = build_forecast_results_payload(
+        primary_eval=holdout_eval,
+        seed_label=seed_label,
+        scale_label=scale_label,
+        extra_evals=[dev_eval, noise_eval],
+        size_stats=holdout_stats,
+        elasticity_evals=[eps00_eval, eps03_eval, eps06_eval],
+    )
+    results_json_path.parent.mkdir(parents=True, exist_ok=True)
+    results_json_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+    md = render_forecast_report(
+        holdout_eval,
+        seed_label=seed_label,
+        scale_label=scale_label,
+        extra_evals=[dev_eval, noise_eval],
+        size_stats=holdout_stats,
+        elasticity_evals=[eps00_eval, eps03_eval, eps06_eval],
+        alpha_breakdown=alpha_breakdown or None,
+    )
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(md, encoding="utf-8")
+
+    return ForecastReportResult(
+        report_path=report_path,
+        winner=holdout_eval.winner,
+        rule_clean_targets=holdout_eval.rule_clean_targets,
         elapsed_seconds=round(time.perf_counter() - t0, 3),
     )
