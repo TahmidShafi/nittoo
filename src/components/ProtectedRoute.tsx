@@ -18,11 +18,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FBFBFB] flex flex-col justify-center items-center p-6">
-        <div className="w-full max-w-md space-y-4 animate-pulse">
-          <div className="w-10 h-10 bg-neutral-200 rounded-xl mx-auto mb-6" />
-          <div className="h-6 bg-neutral-200 rounded w-3/4 mx-auto" />
-          <div className="h-4 bg-neutral-100 rounded w-1/2 mx-auto" />
-          <div className="h-28 bg-neutral-100 rounded-xl mt-6" />
+        <div className="w-full max-w-md space-y-4">
+          <div className="w-10 h-10 skeleton-shimmer rounded-xl mx-auto mb-6" />
+          <div className="h-6 skeleton-shimmer rounded w-3/4 mx-auto" />
+          <div className="h-4 skeleton-shimmer rounded w-1/2 mx-auto" />
+          <div className="h-28 skeleton-shimmer rounded-xl mt-6" />
         </div>
       </div>
     );

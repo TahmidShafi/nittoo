@@ -6,6 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { ModalShell } from './ModalShell';
 
 interface ChangeEmailModalProps {
   isOpen: boolean;
@@ -43,8 +44,6 @@ export const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, submitting, onClose]);
-
-  if (!isOpen) return null;
 
   const currentEmail = user?.email || '—';
 
@@ -85,18 +84,16 @@ export const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-backdrop-in"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="change-email-title"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !submitting) onClose();
+    <ModalShell
+      isOpen={isOpen}
+      onClose={() => {
+        if (!submitting) onClose();
       }}
+      ariaLabelledBy="change-email-title"
+      backdropClassName="bg-black/40 backdrop-blur-xs"
     >
-      <div className="w-full max-w-md bg-white rounded-2xl border border-neutral-200/80 shadow-2xl p-6 sm:p-7 space-y-5 animate-modal-in">
         <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">
+          <span className="text-[11px] font-medium text-neutral-500 block mb-1">
             ACCOUNT SECURITY
           </span>
           <h2 id="change-email-title" className="text-xl font-bold tracking-tight text-neutral-900">
@@ -109,7 +106,7 @@ export const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({
 
         {error && (
           <div
-            className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-medium flex items-start gap-2"
+            className="p-3.5 rounded-xl bg-status-critical-bg border border-status-critical-border text-xs text-status-critical-text font-medium flex items-start gap-2"
             role="alert"
           >
             <span className="font-bold shrink-0">!</span>
@@ -183,7 +180,6 @@ export const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </ModalShell>
   );
 };

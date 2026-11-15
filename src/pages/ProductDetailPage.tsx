@@ -37,7 +37,10 @@ import {
   getRelativeOptionLabel,
   recalculatePlanReminderDate,
 } from '../lib/restock';
-import { FinishUsageModal } from '../components/FinishUsageModal';
+import { FinishUsageModal, type FinishUsageSummary } from '../components/FinishUsageModal';
+import { Toast } from '../components/Toast';
+import { LifespanBar } from '../components/LifespanBar';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 import { EditInventoryModal } from '../components/EditInventoryModal';
 import { EditCompletedCycleModal } from '../components/EditCompletedCycleModal';
 import { DeleteCompletedCycleModal } from '../components/DeleteCompletedCycleModal';
@@ -62,6 +65,7 @@ export const ProductDetailPage: React.FC = () => {
 
   const [loading, setLoading] = useState<boolean>(() => !cachedEntry);
   const [error, setError] = useState<string | null>(null);
+  const prefersReducedMotion = useReducedMotion();
 
   // Stale-while-revalidate refs
   const isInitialLoad = useRef(!cachedEntry);
@@ -74,6 +78,7 @@ export const ProductDetailPage: React.FC = () => {
 
   // Modal State for Finishing the Active Bottle
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [finishToast, setFinishToast] = useState<string | null>(null);
 
   // Modal State for Editing Current Inventory
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -480,22 +485,22 @@ export const ProductDetailPage: React.FC = () => {
   // Loading State Skeleton
   if (loading) {
     return (
-      <div className="space-y-6 max-w-5xl mx-auto animate-pulse">
-        <div className="h-4 w-32 bg-neutral-200 rounded" />
+      <div className="space-y-6">
+        <div className="h-4 w-32 skeleton-shimmer rounded" />
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-neutral-200">
           <div className="space-y-2 w-full max-w-md">
-            <div className="h-4 w-36 bg-neutral-100 rounded" />
-            <div className="h-8 w-64 bg-neutral-200 rounded" />
+            <div className="h-4 w-36 skeleton-shimmer rounded" />
+            <div className="h-8 w-64 skeleton-shimmer rounded" />
           </div>
-          <div className="h-10 w-44 bg-neutral-200 rounded-xl shrink-0" />
+          <div className="h-10 w-44 skeleton-shimmer rounded-xl shrink-0" />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-24 bg-white border border-neutral-200 rounded-2xl p-4 flex flex-col justify-between" />
+            <div key={i} className="h-24 skeleton-shimmer border border-neutral-200 rounded-2xl p-4" />
           ))}
         </div>
-        <div className="h-44 bg-white border border-neutral-200 rounded-2xl p-5" />
-        <div className="h-64 bg-white border border-neutral-200 rounded-2xl p-5" />
+        <div className="h-44 skeleton-shimmer border border-neutral-200 rounded-2xl p-5" />
+        <div className="h-64 skeleton-shimmer border border-neutral-200 rounded-2xl p-5" />
       </div>
     );
   }
@@ -504,7 +509,7 @@ export const ProductDetailPage: React.FC = () => {
   if (error || !history) {
     return (
       <div className="max-w-xl mx-auto py-16 text-center space-y-4">
-        <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto text-xl font-bold">
+        <div className="w-12 h-12 rounded-2xl bg-status-critical-bg text-status-critical-text flex items-center justify-center mx-auto text-xl font-bold">
           !
         </div>
         <h2 className="text-xl font-bold text-neutral-900">Unable to load essential</h2>
@@ -524,7 +529,7 @@ export const ProductDetailPage: React.FC = () => {
   const { product } = history;
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto animate-page-in">
+    <div className="space-y-8">
       {/* Navigation Breadcrumb */}
       <div>
         <Link
@@ -627,8 +632,8 @@ export const ProductDetailPage: React.FC = () => {
 
             <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
               {activeUsageData.urgencyState === 'overdue' ? (
-                <span className="text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-3 py-1 rounded-full flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                <span className="text-xs font-semibold text-status-critical-text bg-status-critical-bg border border-status-critical-border px-3 py-1 rounded-full flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-status-critical-fill animate-pulse" />
                   <span>Overdue by {activeUsageData.overdueDays} day{activeUsageData.overdueDays === 1 ? '' : 's'}</span>
                 </span>
               ) : activeUsageData.urgencyState === 'running_soon' ? (
@@ -666,7 +671,7 @@ export const ProductDetailPage: React.FC = () => {
                 Day <strong className="font-semibold text-neutral-900">{activeUsageData.daysUsed}</strong> in use
               </span>
               {activeUsageData.urgencyState === 'overdue' ? (
-                <span className="text-xs font-semibold text-rose-700 flex items-center gap-1">
+                <span className="text-xs font-semibold text-status-critical-text flex items-center gap-1">
                   <span>Overdue by {activeUsageData.overdueDays}d</span>
                 </span>
               ) : activeUsageData.predictedRemaining !== null ? (
@@ -675,27 +680,19 @@ export const ProductDetailPage: React.FC = () => {
                 </span>
               ) : null}
             </div>
-            <div className="h-2 w-full bg-neutral-100 rounded-full overflow-hidden">
-              {activeUsageData.progress !== null ? (
-                <div
-                  className={`h-full rounded-full transition-all duration-300 ${
-                    activeUsageData.isOverdue
-                      ? 'bg-rose-500 w-full'
-                      : activeUsageData.predictedRemaining !== null && activeUsageData.predictedRemaining < 14
-                      ? 'bg-amber-500'
-                      : 'bg-[#2D6A4F]'
-                  }`}
-                  style={{ width: `${activeUsageData.progress}%` }}
-                />
-              ) : (
-                <div className="h-full w-full bg-neutral-200/50 rounded-full" />
-              )}
-            </div>
+            <LifespanBar
+              daysUsed={activeUsageData.daysUsed}
+              expectedLifespan={activeUsageData.avgDuration}
+              runOutRange={activeUsageData.runOutRange}
+              isOverdue={activeUsageData.isOverdue}
+              predictedRemainingDays={activeUsageData.predictedRemaining}
+              heightClass="h-2"
+            />
 
             {/* EXPECTED LIFESPAN PREDICTION */}
             <div className="pt-3 border-t border-neutral-100/80">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">
-                EXPECTED LIFESPAN
+              <span className="text-xs font-medium text-neutral-500 block mb-1">
+                Expected lifespan
               </span>
               {activeUsageData.avgDuration !== null ? (
                 <div className="space-y-1">
@@ -709,7 +706,10 @@ export const ProductDetailPage: React.FC = () => {
                   </div>
                   {activeUsageData.runOutRange && (
                     <p className="text-xs font-medium text-neutral-600">
-                      {formatRunOutRange(activeUsageData.runOutRange)}
+                      {formatRunOutRange(activeUsageData.runOutRange, {
+                        expectedFinishDate,
+                        isOverdue: activeUsageData.isOverdue,
+                      })}
                     </p>
                   )}
                   <p className="text-xs text-neutral-500 flex items-center gap-1.5 flex-wrap">
@@ -730,7 +730,10 @@ export const ProductDetailPage: React.FC = () => {
                   </div>
                   {activeUsageData.runOutRange && (
                     <p className="text-xs font-medium text-neutral-600">
-                      {formatRunOutRange(activeUsageData.runOutRange)}
+                      {formatRunOutRange(activeUsageData.runOutRange, {
+                        expectedFinishDate,
+                        isOverdue: activeUsageData.isOverdue,
+                      })}
                     </p>
                   )}
                   <p className="text-xs text-neutral-400 italic">
@@ -743,8 +746,8 @@ export const ProductDetailPage: React.FC = () => {
             {/* RESTOCK PLANNING SECTION (Stage 21) */}
             <div className="pt-3 border-t border-neutral-100/80 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
-                  RESTOCK
+                <span className="text-xs font-medium text-neutral-500">
+                  Restock
                 </span>
                 {effectiveRestockPlan && effectiveRestockPlan.status === 'planned' && (
                   <span
@@ -846,18 +849,16 @@ export const ProductDetailPage: React.FC = () => {
               {effectiveRestockPlan &&
                 effectiveRestockPlan.status === 'planned' &&
                 getRestockDisplayStatus(effectiveRestockPlan, activeUsageData.active.status) === 'due' && (
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-amber-500/10 rounded-xl p-3.5 border border-amber-500/30">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white rounded-xl p-3.5 border border-surface-border border-l-4 border-l-status-attention-fill">
                     <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                        <span className="text-xs font-bold text-amber-800">
-                          Restock reminder due
-                        </span>
-                      </div>
-                      <p className="text-xs text-neutral-600 mt-0.5">
-                        Reminder was scheduled for {formatDisplayDate(effectiveRestockPlan.reminder_date)}
-                        {expectedFinishDate && ` · Estimated finish: ${formatDisplayDate(expectedFinishDate)}`}
+                      <p className="text-sm font-bold text-neutral-900">
+                        Scheduled for {formatDisplayDate(effectiveRestockPlan.reminder_date)}
                       </p>
+                      {expectedFinishDate && (
+                        <p className="text-xs text-neutral-600 mt-0.5">
+                          Estimated finish: {formatDisplayDate(expectedFinishDate)}
+                        </p>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
                       <button
@@ -910,8 +911,8 @@ export const ProductDetailPage: React.FC = () => {
 
           {/* Expected Lifespan Section when no bottle is in use */}
           <div className="pt-3 border-t border-[#2D6A4F]/15">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block mb-1">
-              EXPECTED LIFESPAN
+            <span className="text-xs font-medium text-neutral-500 block mb-1">
+              Expected lifespan
             </span>
             {summaryStats?.averageDuration !== null ? (
               <div className="space-y-1">
@@ -950,7 +951,7 @@ export const ProductDetailPage: React.FC = () => {
 
       {/* Action Notification Alert Messages */}
       {actionError && (
-        <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium flex items-start justify-between animate-page-in shadow-xs">
+        <div className="p-4 rounded-xl bg-status-attention-bg border border-status-attention-border text-status-attention-text text-xs font-medium flex items-start justify-between animate-page-in shadow-xs">
           <div className="flex items-center gap-2">
             <span className="text-base leading-none">⚠️</span>
             <span className="leading-relaxed">{actionError}</span>
@@ -958,7 +959,7 @@ export const ProductDetailPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setActionError(null)}
-            className="text-amber-600 hover:text-amber-900 font-bold ml-3 text-sm cursor-pointer"
+            className="text-status-attention-text hover:text-status-attention-text font-bold ml-3 text-sm cursor-pointer"
           >
             ×
           </button>
@@ -986,8 +987,8 @@ export const ProductDetailPage: React.FC = () => {
         <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 sm:p-7 shadow-xs space-y-4">
           <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
             <div>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block mb-0.5">
-                Unopened Purchases
+              <span className="text-xs font-semibold text-neutral-700 block mb-0.5">
+                Unopened purchases
               </span>
               <p className="text-xs text-neutral-500">
                 {history.unopened_purchases.length} backup bottle{history.unopened_purchases.length === 1 ? '' : 's'} stored and waiting to be opened
@@ -1206,7 +1207,15 @@ export const ProductDetailPage: React.FC = () => {
                     boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
                   }}
                 />
-                <Bar dataKey="duration" fill="#2D6A4F" radius={[6, 6, 0, 0]} maxBarSize={44} />
+                <Bar
+                  dataKey="duration"
+                  fill="#2D6A4F"
+                  radius={[6, 6, 0, 0]}
+                  maxBarSize={44}
+                  isAnimationActive={!prefersReducedMotion}
+                  animationDuration={300}
+                  animationEasing="ease-out"
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -1253,13 +1262,13 @@ export const ProductDetailPage: React.FC = () => {
 
                 <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 sm:gap-6 sm:text-right">
                   <div>
-                    <span className="text-neutral-400 block text-[10px] uppercase font-semibold tracking-wider">Duration</span>
+                    <span className="text-neutral-500 block text-[11px] font-medium">Duration</span>
                     <span className="font-bold text-neutral-900 text-sm">
                       {cycle.duration} days
                     </span>
                   </div>
                   <div>
-                    <span className="text-neutral-400 block text-[10px] uppercase font-semibold tracking-wider">Cycle Cost/Day</span>
+                    <span className="text-neutral-500 block text-[11px] font-medium">Cycle cost/day</span>
                     {cycle.cycleCostPerDay !== null ? (
                       <span className="font-bold text-[#2D6A4F] text-sm">
                         ৳{cycle.cycleCostPerDay}/day
@@ -1282,7 +1291,7 @@ export const ProductDetailPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => handleOpenDeleteCycle(cycle.rawPeriod, cycle.cycleNumber, cycle.duration)}
-                      className="btn-press min-h-[30px] px-2.5 py-1 rounded-lg text-neutral-400 hover:text-rose-600 hover:bg-rose-50 text-xs font-medium transition-colors cursor-pointer"
+                      className="btn-press min-h-[30px] px-2.5 py-1 rounded-lg text-neutral-400 hover:text-status-critical-text hover:bg-status-critical-bg text-xs font-medium transition-colors cursor-pointer"
                       title="Delete this completed cycle"
                     >
                       Delete
@@ -1300,8 +1309,13 @@ export const ProductDetailPage: React.FC = () => {
         product={modalProduct}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onFinished={() => loadData()}
+        onFinished={(summary: FinishUsageSummary) => {
+          setFinishToast(`${summary.productName} is finished. ${summary.daysUsed}-day cycle recorded.`);
+          loadData();
+        }}
       />
+
+      <Toast message={finishToast} onDismiss={() => setFinishToast(null)} />
 
       {/* Reusable Edit Current Inventory Modal */}
       <EditInventoryModal

@@ -166,13 +166,32 @@ export function calculateRunOutRange(
   return { minDate, maxDate, lowDays, highDays, bucket };
 }
 
-export function formatRunOutRange(range: RunOutRange): string {
+export interface FormatRunOutRangeOptions {
+  expectedFinishDate?: string | null;
+  isOverdue?: boolean;
+  referenceDate?: string;
+}
+
+export function formatRunOutRange(
+  range: RunOutRange,
+  options?: FormatRunOutRangeOptions
+): string {
   const fmt = (iso: string) =>
     new Intl.DateTimeFormat('en-US', {
       month: 'short',
       day: 'numeric',
       timeZone: 'UTC',
     }).format(new Date(`${iso}T00:00:00Z`));
+
+  const today = options?.referenceDate ?? getTodayLocal();
+  if (
+    options?.isOverdue &&
+    options.expectedFinishDate &&
+    today <= range.maxDate
+  ) {
+    return `Was expected ${fmt(options.expectedFinishDate)} · may last until ${fmt(range.maxDate)}`;
+  }
+
   return `Runs out between ${fmt(range.minDate)} and ${fmt(range.maxDate)}`;
 }
 
@@ -246,6 +265,58 @@ export function calculateProgressPercent(
   }
   const percent = (currentDaysUsed / averageLifespan) * 100;
   return Math.min(100, Math.max(0, Math.round(percent)));
+}
+
+export interface LifespanTrackLayout {
+  domainMax: number;
+  fillPercent: number;
+  expectedPercent: number;
+  bandStartPercent: number | null;
+  bandWidthPercent: number | null;
+}
+
+/**
+ * Maps daysUsed, expectedLifespan, and optional P10-P90 runOutRange onto a shared
+ * [0 .. max(highDays, daysUsed)] track domain so the band and expected tick are never clipped.
+ */
+export function computeLifespanTrackLayout(params: {
+  daysUsed: number;
+  expectedLifespan: number | null;
+  runOutRange: RunOutRange | null;
+}): LifespanTrackLayout | null {
+  const { daysUsed, expectedLifespan, runOutRange } = params;
+  if (expectedLifespan === null || expectedLifespan <= 0) {
+    return null;
+  }
+
+  const highBound = runOutRange ? runOutRange.highDays : expectedLifespan;
+  const domainMax = Math.max(highBound, daysUsed, 1);
+  const toPct = (days: number) =>
+    Math.min(100, Math.max(0, Math.round((days / domainMax) * 10000) / 100));
+
+  const fillPercent = toPct(daysUsed);
+  const expectedPercent = toPct(expectedLifespan);
+
+  if (!runOutRange) {
+    return {
+      domainMax,
+      fillPercent,
+      expectedPercent,
+      bandStartPercent: null,
+      bandWidthPercent: null,
+    };
+  }
+
+  const bandStartPercent = toPct(runOutRange.lowDays);
+  const bandEndPercent = toPct(runOutRange.highDays);
+
+  return {
+    domainMax,
+    fillPercent,
+    expectedPercent,
+    bandStartPercent,
+    bandWidthPercent: Math.max(0, Math.round((bandEndPercent - bandStartPercent) * 100) / 100),
+  };
 }
 
 /**

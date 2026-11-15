@@ -4,12 +4,14 @@
 // Premium, calm authentication composition with official brand logo
 // ==============================================================================
 
-import React, { useState } from 'react';
+import React, { lazy, Suspense, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { isMockMode } from '../lib/dataSource';
 import { NittooLogo } from '../components/NittooLogo';
+
+const DemoProductPreview = lazy(() => import('../components/DemoProductPreview'));
 
 export const LoginPage: React.FC = () => {
   usePageMeta({
@@ -90,26 +92,108 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-between items-center px-4 py-8 sm:py-12 bg-[#FBFBFB]">
-      {/* Background Decorative Ambient Tone */}
-      <div className="w-full max-w-md my-auto flex flex-col items-center">
-        {/* Brand Header */}
-        <div className="text-center mb-8 flex flex-col items-center">
+    <div className="min-h-screen flex flex-col justify-between items-center px-4 py-6 sm:py-10 bg-[#FBFBFB]">
+      {/* Main Content: Mobile-first single column, 2-column split on desktop */}
+      <div className="w-full max-w-md lg:max-w-5xl my-auto grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
+        {/* Hero & Value Proposition */}
+        <div className="lg:col-span-7 flex flex-col items-center lg:items-start text-center lg:text-left space-y-4">
           <NittooLogo variant="horizontal" size="xl" showTagline={true} />
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900 mt-4">
-            Welcome back
-          </h1>
-          <p className="text-xs sm:text-sm text-neutral-500 mt-1 max-w-xs">
-            Sign in to track your personal essentials, lifespans, and true costs.
-          </p>
+
+          <div className="space-y-2">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 leading-tight">
+              Track what you use. Know what it costs.
+            </h1>
+            <p className="text-sm text-neutral-600 max-w-lg leading-relaxed">
+              Follow everyday essentials from purchase to finish to see how long each container lasts, what it costs per day, and when to restock.
+            </p>
+          </div>
+
+          {/* Primary Action: Try the Demo */}
+          <div className="w-full sm:w-auto flex flex-col items-center lg:items-start gap-2.5">
+            <div className="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-3">
+              <button
+                type="button"
+                onClick={handleTryDemo}
+                disabled={submitting}
+                className="btn-press w-full sm:w-auto px-6 py-3 rounded-xl bg-[#2D6A4F] hover:bg-[#24563F] text-white text-sm font-semibold transition-colors shadow-xs disabled:opacity-60 inline-flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>Try the demo</span>
+                <span aria-hidden="true">→</span>
+              </button>
+              <span className="text-xs font-medium text-neutral-600">
+                No sign-up needed · 12 sample products
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const emailInput = document.getElementById('login-email');
+                if (emailInput) {
+                  const prefersReduced =
+                    typeof window !== 'undefined' &&
+                    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                  emailInput.scrollIntoView({
+                    behavior: prefersReduced ? 'auto' : 'smooth',
+                    block: 'center',
+                  });
+                  emailInput.focus();
+                }
+              }}
+              className="lg:hidden text-xs text-neutral-600 hover:text-neutral-900 cursor-pointer"
+            >
+              Already have an account?{' '}
+              <span className="font-semibold text-[#2D6A4F] underline">Sign in</span>
+            </button>
+          </div>
+
+          {/* 3 Short Feature Highlights */}
+          <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
+            <div className="bg-white border border-neutral-200/80 rounded-xl p-3.5 shadow-xs space-y-1">
+              <p className="text-sm font-semibold text-neutral-900">Run-out forecasts</p>
+              <p className="text-[13px] text-neutral-600 leading-relaxed">
+                Estimates remaining days and a run-out window from completed cycles.
+              </p>
+            </div>
+            <div className="bg-white border border-neutral-200/80 rounded-xl p-3.5 shadow-xs space-y-1">
+              <p className="text-sm font-semibold text-neutral-900">True daily cost</p>
+              <p className="text-[13px] text-neutral-600 leading-relaxed">
+                Turns purchase prices into a clear cost per day and monthly run rate.
+              </p>
+            </div>
+            <div className="bg-white border border-neutral-200/80 rounded-xl p-3.5 shadow-xs space-y-1">
+              <p className="text-sm font-semibold text-neutral-900">Backup inventory</p>
+              <p className="text-[13px] text-neutral-600 leading-relaxed">
+                Tracks unopened stock separately from what you are using right now.
+              </p>
+            </div>
+          </div>
+
+          {/* Lazy-loaded non-interactive ProductCard preview using real DEMO_SEED data */}
+          <div className="w-full pt-1 text-left">
+            <Suspense
+              fallback={
+                <div className="h-56 skeleton-shimmer rounded-2xl border border-neutral-200/80" />
+              }
+            >
+              <DemoProductPreview />
+            </Suspense>
+          </div>
         </div>
 
-        {/* Card Container */}
-        <div className="w-full bg-white border border-neutral-200/80 rounded-2xl p-7 sm:p-8 shadow-xs">
+        {/* Sign-In Card Container */}
+        <div className="lg:col-span-5 w-full bg-white border border-neutral-200/80 rounded-2xl p-6 sm:p-7 shadow-xs">
+          <div className="mb-4">
+            <h2 className="text-base font-bold text-neutral-900 tracking-tight">
+              Sign in to your account
+            </h2>
+            <p className="text-xs text-neutral-500 mt-0.5">
+              Access your personal essentials across devices.
+            </p>
+          </div>
           {/* Error Alert */}
           {error && (
-            <div className="mb-5 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-start gap-2.5 animate-page-in">
-              <span className="text-rose-600 font-bold leading-none mt-0.5">!</span>
+            <div className="mb-5 p-3.5 rounded-xl bg-status-critical-bg border border-status-critical-border text-status-critical-text text-xs font-medium flex items-start gap-2.5 animate-page-in">
+              <span className="text-status-critical-text font-bold leading-none mt-0.5">!</span>
               <span className="flex-1 leading-relaxed">{error}</span>
             </div>
           )}
@@ -224,32 +308,18 @@ export const LoginPage: React.FC = () => {
             </form>
           )}
 
-          {/* Try the Demo Button (Always Available — Runtime Mock Sandbox) */}
-          {!magicLinkSent && (
-            <div className="mt-4 pt-4 border-t border-neutral-100 space-y-2">
+          {/* Mock Mode Demo User Helper */}
+          {!magicLinkSent && isMockMode && (
+            <div className="mt-4 pt-4 border-t border-neutral-100">
               <button
                 type="button"
-                onClick={handleTryDemo}
+                onClick={handleDemoSignIn}
                 disabled={submitting}
-                className="btn-press w-full py-2.5 px-3.5 rounded-xl border border-[#2D6A4F]/30 bg-[#EBF4F0]/70 hover:bg-[#EBF4F0] text-[#2D6A4F] text-xs font-semibold transition-colors disabled:opacity-60 flex items-center justify-center gap-1.5"
+                className="btn-press w-full py-2 px-3.5 rounded-xl border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 text-neutral-700 text-xs font-medium transition-colors disabled:opacity-60 flex items-center justify-center gap-1.5"
               >
-                <span>Try the demo</span>
-                <span className="text-[11px] font-normal text-[#2D6A4F]/80">
-                  (12 sample products, no sign-up)
-                </span>
+                <span>⚡</span>
+                <span>Sign in as Demo User (demo-user@nittoo.local)</span>
               </button>
-
-              {isMockMode && (
-                <button
-                  type="button"
-                  onClick={handleDemoSignIn}
-                  disabled={submitting}
-                  className="btn-press w-full py-2 px-3.5 rounded-xl border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 text-neutral-700 text-xs font-medium transition-colors disabled:opacity-60 flex items-center justify-center gap-1.5"
-                >
-                  <span>⚡</span>
-                  <span>Sign in as Demo User (demo-user@nittoo.local)</span>
-                </button>
-              )}
             </div>
           )}
 
@@ -266,7 +336,7 @@ export const LoginPage: React.FC = () => {
       </div>
 
       {/* Auth Footer Note */}
-      <footer className="py-4 text-center text-xs text-neutral-400">
+      <footer className="py-4 text-center text-xs text-neutral-500">
         Nittoo — Know What Lasts
       </footer>
     </div>

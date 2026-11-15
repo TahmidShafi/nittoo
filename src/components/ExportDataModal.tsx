@@ -9,6 +9,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { ModalShell } from './ModalShell';
 import { db } from '../lib/dataSource';
 import { exportUserDataAs, type ExportFormat } from '../lib/export';
 
@@ -47,7 +48,7 @@ export const ExportDataModal: React.FC<ExportDataModalProps> = ({ isOpen, onClos
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen || !user) return null;
+  if (!user) return null;
 
   const handleExport = async (format: ExportFormat) => {
     setActiveFormat(format);
@@ -78,20 +79,17 @@ export const ExportDataModal: React.FC<ExportDataModalProps> = ({ isOpen, onClos
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/40 backdrop-blur-xs animate-fade-in"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="export-dialog-title"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+    <ModalShell
+      isOpen={isOpen}
+      onClose={onClose}
+      ariaLabelledBy="export-dialog-title"
+      backdropClassName="bg-neutral-900/40 backdrop-blur-xs"
+      panelClassName="bg-white border border-neutral-200/80 rounded-2xl w-full max-w-lg shadow-xl overflow-hidden"
     >
-      <div className="bg-white border border-neutral-200/80 rounded-2xl w-full max-w-lg shadow-xl overflow-hidden animate-scale-in">
         {/* Header */}
         <div className="p-5 sm:p-6 border-b border-neutral-100 flex items-start justify-between">
           <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#2D6A4F] block mb-1">
+            <span className="text-[11px] font-medium text-[#2D6A4F] block mb-1">
               EXPORT YOUR DATA
             </span>
             <h2 id="export-dialog-title" className="text-xl font-bold tracking-tight text-neutral-900">
@@ -120,8 +118,8 @@ export const ExportDataModal: React.FC<ExportDataModalProps> = ({ isOpen, onClos
         )}
 
         {errorMessage && (
-          <div className="mx-5 sm:mx-6 mt-4 p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900 flex items-center gap-2">
-            <span className="text-rose-600 font-bold">✕</span>
+          <div className="mx-5 sm:mx-6 mt-4 p-3.5 bg-status-critical-bg border border-status-critical-border rounded-xl text-xs text-status-critical-text flex items-center gap-2">
+            <span className="text-status-critical-text font-bold">✕</span>
             <span className="font-medium">{errorMessage}</span>
           </div>
         )}
@@ -219,7 +217,6 @@ export const ExportDataModal: React.FC<ExportDataModalProps> = ({ isOpen, onClos
             Close
           </button>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 };

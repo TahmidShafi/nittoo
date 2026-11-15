@@ -13,6 +13,7 @@ import {
   getValidFinishedPeriods,
 } from '../lib/prediction';
 import { calculateConfidence, getConfidenceBadgeStyles } from '../lib/confidence';
+import { ModalShell } from './ModalShell';
 import {
   calculateExpectedFinishDate,
   calculateRelativeReminderDate,
@@ -101,7 +102,7 @@ export const PlanRestockModal: React.FC<PlanRestockModalProps> = ({
     }
   }, [isOpen, existingPlan, hasPrediction, today]);
 
-  if (!isOpen || !product || !activeUsage) return null;
+  if (!product || !activeUsage) return null;
 
   // Deterministic reminder date preview calculation
   let calculatedReminderDate = '';
@@ -167,20 +168,16 @@ export const PlanRestockModal: React.FC<PlanRestockModalProps> = ({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="plan-restock-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-backdrop-in"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+    <ModalShell
+      isOpen={isOpen && !!product}
+      onClose={onClose}
+      ariaLabelledBy="plan-restock-title"
+      panelClassName="w-full max-w-md bg-white rounded-2xl border border-neutral-200/80 shadow-2xl p-6 sm:p-7 space-y-5 max-h-[90vh] overflow-y-auto"
     >
-      <div className="w-full max-w-md bg-white rounded-2xl border border-neutral-200/80 shadow-2xl p-6 sm:p-7 space-y-5 animate-modal-in max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-start justify-between">
           <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">
+            <span className="text-[11px] font-medium text-neutral-500 block mb-1">
               {existingPlan ? 'Edit Restock Plan' : 'Plan Restock'}
             </span>
             <h3 id="plan-restock-title" className="text-lg font-bold text-neutral-900 tracking-tight">
@@ -198,8 +195,8 @@ export const PlanRestockModal: React.FC<PlanRestockModalProps> = ({
         </div>
 
         {error && (
-          <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-start gap-2">
-            <span className="text-rose-600 font-bold leading-none mt-0.5">!</span>
+          <div className="p-3.5 rounded-xl bg-status-critical-bg border border-status-critical-border text-status-critical-text text-xs font-medium flex items-start gap-2">
+            <span className="text-status-critical-text font-bold leading-none mt-0.5">!</span>
             <span className="flex-1 leading-relaxed">{error}</span>
           </div>
         )}
@@ -227,7 +224,7 @@ export const PlanRestockModal: React.FC<PlanRestockModalProps> = ({
             </div>
           </div>
         ) : (
-          <div className="bg-amber-500/5 rounded-xl p-4 border border-amber-500/20 text-xs space-y-1">
+          <div className="bg-status-attention-bg rounded-xl p-4 border border-status-attention-border text-xs space-y-1">
             <p className="font-semibold text-neutral-800">
               Not enough history to estimate when this product will finish.
             </p>
@@ -369,7 +366,6 @@ export const PlanRestockModal: React.FC<PlanRestockModalProps> = ({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </ModalShell>
   );
 };

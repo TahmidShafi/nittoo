@@ -49,7 +49,7 @@ export const AccountPage: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-[700px] mx-auto py-4 sm:py-6 space-y-6 animate-page-in">
+    <div className="w-full max-w-[700px] mx-auto py-4 sm:py-6 space-y-6">
       {/* 1. Page Header */}
       <div>
         <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">
@@ -86,7 +86,7 @@ export const AccountPage: React.FC = () => {
 
       {errorMessage && (
         <div
-          className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-medium flex items-center justify-between shadow-xs animate-page-in"
+          className="p-4 rounded-xl bg-status-critical-bg border border-status-critical-border text-xs text-status-critical-text font-medium flex items-center justify-between shadow-xs animate-page-in"
           role="alert"
         >
           <div className="flex items-center gap-2">
@@ -238,8 +238,8 @@ export const AccountPage: React.FC = () => {
         </div>
 
         {/* 7. DELETE ACCOUNT (DANGER ZONE) */}
-        <div className="p-6 sm:p-7 space-y-3 bg-rose-50/20 rounded-b-2xl">
-          <h2 className="text-[11px] font-bold uppercase tracking-wider text-rose-600 block">
+        <div className="p-6 sm:p-7 space-y-3 bg-status-critical-bg rounded-b-2xl">
+          <h2 className="text-[11px] font-bold uppercase tracking-wider text-status-critical-text block">
             DELETE ACCOUNT
           </h2>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
@@ -252,7 +252,7 @@ export const AccountPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsDeleteModalOpen(true)}
-              className="btn-press min-h-[44px] px-4 py-2 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-600 text-xs font-semibold transition-all self-start sm:self-auto cursor-pointer shrink-0"
+              className="btn-press min-h-[44px] px-4 py-2 rounded-xl border border-status-critical-border bg-white hover:bg-status-critical-bg text-status-critical-text text-xs font-semibold transition-all self-start sm:self-auto cursor-pointer shrink-0"
             >
               Delete Account
             </button>

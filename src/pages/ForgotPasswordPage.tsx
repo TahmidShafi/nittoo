@@ -57,8 +57,8 @@ export const ForgotPasswordPage: React.FC = () => {
         {/* Card Container */}
         <div className="w-full bg-white border border-neutral-200/80 rounded-2xl p-7 sm:p-8 shadow-xs">
           {error && (
-            <div className="mb-5 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-start gap-2.5 animate-page-in">
-              <span className="text-rose-600 font-bold leading-none mt-0.5">!</span>
+            <div className="mb-5 p-3.5 rounded-xl bg-status-critical-bg border border-status-critical-border text-status-critical-text text-xs font-medium flex items-start gap-2.5 animate-page-in">
+              <span className="text-status-critical-text font-bold leading-none mt-0.5">!</span>
               <span className="flex-1 leading-relaxed">{error}</span>
             </div>
           )}

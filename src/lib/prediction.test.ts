@@ -9,6 +9,7 @@ import {
   calculatePredictedRemainingDays,
   calculatePricePerUnit,
   calculateProgressPercent,
+  computeLifespanTrackLayout,
   calculateRunOutRange,
   formatRunOutRange,
   getEffectiveSize,
@@ -206,6 +207,67 @@ describe('prediction', () => {
       // One day past maxDate -> hidden so overdue state takes over
       const pastMax = addDays(range!.maxDate, 1);
       expect(calculateRunOutRange('2026-01-01', 40, 2, pastMax)).toBeNull();
+    });
+
+    it('formats overdue-within-range copy using the point-estimate expected finish date', () => {
+      const expectedFinishDate = addDays('2026-01-01', 40); // 2026-02-10
+      const range = calculateRunOutRange('2026-01-01', 40, 2, '2026-02-12');
+      expect(range).not.toBeNull();
+
+      const text = formatRunOutRange(range!, {
+        expectedFinishDate,
+        isOverdue: true,
+        referenceDate: '2026-02-12',
+      });
+      expect(text).toMatch(/^Was expected Feb 10 · may last until /);
+      expect(text).not.toContain('Runs out between');
+    });
+  });
+
+  describe('computeLifespanTrackLayout', () => {
+    const sampleRange = {
+      minDate: '2026-02-02',
+      maxDate: '2026-02-20',
+      lowDays: 32,
+      highDays: 50,
+      bucket: '2' as const,
+    };
+
+    it('maps normal progress onto [0 .. highDays] with unclipped band and expected tick', () => {
+      const layout = computeLifespanTrackLayout({
+        daysUsed: 15,
+        expectedLifespan: 40,
+        runOutRange: sampleRange,
+      });
+      expect(layout).not.toBeNull();
+      expect(layout!.domainMax).toBe(50);
+      expect(layout!.fillPercent).toBe(30);
+      expect(layout!.expectedPercent).toBe(80);
+      expect(layout!.bandStartPercent).toBe(64);
+      expect(layout!.bandWidthPercent).toBe(36);
+    });
+
+    it('keeps expected tick ahead of fill near the end of the cycle', () => {
+      const layout = computeLifespanTrackLayout({
+        daysUsed: 38,
+        expectedLifespan: 40,
+        runOutRange: sampleRange,
+      });
+      expect(layout!.fillPercent).toBe(76);
+      expect(layout!.expectedPercent).toBe(80);
+      expect(layout!.fillPercent).toBeLessThan(layout!.expectedPercent);
+    });
+
+    it('expands domainMax to daysUsed when overdue past highDays', () => {
+      const layout = computeLifespanTrackLayout({
+        daysUsed: 60,
+        expectedLifespan: 40,
+        runOutRange: null,
+      });
+      expect(layout!.domainMax).toBe(60);
+      expect(layout!.fillPercent).toBe(100);
+      expect(layout!.expectedPercent).toBeLessThan(100);
+      expect(layout!.bandStartPercent).toBeNull();
     });
   });
 

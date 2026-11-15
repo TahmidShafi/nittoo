@@ -14,6 +14,7 @@ import { isReminderDue } from '../lib/restock';
 import { getPredictionMetrics } from '../hooks/usePrediction';
 import { EditInventoryModal } from '../components/EditInventoryModal';
 import { dataCache, areValuesEqual } from '../lib/dataCache';
+import { getStaggerStyle } from '../lib/motion';
 import type {
   Product,
   Purchase,
@@ -39,6 +40,18 @@ export const InventoryPage: React.FC = () => {
   // Stale-while-revalidate refs
   const isInitialLoad = useRef(!cachedEntry);
   const lastRefetchTimeRef = useRef(Date.now());
+  const hasStaggeredRef = useRef(false);
+
+  useEffect(() => {
+    if (
+      !loading &&
+      !error &&
+      (inventory.active.length > 0 || inventory.unopened.length > 0) &&
+      !hasStaggeredRef.current
+    ) {
+      hasStaggeredRef.current = true;
+    }
+  }, [loading, error, inventory.active.length, inventory.unopened.length]);
 
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -177,7 +190,7 @@ export const InventoryPage: React.FC = () => {
   }, [inventory.unopened]);
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto animate-page-in">
+    <div className="space-y-8">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-neutral-200/80">
         <div>
@@ -212,15 +225,15 @@ export const InventoryPage: React.FC = () => {
 
       {/* Notifications / Feedback */}
       {error && (
-        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200/80 text-xs sm:text-sm text-rose-800 flex items-center justify-between gap-3 animate-page-in">
+        <div className="p-4 rounded-xl bg-status-critical-bg border border-status-critical-border text-xs sm:text-sm text-status-critical-text flex items-center justify-between gap-3 animate-page-in">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+            <span className="w-2 h-2 rounded-full bg-status-critical-fill shrink-0" />
             <span>{error}</span>
           </div>
           <button
             type="button"
             onClick={() => setError(null)}
-            className="text-rose-500 hover:text-rose-700 font-bold p-1 cursor-pointer"
+            className="text-status-critical-text hover:text-status-critical-text font-bold p-1 cursor-pointer"
           >
             ✕
           </button>
@@ -244,9 +257,10 @@ export const InventoryPage: React.FC = () => {
       )}
 
       {loading ? (
-        <div className="py-16 text-center">
-          <div className="inline-block w-6 h-6 border-2 border-[#2D6A4F] border-t-transparent rounded-full animate-spin mb-3" />
-          <p className="text-xs text-neutral-500">Loading your inventory...</p>
+        <div className="space-y-4 py-2">
+          <div className="h-24 skeleton-shimmer rounded-2xl" />
+          <div className="h-24 skeleton-shimmer rounded-2xl" />
+          <div className="h-24 skeleton-shimmer rounded-2xl" />
         </div>
       ) : (
         <div className="space-y-10">
@@ -256,8 +270,8 @@ export const InventoryPage: React.FC = () => {
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-500">
-                  ACTIVE
+                <h2 className="text-xs font-semibold text-neutral-600">
+                  Active
                 </h2>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EBF4F0] text-[#2D6A4F]">
                   {inventory.active.length}
@@ -283,14 +297,17 @@ export const InventoryPage: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-2.5">
-                {inventory.active.map((prod) => {
+                {inventory.active.map((prod, index) => {
                   const metrics = getPredictionMetrics(prod);
                   const backups = prod.unopened_count || 0;
 
                   return (
                     <div
                       key={prod.id}
-                      className="bg-white border border-neutral-200/80 rounded-2xl p-4 sm:p-5 shadow-xs card-interactive flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
+                      className={`bg-white border border-neutral-200/80 rounded-2xl p-4 sm:p-5 shadow-xs card-interactive flex flex-col sm:flex-row sm:items-center justify-between gap-4 group ${
+                        !hasStaggeredRef.current ? 'animate-stagger-in' : ''
+                      }`}
+                      style={!hasStaggeredRef.current ? getStaggerStyle(index) : undefined}
                     >
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -310,8 +327,8 @@ export const InventoryPage: React.FC = () => {
                         {/* Status, Lifespan, Cost & Backup Count */}
                         <div className="flex items-center gap-2 flex-wrap text-xs text-neutral-500 pt-0.5">
                           {metrics.urgencyState === 'overdue' ? (
-                            <span className="font-semibold text-rose-700 bg-rose-50 border border-rose-200/60 px-2 py-0.5 rounded-full flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                            <span className="font-semibold text-status-critical-text bg-status-critical-bg border border-status-critical-border px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-status-critical-fill animate-pulse" />
                               <span>{metrics.overdueDays} days overdue</span>
                             </span>
                           ) : metrics.urgencyState === 'running_soon' ? (
@@ -328,7 +345,7 @@ export const InventoryPage: React.FC = () => {
                           {metrics.averageLifespan !== null && (
                             <>
                               <span className="text-neutral-300">•</span>
-                              <span>{metrics.averageLifespan}-day avg</span>
+                              <span>~{Math.round(metrics.averageLifespan)}-day expected</span>
                             </>
                           )}
 
@@ -354,14 +371,14 @@ export const InventoryPage: React.FC = () => {
                               <span
                                 className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${
                                   isReminderDue(prod.restock_plan.reminder_date)
-                                    ? 'bg-amber-500/10 text-amber-700 border border-amber-500/20'
+                                    ? 'bg-status-attention-bg text-status-attention-text border border-status-attention-border'
                                     : 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20'
                                 }`}
                               >
                                 <span
                                   className={`w-1.5 h-1.5 rounded-full ${
                                     isReminderDue(prod.restock_plan.reminder_date)
-                                      ? 'bg-amber-500 animate-pulse'
+                                      ? 'bg-status-attention-fill animate-pulse'
                                       : 'bg-emerald-500'
                                   }`}
                                 />
@@ -413,8 +430,8 @@ export const InventoryPage: React.FC = () => {
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-500">
-                  UNOPENED
+                <h2 className="text-xs font-semibold text-neutral-600">
+                  Unopened
                 </h2>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-700">
                   {inventory.unopened.length}
@@ -429,10 +446,17 @@ export const InventoryPage: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {unopenedByProduct.map((group) => (
+                {unopenedByProduct.map((group, index) => (
                   <div
                     key={group.product.id}
-                    className="bg-white border border-neutral-200/80 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3"
+                    className={`bg-white border border-neutral-200/80 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3 ${
+                      !hasStaggeredRef.current ? 'animate-stagger-in' : ''
+                    }`}
+                    style={
+                      !hasStaggeredRef.current
+                        ? getStaggerStyle(inventory.active.length + index)
+                        : undefined
+                    }
                   >
                     {/* Compact Product Group Header */}
                     <div className="flex items-center justify-between pb-2 border-b border-neutral-100">

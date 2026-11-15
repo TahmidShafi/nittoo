@@ -16,9 +16,13 @@ import {
   recalculatePlanReminderDate,
 } from '../lib/restock';
 import { getPredictionMetrics } from '../hooks/usePrediction';
+import { calculateEstimatedMonthlyConsumptionFromDetails } from '../lib/analytics';
 import { ProductCard } from '../components/ProductCard';
-import { FinishUsageModal } from '../components/FinishUsageModal';
+import { FinishUsageModal, type FinishUsageSummary } from '../components/FinishUsageModal';
+import { Toast } from '../components/Toast';
+import { CountUpValue } from '../components/CountUpValue';
 import { dataCache, areValuesEqual } from '../lib/dataCache';
+import { getStaggerStyle } from '../lib/motion';
 import type { ProductWithDetails } from '../types';
 
 function getSortPriority(predictedRemaining: number | null): number {
@@ -78,6 +82,7 @@ export const DashboardPage: React.FC = () => {
   // Stale-while-revalidate refs
   const isInitialLoad = useRef(!cachedEntry);
   const lastRefetchTimeRef = useRef(Date.now());
+  const hasStaggeredRef = useRef(false);
 
   // Filter & Search State
   const [searchQuery, setSearchQuery] = useState('');
@@ -91,6 +96,7 @@ export const DashboardPage: React.FC = () => {
   // Modal State for Finishing a Usage Period
   const [modalProduct, setModalProduct] = useState<ProductWithDetails | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [finishToast, setFinishToast] = useState<string | null>(null);
 
   const loadActiveProducts = useCallback(
     async (isSilent = false) => {
@@ -170,7 +176,6 @@ export const DashboardPage: React.FC = () => {
   const summaryMetrics = useMemo(() => {
     let runningSoonCount = 0;
     let overdueCount = 0;
-    let monthlyConsumptionTotal = 0;
 
     for (const p of products) {
       const metrics = getPredictionMetrics(p);
@@ -183,12 +188,10 @@ export const DashboardPage: React.FC = () => {
       ) {
         runningSoonCount++;
       }
-
-      // Estimated Monthly Consumption: price / averageLifespan * 30
-      if (metrics.averageLifespan !== null && metrics.averageLifespan > 0 && p.latest_purchase) {
-        monthlyConsumptionTotal += (p.latest_purchase.price / metrics.averageLifespan) * 30;
-      }
     }
+
+    const monthlyConsumptionTotal =
+      calculateEstimatedMonthlyConsumptionFromDetails(products) ?? 0;
 
     return {
       activeCount: products.length,
@@ -240,6 +243,13 @@ export const DashboardPage: React.FC = () => {
     });
   }, [products]);
 
+  // Mark initial list entrance complete after first populated commit (StrictMode-safe)
+  useEffect(() => {
+    if (!loading && !error && products.length > 0 && !hasStaggeredRef.current) {
+      hasStaggeredRef.current = true;
+    }
+  }, [loading, error, products.length]);
+
   const handleOpenFinishModal = (product: ProductWithDetails) => {
     setModalProduct(product);
     setIsModalOpen(true);
@@ -251,10 +261,10 @@ export const DashboardPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 animate-page-in">
+    <div className="space-y-8">
       {/* Notice Banner */}
       {infoNotice && (
-        <div className="p-4 rounded-xl bg-amber-50/90 border border-amber-200/80 text-amber-900 text-xs font-medium flex items-start justify-between shadow-xs">
+        <div className="p-4 rounded-xl bg-status-attention-bg border border-status-attention-border text-status-attention-text text-xs font-medium flex items-start justify-between shadow-xs">
           <div className="flex items-center gap-2.5">
             <span className="text-sm">💡</span>
             <span className="leading-relaxed">{infoNotice}</span>
@@ -262,7 +272,7 @@ export const DashboardPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setInfoNotice(null)}
-            className="text-amber-600 hover:text-amber-900 text-base font-bold ml-3"
+            className="text-status-attention-text hover:text-status-attention-text text-base font-bold ml-3"
             aria-label="Dismiss notice"
           >
             ×
@@ -296,9 +306,9 @@ export const DashboardPage: React.FC = () => {
 
       {/* Error State */}
       {error && (
-        <div className="p-6 bg-rose-50 border border-rose-200 rounded-2xl text-center max-w-md mx-auto space-y-3">
-          <p className="text-sm font-semibold text-rose-900">Unable to load active essentials</p>
-          <p className="text-xs text-rose-600">A connection issue occurred. Please try again.</p>
+        <div className="p-6 bg-status-critical-bg border border-status-critical-border rounded-2xl text-center max-w-md mx-auto space-y-3">
+          <p className="text-sm font-semibold text-status-critical-text">Unable to load active essentials</p>
+          <p className="text-xs text-status-critical-text">A connection issue occurred. Please try again.</p>
           <button
             type="button"
             onClick={() => loadActiveProducts()}
@@ -309,22 +319,22 @@ export const DashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* Due Restock Reminders (Stage 21) - Only rendered when due items exist */}
+      {/* Due Restock Reminders (Stage 21) - Quiet white card with amber left accent */}
       {!loading && !error && dueRestockProducts.length > 0 && (
-        <div className="bg-amber-500/10 border border-amber-500/25 rounded-2xl p-5 shadow-xs space-y-3">
+        <div className="bg-white border border-surface-border border-l-4 border-l-status-attention-fill rounded-2xl p-4 sm:p-5 shadow-xs space-y-2.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800">
-                Restock Reminders
+              <span className="w-2 h-2 rounded-full bg-status-attention-fill animate-pulse" />
+              <span className="text-xs font-semibold text-neutral-900">
+                Restock reminders
               </span>
             </div>
-            <span className="text-xs font-semibold text-amber-800 bg-amber-100/70 px-2.5 py-0.5 rounded-full">
+            <span className="text-xs font-semibold text-status-attention-text bg-status-attention-bg border border-status-attention-border px-2.5 py-0.5 rounded-full">
               {dueRestockProducts.length} due
             </span>
           </div>
 
-          <div className="divide-y divide-amber-200/40">
+          <div className="divide-y divide-neutral-100">
             {dueRestockProducts.map((p) => {
               const avgLifespan = calculatePredictedLifespan({
                 usagePeriods: p.finished_periods || [],
@@ -340,10 +350,10 @@ export const DashboardPage: React.FC = () => {
               return (
                 <div
                   key={p.id}
-                  className="py-3 first:pt-1 last:pb-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  className="py-2.5 first:pt-1 last:pb-1 flex items-center justify-between gap-3"
                 >
-                  <div>
-                    <h4 className="text-sm font-bold text-neutral-900">{p.name}</h4>
+                  <div className="min-w-0">
+                    <h4 className="text-sm font-bold text-neutral-900 truncate">{p.name}</h4>
                     <p className="text-xs text-neutral-600 mt-0.5">
                       {expectedFinish ? (
                         <>
@@ -351,16 +361,16 @@ export const DashboardPage: React.FC = () => {
                           <span className="text-neutral-400 mx-1.5">•</span>
                         </>
                       ) : null}
-                      <span className="text-amber-800 font-medium">
+                      <span className="text-status-attention-text font-medium">
                         Reminder due today
                       </span>
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2 self-start sm:self-auto">
+                  <div className="flex items-center gap-2 shrink-0">
                     <Link
                       to={`/product/${p.id}`}
-                      className="btn-press px-3.5 py-1.5 rounded-xl bg-white border border-amber-300 hover:bg-amber-50 text-neutral-800 text-xs font-semibold transition-colors cursor-pointer"
+                      className="btn-press px-3 py-1.5 rounded-xl bg-white border border-neutral-200/80 hover:bg-neutral-50 text-neutral-800 text-xs font-semibold transition-colors cursor-pointer"
                     >
                       View
                     </Link>
@@ -374,16 +384,16 @@ export const DashboardPage: React.FC = () => {
 
       {/* Refined Summary Editorial Data Cards */}
       {!loading && !error && products.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
           {/* Card 1: Active Essentials */}
-          <div className="bg-white border border-neutral-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
+          <div className="bg-white border border-neutral-200/80 rounded-2xl p-3.5 sm:p-5 shadow-xs flex flex-col justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 block mb-1">
               Active Essentials
             </span>
-            <div className="mt-2 flex items-baseline justify-between">
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-bold text-neutral-900 tracking-tight">
-                  {summaryMetrics.activeCount}
+            <div className="mt-1.5 sm:mt-2 flex flex-wrap items-baseline justify-between gap-1">
+              <div className="flex items-baseline gap-1.5 sm:gap-2">
+                <span className="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight">
+                  <CountUpValue value={summaryMetrics.activeCount} />
                 </span>
                 <span className="text-xs text-neutral-500 font-medium">
                   in daily use
@@ -391,7 +401,7 @@ export const DashboardPage: React.FC = () => {
               </div>
               <Link
                 to="/inventory"
-                className="text-xs text-[#2D6A4F] hover:underline font-medium"
+                className="hidden sm:inline text-xs text-[#2D6A4F] hover:underline font-medium"
               >
                 View inventory →
               </Link>
@@ -399,32 +409,51 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           {/* Card 2: Running Low / Overdue */}
-          <div className="bg-white border border-neutral-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
+          <div className="bg-white border border-neutral-200/80 rounded-2xl p-3.5 sm:p-5 shadow-xs flex flex-col justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 block mb-1">
               Attention Needed
             </span>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className={`text-3xl font-bold tracking-tight ${summaryMetrics.overdueCount > 0 ? 'text-rose-600' : summaryMetrics.runningSoonCount > 0 ? 'text-amber-600' : 'text-neutral-900'}`}>
-                {summaryMetrics.overdueCount + summaryMetrics.runningSoonCount}
+            <div className="mt-1.5 sm:mt-2 flex flex-wrap items-baseline gap-1.5 sm:gap-2">
+              <span className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900">
+                <CountUpValue value={summaryMetrics.overdueCount + summaryMetrics.runningSoonCount} />
               </span>
-              <span className="text-xs text-neutral-500 font-medium">
-                {summaryMetrics.overdueCount > 0
-                  ? `${summaryMetrics.overdueCount} overdue`
-                  : summaryMetrics.runningSoonCount > 0
-                  ? `${summaryMetrics.runningSoonCount} running out soon`
-                  : 'all healthy'}
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium">
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    summaryMetrics.overdueCount > 0
+                      ? 'bg-status-critical-fill'
+                      : summaryMetrics.runningSoonCount > 0
+                      ? 'bg-status-attention-fill'
+                      : 'bg-status-healthy-fill'
+                  }`}
+                />
+                <span
+                  className={
+                    summaryMetrics.overdueCount > 0
+                      ? 'text-status-critical-text'
+                      : summaryMetrics.runningSoonCount > 0
+                      ? 'text-status-attention-text'
+                      : 'text-neutral-600'
+                  }
+                >
+                  {summaryMetrics.overdueCount > 0
+                    ? `${summaryMetrics.overdueCount} overdue`
+                    : summaryMetrics.runningSoonCount > 0
+                    ? `${summaryMetrics.runningSoonCount} running out soon`
+                    : 'all healthy'}
+                </span>
               </span>
             </div>
           </div>
 
           {/* Card 3: Estimated Monthly Consumption */}
-          <div className="bg-white border border-neutral-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
+          <div className="col-span-2 sm:col-span-1 bg-white border border-neutral-200/80 rounded-2xl p-3.5 sm:p-5 shadow-xs flex flex-col justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 block mb-1">
               Monthly Consumption
             </span>
-            <div className="mt-2 flex items-baseline gap-1.5">
-              <span className="text-3xl font-bold text-neutral-900 tracking-tight">
-                ৳{summaryMetrics.estimatedMonthlyCost}
+            <div className="mt-1.5 sm:mt-2 flex items-baseline gap-1.5">
+              <span className="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight">
+                <CountUpValue value={summaryMetrics.estimatedMonthlyCost} prefix="৳" />
               </span>
               <span className="text-xs text-neutral-500 font-medium">
                 / month run rate
@@ -485,12 +514,12 @@ export const DashboardPage: React.FC = () => {
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-24 bg-neutral-200/60 rounded-2xl animate-pulse" />
+              <div key={i} className="h-24 skeleton-shimmer rounded-2xl" />
             ))}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="h-64 bg-neutral-200/50 rounded-2xl animate-pulse" />
+              <div key={i} className="h-64 skeleton-shimmer rounded-2xl" />
             ))}
           </div>
         </div>
@@ -544,12 +573,17 @@ export const DashboardPage: React.FC = () => {
       {/* Active Essentials Product Grid */}
       {!loading && !error && filteredProducts.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredProducts.map((product) => (
-            <ProductCard
+          {filteredProducts.map((product, index) => (
+            <div
               key={product.id}
-              product={product}
-              onMarkFinished={handleOpenFinishModal}
-            />
+              className={!hasStaggeredRef.current ? 'animate-stagger-in h-full' : 'h-full'}
+              style={!hasStaggeredRef.current ? getStaggerStyle(index) : undefined}
+            >
+              <ProductCard
+                product={product}
+                onMarkFinished={handleOpenFinishModal}
+              />
+            </div>
           ))}
         </div>
       )}
@@ -559,8 +593,13 @@ export const DashboardPage: React.FC = () => {
         product={modalProduct}
         isOpen={isModalOpen}
         onClose={handleCloseFinishModal}
-        onFinished={() => loadActiveProducts()}
+        onFinished={(summary: FinishUsageSummary) => {
+          setFinishToast(`${summary.productName} is finished. ${summary.daysUsed}-day cycle recorded.`);
+          loadActiveProducts();
+        }}
       />
+
+      <Toast message={finishToast} onDismiss={() => setFinishToast(null)} />
     </div>
   );
 };

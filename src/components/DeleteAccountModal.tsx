@@ -6,6 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { ModalShell } from './ModalShell';
 import { useNavigate } from 'react-router-dom';
 
 interface DeleteAccountModalProps {
@@ -40,8 +41,6 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, submitting, onClose]);
 
-  if (!isOpen) return null;
-
   const handleDelete = async () => {
     setSubmitting(true);
     setError(null);
@@ -59,21 +58,20 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-backdrop-in"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="delete-account-title"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !submitting) onClose();
+    <ModalShell
+      isOpen={isOpen}
+      onClose={() => {
+        if (!submitting) onClose();
       }}
+      ariaLabelledBy="delete-account-title"
+      backdropClassName="bg-black/50 backdrop-blur-xs"
+      panelClassName="w-full max-w-md bg-white rounded-2xl border border-status-critical-border shadow-2xl p-6 sm:p-7 space-y-5"
     >
-      <div className="w-full max-w-md bg-white rounded-2xl border border-rose-200/80 shadow-2xl p-6 sm:p-7 space-y-5 animate-modal-in">
         <div className="space-y-1.5">
-          <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center text-lg font-bold">
+          <div className="w-10 h-10 rounded-xl bg-status-critical-bg text-status-critical-text border border-status-critical-border flex items-center justify-center text-lg font-bold">
             ⚠️
           </div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-rose-600 block pt-1">
+          <span className="text-[11px] font-semibold text-status-critical-text block pt-1">
             PERMANENT ACTION
           </span>
           <h2 id="delete-account-title" className="text-xl font-bold tracking-tight text-neutral-900">
@@ -86,7 +84,7 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
 
         {error && (
           <div
-            className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-medium flex items-start gap-2"
+            className="p-3.5 rounded-xl bg-status-critical-bg border border-status-critical-border text-xs text-status-critical-text font-medium flex items-start gap-2"
             role="alert"
           >
             <span className="font-bold shrink-0">!</span>
@@ -107,12 +105,11 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
             type="button"
             onClick={handleDelete}
             disabled={submitting}
-            className="btn-press min-h-[44px] px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold transition-all shadow-xs disabled:opacity-60 cursor-pointer flex items-center justify-center gap-1.5"
+            className="btn-press min-h-[44px] px-5 py-2 rounded-xl bg-status-critical-text hover:bg-status-critical-fill text-white text-xs font-semibold transition-all shadow-xs disabled:opacity-60 cursor-pointer flex items-center justify-center gap-1.5"
           >
             {submitting ? 'Deleting Account...' : 'Delete Account'}
           </button>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 };

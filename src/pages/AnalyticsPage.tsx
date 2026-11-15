@@ -16,6 +16,8 @@ import {
 } from 'recharts';
 import { useAuth } from '../hooks/useAuth';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { useReducedMotion } from '../hooks/useReducedMotion';
+import { CountUpValue } from '../components/CountUpValue';
 import { db } from '../lib/dataSource';
 import { formatDisplayDate } from '../lib/dateUtils';
 import {
@@ -37,6 +39,7 @@ export const AnalyticsPage: React.FC = () => {
   usePageMeta({ title: 'Consumption Analytics', noindex: true });
 
   const { user } = useAuth();
+  const prefersReducedMotion = useReducedMotion();
 
   // Instant SWR state initialization from in-memory cache
   const cachedEntry = user?.id ? dataCache.get<ProductWithHistory[]>(user.id, 'analytics') : null;
@@ -176,18 +179,18 @@ export const AnalyticsPage: React.FC = () => {
   // Loading Skeleton State
   if (loading) {
     return (
-      <div className="space-y-8 max-w-5xl mx-auto animate-pulse">
+      <div className="space-y-8">
         <div className="space-y-2">
-          <div className="h-8 bg-neutral-200/60 rounded-xl w-64" />
-          <div className="h-4 bg-neutral-100 rounded-lg w-96" />
+          <div className="h-8 skeleton-shimmer rounded-xl w-64" />
+          <div className="h-4 skeleton-shimmer rounded-lg w-96 max-w-full" />
         </div>
-        <div className="h-48 bg-white border border-neutral-200/80 rounded-2xl p-6" />
-        <div className="h-32 bg-white border border-neutral-200/80 rounded-2xl p-6" />
+        <div className="h-48 skeleton-shimmer border border-neutral-200/80 rounded-2xl p-6" />
+        <div className="h-32 skeleton-shimmer border border-neutral-200/80 rounded-2xl p-6" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 h-48" />
-          <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 h-48" />
+          <div className="skeleton-shimmer border border-neutral-200/80 rounded-2xl p-6 h-48" />
+          <div className="skeleton-shimmer border border-neutral-200/80 rounded-2xl p-6 h-48" />
         </div>
-        <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 h-64" />
+        <div className="skeleton-shimmer border border-neutral-200/80 rounded-2xl p-6 h-64" />
       </div>
     );
   }
@@ -196,7 +199,7 @@ export const AnalyticsPage: React.FC = () => {
   if (error) {
     return (
       <div className="max-w-md mx-auto text-center py-16 space-y-4">
-        <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto text-xl font-bold">
+        <div className="w-12 h-12 rounded-2xl bg-status-critical-bg text-status-critical-text flex items-center justify-center mx-auto text-xl font-bold">
           !
         </div>
         <h2 className="text-xl font-bold text-neutral-900">Error Loading Analytics</h2>
@@ -241,7 +244,7 @@ export const AnalyticsPage: React.FC = () => {
   const eligibleCount = costRankings.mostEfficient.length;
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto animate-page-in">
+    <div className="space-y-8">
       {/* Page Header */}
       <div>
         <span className="text-[11px] font-bold uppercase tracking-wider text-[#2D6A4F] block mb-1">
@@ -265,7 +268,7 @@ export const AnalyticsPage: React.FC = () => {
             </p>
           </div>
           {upcomingPurchases.length > 0 ? (
-            <span className="self-start sm:self-auto text-xs font-semibold px-3 py-1 bg-amber-50 text-amber-800 rounded-full border border-amber-200">
+            <span className="self-start sm:self-auto text-xs font-semibold px-3 py-1 bg-status-attention-bg text-status-attention-text rounded-full border border-status-attention-border">
               {upcomingPurchases.length} Needs Attention
             </span>
           ) : (
@@ -297,13 +300,13 @@ export const AnalyticsPage: React.FC = () => {
                       {item.product.category}
                     </span>
                     {item.isOverdue ? (
-                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-status-critical-bg text-status-critical-text border border-status-critical-border flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-status-critical-fill animate-pulse" />
                         <span>Overdue by {Math.abs(item.predictedRemainingDays)} day{Math.abs(item.predictedRemainingDays) === 1 ? '' : 's'}</span>
                       </span>
                     ) : (
-                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-status-attention-bg text-status-attention-text border border-status-attention-border flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-status-attention-fill" />
                         <span>{item.predictedRemainingDays} day{item.predictedRemainingDays === 1 ? '' : 's'} left</span>
                       </span>
                     )}
@@ -328,7 +331,7 @@ export const AnalyticsPage: React.FC = () => {
                           >
                             {conf.label}
                           </span>
-                          <span className="text-neutral-400 text-[10px]">
+                          <span className="text-neutral-500 text-[10px]">
                             ({conf.supportingText})
                           </span>
                         </>
@@ -338,11 +341,11 @@ export const AnalyticsPage: React.FC = () => {
                 </div>
 
                 <div className="text-left sm:text-right shrink-0 pt-1 sm:pt-0">
-                  <span className="text-[10px] uppercase font-semibold text-neutral-400 block tracking-wider">Estimated next rebuy</span>
-                  <div className="font-bold text-neutral-900 text-base">
+                  <span className="text-[11px] font-medium text-neutral-500 block">Estimated next rebuy</span>
+                  <div className="font-bold text-neutral-900 text-base tabular-nums">
                     ৳{Math.round(item.estimatedNextPrice).toLocaleString()}
                   </div>
-                  <span className="text-[10px] text-neutral-400 block">(from purchase history)</span>
+                  <span className="text-[10px] text-neutral-500 block">(from purchase history)</span>
                 </div>
               </div>
             ))}
@@ -382,7 +385,7 @@ export const AnalyticsPage: React.FC = () => {
           {monthlyConsumption !== null ? (
             <>
               <div className="text-3xl sm:text-4xl font-black text-[#2D6A4F] tracking-tight">
-                ৳{Math.round(monthlyConsumption).toLocaleString()}
+                <CountUpValue value={Math.round(monthlyConsumption)} prefix="৳" />
               </div>
               <span className="text-xs text-neutral-500 font-medium">/ month normalized</span>
             </>
@@ -399,8 +402,8 @@ export const AnalyticsPage: React.FC = () => {
       <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 sm:p-7 shadow-xs space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#2D6A4F] block mb-1">
-              Category Spending
+            <span className="text-xs font-medium text-[#2D6A4F] block mb-0.5">
+              Category spending
             </span>
             <h2 className="text-base sm:text-lg font-bold text-neutral-900">
               Estimated Consumption by Category
@@ -464,6 +467,9 @@ export const AnalyticsPage: React.FC = () => {
                     fill="#2D6A4F"
                     radius={[0, 6, 6, 0]}
                     maxBarSize={22}
+                    isAnimationActive={!prefersReducedMotion}
+                    animationDuration={300}
+                    animationEasing="ease-out"
                   />
                 </BarChart>
               </ResponsiveContainer>
@@ -541,7 +547,7 @@ export const AnalyticsPage: React.FC = () => {
                       {item.product.name}
                     </Link>
                     <span className="text-[11px] text-neutral-400">
-                      Avg: {Math.round(item.averageLifespan)}d · ~৳{Math.round(item.monthlyCost)}/mo
+                      Expected: ~{Math.round(item.averageLifespan)}d · ~৳{Math.round(item.monthlyCost)}/mo
                     </span>
                   </div>
                   <span className="font-bold text-[#2D6A4F] shrink-0 text-sm">
@@ -563,7 +569,7 @@ export const AnalyticsPage: React.FC = () => {
         <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-xs space-y-4 flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              <span className="w-2 h-2 rounded-full bg-status-attention-fill" />
               <h3 className="text-sm font-bold text-neutral-900">
                 Highest Daily Cost Essentials
               </h3>
@@ -589,10 +595,10 @@ export const AnalyticsPage: React.FC = () => {
                       {item.product.name}
                     </Link>
                     <span className="text-[11px] text-neutral-400">
-                      Avg: {Math.round(item.averageLifespan)}d · ~৳{Math.round(item.monthlyCost)}/mo
+                      Expected: ~{Math.round(item.averageLifespan)}d · ~৳{Math.round(item.monthlyCost)}/mo
                     </span>
                   </div>
-                  <span className="font-bold text-amber-800 shrink-0 text-sm">
+                  <span className="font-bold text-status-attention-text shrink-0 text-sm">
                     ৳{item.costPerDay.toFixed(2)}/day
                   </span>
                 </div>
@@ -654,6 +660,9 @@ export const AnalyticsPage: React.FC = () => {
                   fill="#2D6A4F"
                   radius={[6, 6, 0, 0]}
                   maxBarSize={44}
+                  isAnimationActive={!prefersReducedMotion}
+                  animationDuration={300}
+                  animationEasing="ease-out"
                 />
               </BarChart>
             </ResponsiveContainer>

@@ -27,20 +27,59 @@
 
   --color-text-primary: #111827;
   --color-text-secondary: #4B5563;
-  --color-text-muted: #8B95A5;
+  --color-text-muted: #6B7280;
+
+  /* Semantic status tokens (WCAG AA verified) */
+  --color-status-healthy-text: #2D6A4F;
+  --color-status-healthy-bg: #EBF4F0;
+  --color-status-healthy-border: #C6DFD3;
+  --color-status-healthy-fill: #2D6A4F;
+
+  --color-status-attention-text: #B45309;
+  --color-status-attention-bg: #FFF7E6;
+  --color-status-attention-border: #FDE68A;
+  --color-status-attention-fill: #CC7008;
+
+  --color-status-critical-text: #BE123C;
+  --color-status-critical-bg: #FFF1F2;
+  --color-status-critical-border: #FECDD3;
+  --color-status-critical-fill: #C0395B;
+
+  --color-status-learning-text: #4B5563;
+  --color-status-learning-bg: #F3F4F6;
+  --color-status-learning-border: #E5E7EB;
+
+  /* Motion tokens (synced with design.md §23) */
+  --duration-press: 140ms;
+  --duration-modal-out: 140ms;
+  --duration-fast: 150ms;
+  --duration-backdrop: 160ms;
+  --duration-modal-in: 180ms;
+  --duration-hover: 200ms;
+  --duration-base: 220ms;
+  --duration-page: 220ms;
+  --duration-progress: 300ms;
+  --duration-slow: 300ms;
+  --duration-check-draw: 400ms;
+  --duration-countup: 500ms;
+  --duration-shimmer: 1600ms;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 body {
   font-family: var(--font-sans);
-  background-color: #FBFBFB;
-  color: #111827;
+  background-color: var(--color-surface-bg);
+  color: var(--color-text-primary);
   margin: 0;
   padding: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Page Entry Transition */
+/* Page Entry Transition (default visible; animates from hidden with backwards fill) */
 @keyframes pageFadeIn {
   from {
     opacity: 0;
@@ -53,10 +92,88 @@ body {
 }
 
 .animate-page-in {
-  animation: pageFadeIn 220ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: pageFadeIn var(--duration-page) var(--ease-out) backwards;
 }
 
-/* Modal Entry Transition */
+/* Staggered List Card Entrance (delay supplied via --stagger-delay) */
+@keyframes staggerFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-stagger-in {
+  animation: staggerFadeIn var(--duration-base) var(--ease-out) backwards;
+  animation-delay: var(--stagger-delay, 0ms);
+}
+
+/* Progress Bar Mount Fill (transform-only, zero layout shift) */
+@keyframes progressFill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.animate-progress-fill {
+  transform-origin: left center;
+  animation: progressFill var(--duration-progress) var(--ease-out) backwards;
+}
+
+/* Forecast Range Band Fade-In (shortly after bar fill) */
+@keyframes rangeBandFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-range-band {
+  animation: rangeBandFadeIn var(--duration-base) var(--ease-out) var(--duration-base) backwards;
+}
+
+/* Calm Finish Check-Mark Draw (~400ms) */
+@keyframes checkDraw {
+  from {
+    stroke-dashoffset: 24;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-check-draw {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 0;
+  animation: checkDraw var(--duration-check-draw) var(--ease-out) backwards;
+}
+
+/* Demo Banner Slide-In */
+@keyframes bannerSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-banner-in {
+  animation: bannerSlideIn var(--duration-base) var(--ease-out) backwards;
+}
+
+/* Modal Enter & Exit Transitions */
 @keyframes modalScaleIn {
   from {
     opacity: 0;
@@ -68,11 +185,26 @@ body {
   }
 }
 
-.animate-modal-in {
-  animation: modalScaleIn 180ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+@keyframes modalScaleOut {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.97) translateY(2px);
+  }
 }
 
-/* Backdrop Fade */
+.animate-modal-in {
+  animation: modalScaleIn var(--duration-modal-in) var(--ease-out) backwards;
+}
+
+.animate-modal-out {
+  animation: modalScaleOut var(--duration-modal-out) var(--ease-in) forwards;
+}
+
+/* Backdrop Enter & Exit Fade */
 @keyframes backdropFade {
   from {
     opacity: 0;
@@ -82,8 +214,21 @@ body {
   }
 }
 
+@keyframes backdropFadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 .animate-backdrop-in {
-  animation: backdropFade 160ms ease-out forwards;
+  animation: backdropFade var(--duration-backdrop) var(--ease-out) backwards;
+}
+
+.animate-backdrop-out {
+  animation: backdropFadeOut var(--duration-modal-out) var(--ease-in) forwards;
 }
 
 /* Shimmer Loading Effect */
@@ -99,44 +244,48 @@ body {
 .skeleton-shimmer {
   background: linear-gradient(90deg, #F3F4F6 25%, #E5E7EB 50%, #F3F4F6 75%);
   background-size: 200% 100%;
-  animation: shimmer 1.6s infinite ease-in-out;
+  animation: shimmer var(--duration-shimmer) infinite var(--ease-standard);
 }
 
 /* Tactile Button Response */
 .btn-press {
-  transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1),
-              box-shadow 140ms ease,
-              background-color 140ms ease,
-              border-color 140ms ease,
-              opacity 140ms ease;
+  transition: transform var(--duration-press) var(--ease-out),
+              box-shadow var(--duration-press) var(--ease-standard),
+              background-color var(--duration-press) var(--ease-standard),
+              border-color var(--duration-press) var(--ease-standard),
+              opacity var(--duration-press) var(--ease-standard);
 }
 
 .btn-press:active:not(:disabled) {
   transform: scale(0.98);
 }
 
-/* Subtle Interactive Card Elevation */
+/* Subtle Interactive Card Elevation (hover only on pointer devices) */
 .card-interactive {
-  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
-              box-shadow 200ms cubic-bezier(0.22, 1, 0.36, 1),
-              border-color 200ms ease;
+  transition: transform var(--duration-hover) var(--ease-out),
+              box-shadow var(--duration-hover) var(--ease-out),
+              border-color var(--duration-hover) var(--ease-standard);
 }
 
-.card-interactive:hover {
-  transform: translateY(-1.5px);
-  box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.05),
-              0 2px 6px -1px rgba(15, 23, 42, 0.02);
+@media (hover: hover) {
+  .card-interactive:hover {
+    transform: translateY(-1.5px);
+    box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.05),
+                0 2px 6px -1px rgba(15, 23, 42, 0.02);
+  }
 }
 
 /* Accessible, consistent focus treatment */
 :focus-visible {
-  outline: 2px solid #2D6A4F;
+  outline: 2px solid var(--color-brand-primary);
   outline-offset: 2px;
 }
 
 /* Global input styling refinement */
 input, select, textarea {
-  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+  transition: border-color var(--duration-fast) var(--ease-standard),
+              box-shadow var(--duration-fast) var(--ease-standard),
+              background-color var(--duration-fast) var(--ease-standard);
 }
 
 /* Motion accessibility preference */
@@ -145,8 +294,29 @@ input, select, textarea {
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
     scroll-behavior: auto !important;
+  }
+
+  .animate-page-in,
+  .animate-stagger-in,
+  .animate-progress-fill,
+  .animate-range-band,
+  .animate-check-draw,
+  .animate-banner-in,
+  .animate-modal-in,
+  .animate-modal-out,
+  .animate-backdrop-in,
+  .animate-backdrop-out,
+  .animate-pulse {
+    animation: none !important;
+  }
+
+  .skeleton-shimmer {
+    animation: none !important;
+    background: #F3F4F6;
   }
 }

@@ -7,6 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { db } from '../lib/dataSource';
+import { ModalShell } from './ModalShell';
 import { getTodayLocal } from '../lib/dateUtils';
 import type { UsagePeriod } from '../types';
 
@@ -54,7 +55,7 @@ export const EditCompletedCycleModal: React.FC<EditCompletedCycleModalProps> = (
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, submitting, onClose]);
 
-  if (!isOpen || !cycle) return null;
+  if (!cycle) return null;
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,20 +104,18 @@ export const EditCompletedCycleModal: React.FC<EditCompletedCycleModalProps> = (
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-backdrop-in"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="edit-cycle-title"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !submitting) onClose();
+    <ModalShell
+      isOpen={isOpen}
+      onClose={() => {
+        if (!submitting) onClose();
       }}
+      ariaLabelledBy="edit-cycle-title"
+      backdropClassName="bg-black/40 backdrop-blur-xs"
     >
-      <div className="w-full max-w-md bg-white rounded-2xl border border-neutral-200/80 shadow-2xl p-6 sm:p-7 space-y-5 animate-modal-in">
         {/* Header */}
         <div className="flex items-start justify-between">
           <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">
+            <span className="text-[11px] font-medium text-neutral-500 block mb-1">
               {cycleNumber ? `Cycle #${cycleNumber}` : 'Historical Cycle'}
             </span>
             <h2 id="edit-cycle-title" className="text-lg font-bold text-neutral-900 tracking-tight">
@@ -137,8 +136,8 @@ export const EditCompletedCycleModal: React.FC<EditCompletedCycleModalProps> = (
 
         {/* Error Alert */}
         {error && (
-          <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-start gap-2 animate-page-in">
-            <span className="text-rose-600 font-bold leading-none mt-0.5">!</span>
+          <div className="p-3.5 rounded-xl bg-status-critical-bg border border-status-critical-border text-status-critical-text text-xs font-medium flex items-start gap-2 animate-page-in">
+            <span className="text-status-critical-text font-bold leading-none mt-0.5">!</span>
             <span className="flex-1 leading-relaxed">{error}</span>
           </div>
         )}
@@ -202,7 +201,6 @@ export const EditCompletedCycleModal: React.FC<EditCompletedCycleModalProps> = (
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </ModalShell>
   );
 };

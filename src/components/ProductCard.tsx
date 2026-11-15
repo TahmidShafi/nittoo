@@ -9,6 +9,8 @@ import { Link } from 'react-router-dom';
 import { usePrediction } from '../hooks/usePrediction';
 import { calculateConfidence } from '../lib/confidence';
 import { formatRunOutRange, getEffectiveSize } from '../lib/prediction';
+import { calculateExpectedFinishDate } from '../lib/restock';
+import { LifespanBar } from './LifespanBar';
 import type { ProductWithDetails } from '../types';
 
 interface ProductCardProps {
@@ -28,17 +30,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     validCompletedCycles,
     costPerDay,
     pricePerUnit,
-    progressPercent,
     isOverdue,
     overdueDays,
     urgencyState,
   } = usePrediction(product);
 
-  const latestPurchase = product.latest_purchase;
+  const activePurchase = product.active_purchase ?? product.latest_purchase;
   const confidence = calculateConfidence(validCompletedCycles);
+  const expectedFinishDate =
+    product.active_usage && averageLifespan !== null && averageLifespan > 0
+      ? calculateExpectedFinishDate(product.active_usage.opened_date, averageLifespan)
+      : null;
 
   return (
-    <div className="bg-white border border-neutral-200/80 rounded-2xl p-5 shadow-xs card-interactive hover:border-[#2D6A4F]/40 flex flex-col justify-between group">
+    <div className="h-full bg-white border border-neutral-200/80 rounded-2xl p-5 shadow-xs card-interactive hover:border-[#2D6A4F]/40 flex flex-col justify-between group">
       <div>
         {/* Card Header: Category Pill & Status Badge */}
         <div className="flex items-start justify-between gap-2 mb-3">
@@ -47,19 +52,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </span>
 
           {urgencyState === 'overdue' ? (
-            <span className="text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+            <span className="text-xs font-semibold text-status-critical-text bg-status-critical-bg border border-status-critical-border px-2.5 py-0.5 rounded-full flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-status-critical-fill animate-pulse" />
               <span>Overdue by {overdueDays}d</span>
             </span>
           ) : urgencyState === 'running_soon' ? (
             <span
               className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border flex items-center gap-1 ${
                 predictedRemainingDays !== null && predictedRemainingDays < 14
-                  ? 'text-amber-800 bg-amber-50 border-amber-200'
+                  ? 'text-status-attention-text bg-status-attention-bg border-status-attention-border'
                   : 'text-[#2D6A4F] bg-[#EBF4F0] border-[#2D6A4F]/20'
               }`}
             >
-              <span className={`w-1.5 h-1.5 rounded-full ${predictedRemainingDays !== null && predictedRemainingDays < 14 ? 'bg-amber-500' : 'bg-[#2D6A4F]'}`} />
+              <span className={`w-1.5 h-1.5 rounded-full ${predictedRemainingDays !== null && predictedRemainingDays < 14 ? 'bg-status-attention-fill' : 'bg-[#2D6A4F]'}`} />
               <span>{predictedRemainingDays}d left</span>
             </span>
           ) : (
@@ -79,13 +84,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               <span className="font-medium text-neutral-700">{product.brand}</span>
             )}
             {(() => {
-              const eff = getEffectiveSize(
-                product.active_purchase ?? product.latest_purchase,
-                product
-              );
+              const eff = getEffectiveSize(activePurchase, product);
               return (
                 <>
-                  {product.brand && (eff.size_value || latestPurchase) && (
+                  {product.brand && (eff.size_value || activePurchase) && (
                     <span className="text-neutral-300">•</span>
                   )}
                   {eff.size_value && (
@@ -96,10 +98,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 </>
               );
             })()}
-            {latestPurchase && (
+            {activePurchase && (
               <>
                 <span className="text-neutral-300">•</span>
-                <span>৳{latestPurchase.price}</span>
+                <span>৳{activePurchase.price}</span>
               </>
             )}
             {Boolean(product.unopened_count && product.unopened_count > 0) && (
@@ -124,7 +126,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 className="text-neutral-600 font-medium text-xs cursor-help"
                 title={`${confidence.label} • ${confidence.supportingText}`}
               >
-                {averageLifespan}-day avg · {validCompletedCycles} {validCompletedCycles === 1 ? 'cycle' : 'cycles'}
+                ~{Math.round(averageLifespan)}-day expected · {validCompletedCycles} {validCompletedCycles === 1 ? 'cycle' : 'cycles'}
               </span>
             ) : (
               <span className="text-neutral-400 italic text-[11px]">No history yet</span>
@@ -133,34 +135,26 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
           {runOutRange && (
             <p className="text-[11px] text-neutral-500 font-medium">
-              {formatRunOutRange(runOutRange)}
+              {formatRunOutRange(runOutRange, { expectedFinishDate, isOverdue })}
             </p>
           )}
 
-          {/* Slim Visual Progress Line */}
-          <div className="h-1.5 w-full bg-neutral-100 rounded-full overflow-hidden">
-            {progressPercent !== null ? (
-              <div
-                className={`h-full rounded-full transition-all duration-300 ${
-                  isOverdue
-                    ? 'bg-rose-500 w-full'
-                    : predictedRemainingDays !== null && predictedRemainingDays < 14
-                    ? 'bg-amber-500'
-                    : 'bg-[#2D6A4F]'
-                }`}
-                style={{ width: `${progressPercent}%` }}
-              />
-            ) : (
-              <div className="h-full w-full bg-neutral-200/50 rounded-full" />
-            )}
-          </div>
+          {/* Slim Visual Progress Line with P10-P90 Range Band */}
+          <LifespanBar
+            daysUsed={daysUsed}
+            expectedLifespan={averageLifespan}
+            runOutRange={runOutRange}
+            isOverdue={isOverdue}
+            predictedRemainingDays={predictedRemainingDays}
+            heightClass="h-1.5"
+          />
         </div>
 
         {/* Prominent Daily Cost & Unit Rate */}
         <div className="mt-4 pt-3 border-t border-neutral-100/80 flex items-baseline justify-between">
           <div>
-            <span className="text-[10px] uppercase font-semibold tracking-wider text-neutral-400 block mb-0.5">
-              Cost Per Day
+            <span className="text-[11px] font-medium text-neutral-500 block mb-0.5">
+              Cost per day
             </span>
             {costPerDay !== null ? (
               <div className="flex items-baseline gap-1">
@@ -176,8 +170,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
           {pricePerUnit !== null && (
             <div className="text-right">
-              <span className="text-[10px] uppercase font-semibold tracking-wider text-neutral-400 block mb-0.5">
-                Unit Rate
+              <span className="text-[11px] font-medium text-neutral-500 block mb-0.5">
+                Unit rate
               </span>
               <span className="text-xs font-medium text-neutral-600">
                 ৳{pricePerUnit} / {getEffectiveSize(product.active_purchase ?? product.latest_purchase, product).size_unit}
