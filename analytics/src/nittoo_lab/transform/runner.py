@@ -69,6 +69,10 @@ def run_dbt_pipeline(
     t0 = time.perf_counter()
     target_dir = dbt_dir / "target"
 
+    seed_proc = _run_dbt_cmd(["seed"], dbt_dir, db_path)
+    if seed_proc.returncode != 0:
+        raise RuntimeError(f"dbt seed failed:\n{seed_proc.stdout}\n{seed_proc.stderr}")
+
     run_proc = _run_dbt_cmd(["run"], dbt_dir, db_path)
     if run_proc.returncode != 0:
         raise RuntimeError(f"dbt run failed:\n{run_proc.stdout}\n{run_proc.stderr}")

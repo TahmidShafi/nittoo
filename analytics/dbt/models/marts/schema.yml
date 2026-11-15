@@ -103,8 +103,12 @@ models:
         description: "True if effective_size_value differs from the immediately preceding cycle for the same product_id."
       - name: is_zero_day
         description: "True if completed cycle has 0-day duration."
+      - name: is_extreme_duration_1000d
+        description: "True if cycle duration is >= 1000 days."
+      - name: is_rate_outlier
+        description: "True if per-household-product consumption_rate_per_day is a MAD z-score outlier (or outside category+unit plausibility bounds when history < MIN_CYCLES_FOR_MAD)."
       - name: is_duration_outlier
-        description: "True if cycle duration is a MAD z-score outlier or >= 1000 days."
+        description: "True if cycle is an extreme duration (>= 1000 days) or a rate outlier."
       - name: mad_z_score
         description: "Robust MAD modified z-score within product+size group."
       - name: is_valid_for_forecasting

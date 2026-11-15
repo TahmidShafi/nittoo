@@ -33,3 +33,6 @@ To exercise ingestion validation and dbt data-quality tests:
 
 ## Ground-Truth Separation
 - True household-product consumption rates (`true_consumption_rate_per_day`) are written exclusively to `analytics/data/ground_truth/true_rates.json` and are **never** embedded inside the JSON export files under `analytics/data/raw/exports/`.
+
+## Physical Plausibility Bounds (`analytics/dbt/seeds/category_rate_bounds.csv`)
+- When a household-product has fewer than `MIN_CYCLES_FOR_MAD` completed positive-duration cycles, `int_cycle_quality` cannot compute a reliable per-household-product MAD. It falls back to domain-level physical plausibility bounds `[min_plausible_rate, max_plausible_rate]` keyed solely by `(category, size_unit)` — fields present in every real Nittoo export (no simulator-only `archetype` field is used).

@@ -14,6 +14,8 @@ select
     purchase_price,
     cost_per_day,
     is_zero_day,
+    is_extreme_duration_1000d,
+    is_rate_outlier,
     is_duration_outlier,
     mad_z_score,
     is_valid_for_forecasting
