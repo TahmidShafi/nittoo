@@ -79,6 +79,8 @@ class ExportPurchaseItem(BaseModel):
     price: float = Field(ge=0)
     currency: str = Field(min_length=1)
     store_vendor: str | None = None
+    size_value: float | None = Field(default=None, gt=0)
+    size_unit: SizeUnit | None = None
 
 
 class ExportUsageItem(BaseModel):
@@ -150,7 +152,7 @@ class NittooExportBackup(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    version: str = Field(pattern=r"^\d+\.\d+\.\d+$")
+    version: Literal["1.0.0", "1.1.0"]
     exported_at: datetime
     user: ExportUser
     summary: ExportSummary

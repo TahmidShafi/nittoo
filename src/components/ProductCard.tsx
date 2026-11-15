@@ -8,6 +8,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { usePrediction } from '../hooks/usePrediction';
 import { calculateConfidence } from '../lib/confidence';
+import { getEffectiveSize } from '../lib/prediction';
 import type { ProductWithDetails } from '../types';
 
 interface ProductCardProps {
@@ -76,14 +77,24 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             {product.brand && (
               <span className="font-medium text-neutral-700">{product.brand}</span>
             )}
-            {product.brand && (product.size_value || latestPurchase) && (
-              <span className="text-neutral-300">•</span>
-            )}
-            {product.size_value && (
-              <span>
-                {product.size_value} {product.size_unit}
-              </span>
-            )}
+            {(() => {
+              const eff = getEffectiveSize(
+                product.active_purchase ?? product.latest_purchase,
+                product
+              );
+              return (
+                <>
+                  {product.brand && (eff.size_value || latestPurchase) && (
+                    <span className="text-neutral-300">•</span>
+                  )}
+                  {eff.size_value && (
+                    <span>
+                      {eff.size_value} {eff.size_unit}
+                    </span>
+                  )}
+                </>
+              );
+            })()}
             {latestPurchase && (
               <>
                 <span className="text-neutral-300">•</span>
@@ -162,7 +173,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 Unit Rate
               </span>
               <span className="text-xs font-medium text-neutral-600">
-                ৳{pricePerUnit} / {product.size_unit}
+                ৳{pricePerUnit} / {getEffectiveSize(product.active_purchase ?? product.latest_purchase, product).size_unit}
               </span>
             </div>
           )}

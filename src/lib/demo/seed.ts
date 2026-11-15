@@ -32,6 +32,8 @@ interface ProductTemplate {
   vendor: string;
   cycleDays: number[]; // finished cycle lengths from oldest to newest
   activeDaysAgo?: number; // if set, has an active bottle opened N days ago
+  activeSizeOverride?: number; // optional pack size override for the active purchase
+  activePriceOverride?: number; // optional price override matching activeSizeOverride
   hasUnopenedBackup?: boolean;
   backupPriceOffset?: number;
   hasRestockPlan?: boolean;
@@ -100,6 +102,8 @@ const DEMO_TEMPLATES: ProductTemplate[] = [
     vendor: 'Daraz',
     cycleDays: [75, 78, 72, 74],
     activeDaysAgo: 30,
+    activeSizeOverride: 650,
+    activePriceOverride: 1490,
   },
   {
     slug: 'dove-bodywash',
@@ -262,7 +266,7 @@ export function buildDemoSeedData(
       const activePurchaseId = `demo-pur-${tpl.slug}-active`;
       const activeUsageId = `demo-use-${tpl.slug}-active`;
       const latestCyclePrice =
-        tpl.basePrice + Math.floor(tpl.cycleDays.length / 2) * 20;
+        tpl.activePriceOverride ?? tpl.basePrice + Math.floor(tpl.cycleDays.length / 2) * 20;
 
       purchases.push({
         id: activePurchaseId,
@@ -271,6 +275,8 @@ export function buildDemoSeedData(
         price: latestCyclePrice,
         currency: 'BDT',
         store_vendor: tpl.vendor,
+        size_value: tpl.activeSizeOverride ?? null,
+        size_unit: tpl.activeSizeOverride ? tpl.size_unit : null,
         created_at: `${purchaseDate}T10:00:00.000Z`,
       });
 

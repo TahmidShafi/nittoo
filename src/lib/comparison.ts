@@ -9,6 +9,7 @@ import {
   calculateAverageLifespan,
   calculateUsageDuration,
   calculatePredictedRemainingDays,
+  getEffectiveSize,
 } from './prediction';
 import { getDaysUsed, addDays } from './dateUtils';
 import {
@@ -236,14 +237,23 @@ export function deriveProductObservedMetrics(
   const observedMonthlyConsumption =
     observedCostPerDay !== null ? Math.round(observedCostPerDay * 30) : null;
 
-  // 4. Latest Purchase Price & Unit Price
-  const latestPurchase = purchases[0] || null;
-  const latestPurchasePrice = latestPurchase ? latestPurchase.price : null;
-  const latestPurchaseCurrency = latestPurchase?.currency || 'BDT';
+  // 4. Current-Cost Purchase Price & Unit Price (ACTIVE purchase, falling back to latest)
+  const activePurchase = active_usage
+    ? purchases.find((p) => p.id === active_usage.purchase_id) || null
+    : null;
+  const currentPurchase = activePurchase || purchases[0] || null;
+  const latestPurchasePrice = currentPurchase ? currentPurchase.price : null;
+  const latestPurchaseCurrency = currentPurchase?.currency || 'BDT';
+  const effectiveSize = getEffectiveSize(currentPurchase, product);
 
-  const { unitPrice, unitPriceLabel } = latestPurchasePrice !== null
-    ? calculateUnitPrice(latestPurchasePrice, product.size_value, product.size_unit)
-    : { unitPrice: null, unitPriceLabel: null };
+  const { unitPrice, unitPriceLabel } =
+    latestPurchasePrice !== null
+      ? calculateUnitPrice(
+          latestPurchasePrice,
+          effectiveSize.size_value,
+          effectiveSize.size_unit
+        )
+      : { unitPrice: null, unitPriceLabel: null };
 
   // 5. Active Usage Context (Strictly isolated context, never substituted into observed metrics)
   let activeUsageContext: ProductActiveUsageContext | null = null;
@@ -277,8 +287,8 @@ export function deriveProductObservedMetrics(
     observedMonthlyConsumption,
     latestPurchasePrice,
     latestPurchaseCurrency,
-    sizeValue: product.size_value ?? null,
-    sizeUnit: product.size_unit ?? null,
+    sizeValue: effectiveSize.size_value,
+    sizeUnit: effectiveSize.size_unit,
     unitPrice,
     unitPriceLabel,
     isActive: Boolean(active_usage),

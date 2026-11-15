@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "exported_at": "2026-11-15T10:00:00.000Z",
   "user": {
     "id": "demo-fixture-user",
@@ -207,7 +207,9 @@
       "purchase_date": "2025-11-11",
       "price": 1650,
       "currency": "BDT",
-      "store_vendor": "Shajgoj"
+      "store_vendor": "Shajgoj",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-cerave-cleanser-f2",
@@ -218,7 +220,9 @@
       "purchase_date": "2026-01-16",
       "price": 1650,
       "currency": "BDT",
-      "store_vendor": "Shajgoj"
+      "store_vendor": "Shajgoj",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-cerave-cleanser-f3",
@@ -229,7 +233,9 @@
       "purchase_date": "2026-03-20",
       "price": 1670,
       "currency": "BDT",
-      "store_vendor": "Shajgoj"
+      "store_vendor": "Shajgoj",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-cerave-cleanser-f4",
@@ -240,7 +246,9 @@
       "purchase_date": "2026-05-24",
       "price": 1670,
       "currency": "BDT",
-      "store_vendor": "Shajgoj"
+      "store_vendor": "Shajgoj",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-cerave-cleanser-f5",
@@ -251,7 +259,9 @@
       "purchase_date": "2026-07-25",
       "price": 1690,
       "currency": "BDT",
-      "store_vendor": "Shajgoj"
+      "store_vendor": "Shajgoj",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-cerave-cleanser-active",
@@ -262,7 +272,9 @@
       "purchase_date": "2026-09-26",
       "price": 1690,
       "currency": "BDT",
-      "store_vendor": "Shajgoj"
+      "store_vendor": "Shajgoj",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-cerave-cleanser-backup",
@@ -273,7 +285,9 @@
       "purchase_date": "2026-11-10",
       "price": 1750,
       "currency": "BDT",
-      "store_vendor": "Shajgoj"
+      "store_vendor": "Shajgoj",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-biore-sunscreen-f1",
@@ -284,7 +298,9 @@
       "purchase_date": "2026-02-17",
       "price": 1150,
       "currency": "BDT",
-      "store_vendor": "Shajgoj"
+      "store_vendor": "Shajgoj",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-biore-sunscreen-f2",
@@ -295,7 +311,9 @@
       "purchase_date": "2026-04-04",
       "price": 1150,
       "currency": "BDT",
-      "store_vendor": "Shajgoj"
+      "store_vendor": "Shajgoj",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-biore-sunscreen-f3",
@@ -306,7 +324,9 @@
       "purchase_date": "2026-05-22",
       "price": 1170,
       "currency": "BDT",
-      "store_vendor": "Shajgoj"
+      "store_vendor": "Shajgoj",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-biore-sunscreen-f4",
@@ -317,7 +337,9 @@
       "purchase_date": "2026-07-05",
       "price": 1170,
       "currency": "BDT",
-      "store_vendor": "Shajgoj"
+      "store_vendor": "Shajgoj",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-biore-sunscreen-f5",
@@ -328,7 +350,9 @@
       "purchase_date": "2026-08-21",
       "price": 1190,
       "currency": "BDT",
-      "store_vendor": "Shajgoj"
+      "store_vendor": "Shajgoj",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-biore-sunscreen-active",
@@ -339,7 +363,9 @@
       "purchase_date": "2026-10-04",
       "price": 1190,
       "currency": "BDT",
-      "store_vendor": "Shajgoj"
+      "store_vendor": "Shajgoj",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-sensodyne-rapid-f1",
@@ -350,7 +376,9 @@
       "purchase_date": "2025-12-15",
       "price": 460,
       "currency": "BDT",
-      "store_vendor": "Unimart"
+      "store_vendor": "Unimart",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-sensodyne-rapid-f2",
@@ -361,7 +389,9 @@
       "purchase_date": "2026-02-01",
       "price": 460,
       "currency": "BDT",
-      "store_vendor": "Unimart"
+      "store_vendor": "Unimart",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-sensodyne-rapid-f3",
@@ -372,7 +402,9 @@
       "purchase_date": "2026-03-20",
       "price": 480,
       "currency": "BDT",
-      "store_vendor": "Unimart"
+      "store_vendor": "Unimart",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-sensodyne-rapid-f4",
@@ -383,7 +415,9 @@
       "purchase_date": "2026-05-05",
       "price": 480,
       "currency": "BDT",
-      "store_vendor": "Unimart"
+      "store_vendor": "Unimart",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-sensodyne-rapid-f5",
@@ -394,7 +428,9 @@
       "purchase_date": "2026-06-23",
       "price": 500,
       "currency": "BDT",
-      "store_vendor": "Unimart"
+      "store_vendor": "Unimart",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-sensodyne-rapid-f6",
@@ -405,7 +441,9 @@
       "purchase_date": "2026-08-09",
       "price": 500,
       "currency": "BDT",
-      "store_vendor": "Unimart"
+      "store_vendor": "Unimart",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-sensodyne-rapid-active",
@@ -416,7 +454,9 @@
       "purchase_date": "2026-09-25",
       "price": 520,
       "currency": "BDT",
-      "store_vendor": "Unimart"
+      "store_vendor": "Unimart",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-oralb-floss-f1",
@@ -427,7 +467,9 @@
       "purchase_date": "2026-01-04",
       "price": 320,
       "currency": "BDT",
-      "store_vendor": "Lazz Pharma"
+      "store_vendor": "Lazz Pharma",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-oralb-floss-f2",
@@ -438,7 +480,9 @@
       "purchase_date": "2026-04-06",
       "price": 320,
       "currency": "BDT",
-      "store_vendor": "Lazz Pharma"
+      "store_vendor": "Lazz Pharma",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-oralb-floss-f3",
@@ -449,7 +493,9 @@
       "purchase_date": "2026-07-12",
       "price": 340,
       "currency": "BDT",
-      "store_vendor": "Lazz Pharma"
+      "store_vendor": "Lazz Pharma",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-oralb-floss-active",
@@ -460,7 +506,9 @@
       "purchase_date": "2026-10-09",
       "price": 340,
       "currency": "BDT",
-      "store_vendor": "Lazz Pharma"
+      "store_vendor": "Lazz Pharma",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-loreal-shampoo-f1",
@@ -471,7 +519,9 @@
       "purchase_date": "2025-12-12",
       "price": 890,
       "currency": "BDT",
-      "store_vendor": "Daraz"
+      "store_vendor": "Daraz",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-loreal-shampoo-f2",
@@ -482,7 +532,9 @@
       "purchase_date": "2026-02-27",
       "price": 890,
       "currency": "BDT",
-      "store_vendor": "Daraz"
+      "store_vendor": "Daraz",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-loreal-shampoo-f3",
@@ -493,7 +545,9 @@
       "purchase_date": "2026-05-18",
       "price": 910,
       "currency": "BDT",
-      "store_vendor": "Daraz"
+      "store_vendor": "Daraz",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-loreal-shampoo-f4",
@@ -504,7 +558,9 @@
       "purchase_date": "2026-07-31",
       "price": 910,
       "currency": "BDT",
-      "store_vendor": "Daraz"
+      "store_vendor": "Daraz",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-loreal-shampoo-active",
@@ -513,9 +569,11 @@
       "brand": "L'Oreal Paris",
       "category": "Haircare",
       "purchase_date": "2026-10-14",
-      "price": 930,
+      "price": 1490,
       "currency": "BDT",
-      "store_vendor": "Daraz"
+      "store_vendor": "Daraz",
+      "size_value": 650,
+      "size_unit": "ml"
     },
     {
       "id": "demo-pur-dove-bodywash-f1",
@@ -526,7 +584,9 @@
       "purchase_date": "2026-02-24",
       "price": 780,
       "currency": "BDT",
-      "store_vendor": "Unimart"
+      "store_vendor": "Unimart",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-dove-bodywash-f2",
@@ -537,7 +597,9 @@
       "purchase_date": "2026-04-25",
       "price": 780,
       "currency": "BDT",
-      "store_vendor": "Unimart"
+      "store_vendor": "Unimart",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-dove-bodywash-f3",
@@ -548,7 +610,9 @@
       "purchase_date": "2026-06-26",
       "price": 800,
       "currency": "BDT",
-      "store_vendor": "Unimart"
+      "store_vendor": "Unimart",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-dove-bodywash-f4",
@@ -559,7 +623,9 @@
       "purchase_date": "2026-08-23",
       "price": 800,
       "currency": "BDT",
-      "store_vendor": "Unimart"
+      "store_vendor": "Unimart",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-dove-bodywash-active",
@@ -570,7 +636,9 @@
       "purchase_date": "2026-10-22",
       "price": 820,
       "currency": "BDT",
-      "store_vendor": "Unimart"
+      "store_vendor": "Unimart",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-nivea-deo-f1",
@@ -581,7 +649,9 @@
       "purchase_date": "2026-02-16",
       "price": 380,
       "currency": "BDT",
-      "store_vendor": "Chaldal"
+      "store_vendor": "Chaldal",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-nivea-deo-f2",
@@ -592,7 +662,9 @@
       "purchase_date": "2026-04-29",
       "price": 380,
       "currency": "BDT",
-      "store_vendor": "Chaldal"
+      "store_vendor": "Chaldal",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-nivea-deo-f3",
@@ -603,7 +675,9 @@
       "purchase_date": "2026-07-08",
       "price": 400,
       "currency": "BDT",
-      "store_vendor": "Chaldal"
+      "store_vendor": "Chaldal",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-nivea-deo-active",
@@ -614,7 +688,9 @@
       "purchase_date": "2026-09-19",
       "price": 400,
       "currency": "BDT",
-      "store_vendor": "Chaldal"
+      "store_vendor": "Chaldal",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-gillette-foam-f1",
@@ -625,7 +701,9 @@
       "purchase_date": "2026-02-28",
       "price": 490,
       "currency": "BDT",
-      "store_vendor": "Unimart"
+      "store_vendor": "Unimart",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-gillette-foam-f2",
@@ -636,7 +714,9 @@
       "purchase_date": "2026-06-20",
       "price": 490,
       "currency": "BDT",
-      "store_vendor": "Unimart"
+      "store_vendor": "Unimart",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-gillette-foam-active",
@@ -647,7 +727,9 @@
       "purchase_date": "2026-10-04",
       "price": 510,
       "currency": "BDT",
-      "store_vendor": "Unimart"
+      "store_vendor": "Unimart",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-vim-dishwash-f1",
@@ -658,7 +740,9 @@
       "purchase_date": "2026-02-12",
       "price": 240,
       "currency": "BDT",
-      "store_vendor": "Chaldal"
+      "store_vendor": "Chaldal",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-vim-dishwash-f2",
@@ -669,7 +753,9 @@
       "purchase_date": "2026-03-24",
       "price": 240,
       "currency": "BDT",
-      "store_vendor": "Chaldal"
+      "store_vendor": "Chaldal",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-vim-dishwash-f3",
@@ -680,7 +766,9 @@
       "purchase_date": "2026-05-05",
       "price": 260,
       "currency": "BDT",
-      "store_vendor": "Chaldal"
+      "store_vendor": "Chaldal",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-vim-dishwash-f4",
@@ -691,7 +779,9 @@
       "purchase_date": "2026-06-15",
       "price": 260,
       "currency": "BDT",
-      "store_vendor": "Chaldal"
+      "store_vendor": "Chaldal",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-vim-dishwash-f5",
@@ -702,7 +792,9 @@
       "purchase_date": "2026-07-28",
       "price": 280,
       "currency": "BDT",
-      "store_vendor": "Chaldal"
+      "store_vendor": "Chaldal",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-vim-dishwash-f6",
@@ -713,7 +805,9 @@
       "purchase_date": "2026-09-05",
       "price": 280,
       "currency": "BDT",
-      "store_vendor": "Chaldal"
+      "store_vendor": "Chaldal",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-vim-dishwash-active",
@@ -724,7 +818,9 @@
       "purchase_date": "2026-10-16",
       "price": 300,
       "currency": "BDT",
-      "store_vendor": "Chaldal"
+      "store_vendor": "Chaldal",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-surf-excel-f1",
@@ -735,7 +831,9 @@
       "purchase_date": "2026-04-03",
       "price": 540,
       "currency": "BDT",
-      "store_vendor": "Chaldal"
+      "store_vendor": "Chaldal",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-surf-excel-f2",
@@ -746,7 +844,9 @@
       "purchase_date": "2026-05-23",
       "price": 540,
       "currency": "BDT",
-      "store_vendor": "Chaldal"
+      "store_vendor": "Chaldal",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-surf-excel-f3",
@@ -757,7 +857,9 @@
       "purchase_date": "2026-07-16",
       "price": 560,
       "currency": "BDT",
-      "store_vendor": "Chaldal"
+      "store_vendor": "Chaldal",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-surf-excel-f4",
@@ -768,7 +870,9 @@
       "purchase_date": "2026-09-06",
       "price": 560,
       "currency": "BDT",
-      "store_vendor": "Chaldal"
+      "store_vendor": "Chaldal",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-surf-excel-active",
@@ -779,7 +883,9 @@
       "purchase_date": "2026-10-26",
       "price": 580,
       "currency": "BDT",
-      "store_vendor": "Chaldal"
+      "store_vendor": "Chaldal",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-omega3-softgels-f1",
@@ -790,7 +896,9 @@
       "purchase_date": "2025-12-28",
       "price": 2450,
       "currency": "BDT",
-      "store_vendor": "Lazz Pharma"
+      "store_vendor": "Lazz Pharma",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-omega3-softgels-f2",
@@ -801,7 +909,9 @@
       "purchase_date": "2026-03-30",
       "price": 2450,
       "currency": "BDT",
-      "store_vendor": "Lazz Pharma"
+      "store_vendor": "Lazz Pharma",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-omega3-softgels-f3",
@@ -812,7 +922,9 @@
       "purchase_date": "2026-06-30",
       "price": 2470,
       "currency": "BDT",
-      "store_vendor": "Lazz Pharma"
+      "store_vendor": "Lazz Pharma",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-omega3-softgels-active",
@@ -823,7 +935,9 @@
       "purchase_date": "2026-09-29",
       "price": 2470,
       "currency": "BDT",
-      "store_vendor": "Lazz Pharma"
+      "store_vendor": "Lazz Pharma",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-nescafe-gold-f1",
@@ -834,7 +948,9 @@
       "purchase_date": "2026-05-13",
       "price": 1350,
       "currency": "BDT",
-      "store_vendor": "Unimart"
+      "store_vendor": "Unimart",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-nescafe-gold-f2",
@@ -845,7 +961,9 @@
       "purchase_date": "2026-07-09",
       "price": 1350,
       "currency": "BDT",
-      "store_vendor": "Unimart"
+      "store_vendor": "Unimart",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-nescafe-gold-f3",
@@ -856,7 +974,9 @@
       "purchase_date": "2026-09-07",
       "price": 1370,
       "currency": "BDT",
-      "store_vendor": "Unimart"
+      "store_vendor": "Unimart",
+      "size_value": null,
+      "size_unit": null
     },
     {
       "id": "demo-pur-nescafe-gold-active",
@@ -867,7 +987,9 @@
       "purchase_date": "2026-11-01",
       "price": 1370,
       "currency": "BDT",
-      "store_vendor": "Unimart"
+      "store_vendor": "Unimart",
+      "size_value": null,
+      "size_unit": null
     }
   ],
   "usage_periods": [
@@ -932,7 +1054,7 @@
       "finished_date": null,
       "status": "active",
       "days_used": 30,
-      "purchase_price": 930,
+      "purchase_price": 1490,
       "currency": "BDT",
       "cost_per_day": null
     },
@@ -1716,7 +1838,7 @@
       "category": "Haircare",
       "inventory_status": "Active",
       "purchase_date": "2026-10-14",
-      "price": 930,
+      "price": 1490,
       "currency": "BDT",
       "opened_date": "2026-10-16",
       "days_used": 30,

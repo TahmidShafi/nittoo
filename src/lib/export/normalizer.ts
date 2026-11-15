@@ -91,6 +91,8 @@ export async function buildExportData(
       price: pu.price,
       currency: 'BDT',
       store_vendor: pu.store_vendor ?? null,
+      size_value: pu.size_value ?? null,
+      size_unit: pu.size_unit ?? null,
     };
   });
 
@@ -308,7 +310,7 @@ export async function buildExportData(
   };
 
   return {
-    version: '1.0.0',
+    version: '1.1.0',
     exported_at: new Date().toISOString(),
     user: {
       id: userId,

@@ -49,6 +49,7 @@ export const AddProductPage: React.FC = () => {
   // Duplicate / Existing Product Suggestion State
   const [existingProducts, setExistingProducts] = useState<Product[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [purchaseSizeValue, setPurchaseSizeValue] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
 
@@ -142,6 +143,7 @@ export const AddProductPage: React.FC = () => {
     setBrand(product.brand || '');
     setSizeValue(product.size_value ? String(product.size_value) : '');
     setSizeUnit(product.size_unit || 'ml');
+    setPurchaseSizeValue(product.size_value ? String(product.size_value) : '');
     setShowSuggestions(false);
     setError(null);
   };
@@ -402,6 +404,18 @@ export const AddProductPage: React.FC = () => {
       }
 
       // 2. Create the purchase record
+      const parsedPurchaseSize =
+        selectedProduct && purchaseSizeValue.trim() !== '' ? Number(purchaseSizeValue) : null;
+      if (parsedPurchaseSize !== null && (isNaN(parsedPurchaseSize) || parsedPurchaseSize <= 0)) {
+        setError('Pack size must be a valid number greater than 0.');
+        setSubmitting(false);
+        return;
+      }
+      const isDifferentPurchaseSize =
+        Boolean(selectedProduct) &&
+        parsedPurchaseSize !== null &&
+        parsedPurchaseSize !== (selectedProduct?.size_value ?? null);
+
       let newPurchase;
       try {
         newPurchase = await db.createPurchase(user.id, {
@@ -410,6 +424,8 @@ export const AddProductPage: React.FC = () => {
           price: parsedPrice,
           currency: 'BDT',
           store_vendor: storeVendor.trim() ? storeVendor.trim() : null,
+          size_value: isDifferentPurchaseSize ? parsedPurchaseSize : null,
+          size_unit: isDifferentPurchaseSize ? (selectedProduct?.size_unit ?? null) : null,
         });
       } catch (purErr: unknown) {
         const msg = purErr instanceof Error ? purErr.message : 'Failed to create purchase';
@@ -1025,6 +1041,38 @@ export const AddProductPage: React.FC = () => {
                   Optional — where you bought this purchase.
                 </p>
               </div>
+
+              {selectedProduct && (
+                <div>
+                  <label
+                    className="block text-xs font-semibold text-neutral-700 mb-1.5"
+                    htmlFor="purchase-size-value"
+                  >
+                    Pack size (if different)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="purchase-size-value"
+                      type="number"
+                      step="any"
+                      min="0.01"
+                      value={purchaseSizeValue}
+                      onChange={(e) => setPurchaseSizeValue(e.target.value)}
+                      placeholder={selectedProduct.size_value ? String(selectedProduct.size_value) : 'Optional'}
+                      disabled={submitting}
+                      className="flex-1 px-3.5 py-2.5 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-[#2D6A4F] focus:ring-4 focus:ring-[#2D6A4F]/10 transition-all bg-neutral-50/40 disabled:opacity-60 placeholder:text-neutral-400"
+                    />
+                    {selectedProduct.size_unit && (
+                      <span className="px-3 py-2.5 rounded-xl border border-neutral-200 bg-neutral-100 text-xs font-semibold text-neutral-600">
+                        {selectedProduct.size_unit}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-neutral-400 mt-1">
+                    Prefilled with the product default. Only saved on this purchase if changed.
+                  </p>
+                </div>
+              )}
 
               {/* "When will you start using it?" Options */}
               <div>

@@ -3,7 +3,7 @@
 // Strict Business Logic: Finished Periods Only, No Fabricated Estimates
 // ==============================================================================
 
-import type { UsagePeriod } from '../types';
+import type { Product, Purchase, SizeUnit, UsagePeriod } from '../types';
 import { getDaysBetween, getDaysUsed } from './dateUtils';
 
 /**
@@ -126,4 +126,24 @@ export function calculateMonthlyConsumptionCost(
   }
   const monthlyCost = (purchasePrice / averageLifespan) * 30;
   return Math.round(monthlyCost);
+}
+
+/**
+ * Effective pack size for a purchase: COALESCE(purchase size, product size).
+ * Returns null for size_value/size_unit if neither has a valid size.
+ */
+export function getEffectiveSize(
+  purchase: Pick<Purchase, 'size_value' | 'size_unit'> | null | undefined,
+  product: Pick<Product, 'size_value' | 'size_unit'> | null | undefined
+): { size_value: number | null; size_unit: SizeUnit | null } {
+  if (purchase?.size_value !== undefined && purchase?.size_value !== null && purchase.size_value > 0) {
+    return {
+      size_value: purchase.size_value,
+      size_unit: purchase.size_unit ?? product?.size_unit ?? null,
+    };
+  }
+  return {
+    size_value: product?.size_value ?? null,
+    size_unit: product?.size_unit ?? null,
+  };
 }

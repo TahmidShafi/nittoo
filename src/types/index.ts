@@ -45,6 +45,8 @@ export interface Purchase {
   price: number;
   currency: string; // Defaults to 'BDT'
   store_vendor?: string | null;
+  size_value?: number | null; // Optional per-purchase pack size override (null = same as product)
+  size_unit?: SizeUnit | null; // Optional per-purchase pack unit override (null = same as product)
   created_at: string;
 }
 
@@ -111,6 +113,8 @@ export interface CreatePurchaseInput {
   price: number;
   currency?: string; // Default: 'BDT'
   store_vendor?: string | null;
+  size_value?: number | null;
+  size_unit?: SizeUnit | null;
 }
 
 export interface StartUsagePeriodInput {
@@ -137,6 +141,8 @@ export interface UpdatePurchaseInput {
   price: number;
   currency?: string;
   store_vendor?: string | null;
+  size_value?: number | null;
+  size_unit?: SizeUnit | null;
 }
 
 export interface UpdateUsagePeriodInput {
@@ -239,6 +245,8 @@ export interface ImportPurchaseItemInput {
   price: number;
   currency?: string;
   store_vendor?: string | null;
+  size_value?: number | null;
+  size_unit?: SizeUnit | null;
   created_at?: string;
 }
 

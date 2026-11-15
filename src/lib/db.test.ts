@@ -552,4 +552,274 @@ describe('SupabaseDatabase (mocked Supabase client)', () => {
     expect(replaceRes.restoredPurchases).toBe(1);
     expect(replaceRes.restoredRestockPlans).toBe(1);
   });
+
+  describe('purchase size handling', () => {
+    it('creates, updates, and reads a purchase with size_value and size_unit', async () => {
+      pushResponse('products', {
+        data: { id: 'p-1', user_id: userId, size_value: 236, size_unit: 'ml' },
+        error: null,
+      });
+      pushResponse('purchases', {
+        data: {
+          id: 'pu-1',
+          product_id: 'p-1',
+          purchase_date: '2026-10-01',
+          price: 1200,
+          size_value: 473,
+          size_unit: 'ml',
+          created_at: '2026-10-01T00:00:00Z',
+        },
+        error: null,
+      });
+
+      const created = await db.createPurchase(userId, {
+        product_id: 'p-1',
+        purchase_date: '2026-10-01',
+        price: 1200,
+        size_value: 473,
+        size_unit: 'ml',
+      });
+      expect(created.size_value).toBe(473);
+      expect(created.size_unit).toBe('ml');
+      const insertCall = recordedCalls.find((c) => c.table === 'purchases' && c.op === 'insert');
+      expect(insertCall?.payload).toMatchObject({ size_value: 473, size_unit: 'ml' });
+
+      pushResponse('purchases', {
+        data: {
+          id: 'pu-1',
+          product_id: 'p-1',
+          products: { user_id: userId, size_value: 236, size_unit: 'ml' },
+        },
+        error: null,
+      });
+      pushResponse('purchases', {
+        data: {
+          id: 'pu-1',
+          product_id: 'p-1',
+          purchase_date: '2026-10-01',
+          price: 1500,
+          size_value: 500,
+          size_unit: 'ml',
+          created_at: '2026-10-01T00:00:00Z',
+        },
+        error: null,
+      });
+
+      const updated = await db.updatePurchase(userId, 'pu-1', {
+        purchase_date: '2026-10-01',
+        price: 1500,
+        currency: 'BDT',
+        size_value: 500,
+        size_unit: 'ml',
+      });
+      expect(updated.size_value).toBe(500);
+      expect(updated.size_unit).toBe('ml');
+      const updateCall = recordedCalls.find((c) => c.table === 'purchases' && c.op === 'update');
+      expect(updateCall?.payload).toMatchObject({ size_value: 500, size_unit: 'ml' });
+
+      pushResponse('products', {
+        data: [
+          {
+            id: 'p-1',
+            user_id: userId,
+            name: 'Cleanser',
+            category: 'Skincare',
+            brand: 'CeraVe',
+            size_value: 236,
+            size_unit: 'ml',
+            created_at: '2026-10-01T00:00:00Z',
+          },
+        ],
+        error: null,
+      });
+      pushResponse('purchases', {
+        data: [
+          {
+            id: 'pu-1',
+            product_id: 'p-1',
+            purchase_date: '2026-10-01',
+            price: 1500,
+            size_value: 500,
+            size_unit: 'ml',
+            created_at: '2026-10-01T00:00:00Z',
+          },
+        ],
+        error: null,
+      });
+      pushResponse('usage_periods', { data: [], error: null });
+      pushResponse('restock_plans', { data: [], error: null });
+
+      const exported = await db.exportUserData(userId);
+      expect(exported.purchases[0].size_value).toBe(500);
+      expect(exported.purchases[0].size_unit).toBe('ml');
+    });
+
+    it('rejects size_value <= 0 and invalid size_unit on createPurchase and updatePurchase', async () => {
+      pushResponse('products', {
+        data: { id: 'p-1', user_id: userId, size_value: 236, size_unit: 'ml' },
+        error: null,
+      });
+      await expect(
+        db.createPurchase(userId, {
+          product_id: 'p-1',
+          purchase_date: '2026-10-01',
+          price: 1200,
+          size_value: 0,
+          size_unit: 'ml',
+        })
+      ).rejects.toThrow(/size/i);
+
+      pushResponse('products', {
+        data: { id: 'p-1', user_id: userId, size_value: 236, size_unit: 'ml' },
+        error: null,
+      });
+      await expect(
+        db.createPurchase(userId, {
+          product_id: 'p-1',
+          purchase_date: '2026-10-01',
+          price: 1200,
+          size_value: 100,
+          size_unit: 'oz' as never,
+        })
+      ).rejects.toThrow(/size/i);
+
+      pushResponse('purchases', {
+        data: {
+          id: 'pu-1',
+          product_id: 'p-1',
+          products: { user_id: userId, size_value: 236, size_unit: 'ml' },
+        },
+        error: null,
+      });
+      await expect(
+        db.updatePurchase(userId, 'pu-1', {
+          purchase_date: '2026-10-01',
+          price: 1200,
+          currency: 'BDT',
+          size_value: -5,
+          size_unit: 'ml',
+        })
+      ).rejects.toThrow(/size/i);
+
+      pushResponse('purchases', {
+        data: {
+          id: 'pu-1',
+          product_id: 'p-1',
+          products: { user_id: userId, size_value: 236, size_unit: 'ml' },
+        },
+        error: null,
+      });
+      await expect(
+        db.updatePurchase(userId, 'pu-1', {
+          purchase_date: '2026-10-01',
+          price: 1200,
+          currency: 'BDT',
+          size_value: 100,
+          size_unit: 'L' as never,
+        })
+      ).rejects.toThrow(/size/i);
+    });
+
+    it('stores null when entered purchase size equals the product default', async () => {
+      pushResponse('products', {
+        data: { id: 'p-1', user_id: userId, size_value: 236, size_unit: 'ml' },
+        error: null,
+      });
+      pushResponse('purchases', {
+        data: {
+          id: 'pu-1',
+          product_id: 'p-1',
+          purchase_date: '2026-10-01',
+          price: 1200,
+          size_value: null,
+          size_unit: null,
+          created_at: '2026-10-01T00:00:00Z',
+        },
+        error: null,
+      });
+
+      const created = await db.createPurchase(userId, {
+        product_id: 'p-1',
+        purchase_date: '2026-10-01',
+        price: 1200,
+        size_value: 236,
+        size_unit: 'ml',
+      });
+      expect(created.size_value).toBeNull();
+      expect(created.size_unit).toBeNull();
+      const insertCall = recordedCalls.find((c) => c.table === 'purchases' && c.op === 'insert');
+      expect(insertCall?.payload).not.toHaveProperty('size_value');
+      expect(insertCall?.payload).not.toHaveProperty('size_unit');
+
+      pushResponse('purchases', {
+        data: {
+          id: 'pu-1',
+          product_id: 'p-1',
+          products: { user_id: userId, size_value: 236, size_unit: 'ml' },
+        },
+        error: null,
+      });
+      pushResponse('purchases', {
+        data: {
+          id: 'pu-1',
+          product_id: 'p-1',
+          purchase_date: '2026-10-01',
+          price: 1200,
+          size_value: null,
+          size_unit: null,
+          created_at: '2026-10-01T00:00:00Z',
+        },
+        error: null,
+      });
+
+      const updated = await db.updatePurchase(userId, 'pu-1', {
+        purchase_date: '2026-10-01',
+        price: 1200,
+        currency: 'BDT',
+        size_value: 236,
+        size_unit: 'ml',
+      });
+      expect(updated.size_value).toBeNull();
+      expect(updated.size_unit).toBeNull();
+      const updateCall = recordedCalls.find((c) => c.table === 'purchases' && c.op === 'update');
+      expect(updateCall?.payload).toMatchObject({ size_value: null, size_unit: null });
+    });
+
+    it('reads legacy purchase rows with no size fields back as null', async () => {
+      pushResponse('products', {
+        data: [
+          {
+            id: 'p-1',
+            user_id: userId,
+            name: 'Cleanser',
+            category: 'Skincare',
+            brand: 'CeraVe',
+            size_value: 236,
+            size_unit: 'ml',
+            created_at: '2026-10-01T00:00:00Z',
+          },
+        ],
+        error: null,
+      });
+      pushResponse('purchases', {
+        data: [
+          {
+            id: 'pu-legacy',
+            product_id: 'p-1',
+            purchase_date: '2026-01-01',
+            price: 1000,
+            created_at: '2026-01-01T00:00:00Z',
+          },
+        ],
+        error: null,
+      });
+      pushResponse('usage_periods', { data: [], error: null });
+      pushResponse('restock_plans', { data: [], error: null });
+
+      const exported = await db.exportUserData(userId);
+      expect(exported.purchases).toHaveLength(1);
+      expect(exported.purchases[0].size_value).toBeNull();
+      expect(exported.purchases[0].size_unit).toBeNull();
+    });
+  });
 });
