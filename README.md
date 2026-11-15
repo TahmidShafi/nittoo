@@ -24,7 +24,7 @@ A personal consumables tracker and forecasting app that turns everyday purchases
 - **Run-out forecasting:** Estimates remaining days and a calibrated P10–P90 run-out window from completed cycle history, with zero fabricated metrics on first-time items.
 - **True daily economics:** Separates daily cost of ownership (`৳/day` from the active bottle's price) from bulk unit price (`৳/ml`, `৳/g`), and aggregates an estimated monthly run rate.
 - **Restock planning:** Supports relative (`N` days before expected finish) and custom-date reminders that adapt automatically as forecasts update.
-- **Data portability & instant demo:** Runs offline-first in Demo Mode (`localStorage`, 12 sample products) or synced via Supabase, with JSON, CSV, Excel, and PDF exports plus validated JSON restore.
+- **Data portability & instant demo:** Runs offline-first in Demo Mode (`localStorage`, a set of sample products) or synced via Supabase, with JSON, CSV, Excel, and PDF exports plus validated JSON restore.
 
 ---
 
@@ -177,6 +177,8 @@ uv run lab readme-results      # Refresh the README results block from forecast_
 - **Honest dev/holdout evaluation & shipping the simpler model:** Selection was frozen on dev seed `7` and evaluated once on holdout seed `4001`. Although `rate_mean (rule_plus_rate_outlier)` was the mechanical winner, we shipped `rate_mean (rule_only)` because the extra gain was small (`95% CI` documented in the backtest report), degraded under noise and elasticity, and avoided porting an unreliable detector.
 - **Per-purchase pack size discovered through analysis:** Modeling pack sizes only on `products` distorted lifespans when users bought different bottle sizes; adding per-purchase `size_value`/`size_unit` overrides and rate normalization fixed cross-size forecasts.
 - **Account deletion via Edge Function:** Client-side deletion could only clear app tables; adding the `delete-account` Edge Function ensured the underlying Supabase Auth user is actually deleted.
+- **Active-bottle assumption caught in production:** Real-account data exposed a crash on Analytics for products with no active bottle that the demo dataset didn't cover; fixed with a shared `getCurrentPurchase` helper, a `@typescript-eslint/no-non-null-assertion` lint rule, a route-level error boundary, and new demo cases.
+- **Clock & timezone dependence in fixture generation:** Analytics CI caught `demo_export.json` diverging between midnight and 06:00 in UTC+6 because export remaining-days used wall-clock "today"; fixed by passing an explicit `asOfDate` and adding a cross-timezone determinism test.
 
 ---
 
