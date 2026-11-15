@@ -186,3 +186,16 @@ def test_point_in_time_no_future_leakage(tmp_path: Path) -> None:
     )
     assert report_path.exists()
     assert result.rule_clean_targets > 0
+
+
+def test_pack_size_elasticity_runs(tmp_path: Path) -> None:
+    stats = simulate_households(
+        households=5,
+        months=12,
+        seed=106,
+        exports_dir=tmp_path / "exports",
+        ground_truth_path=tmp_path / "gt.json",
+        pack_size_elasticity=0.5,
+    )
+    assert stats.products > 0
+    assert stats.usage_periods > 0
