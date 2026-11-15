@@ -4,12 +4,14 @@
 // Premium, calm authentication composition with official brand logo
 // ==============================================================================
 
-import React, { useState } from 'react';
+import React, { lazy, Suspense, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { isMockMode } from '../lib/dataSource';
 import { NittooLogo } from '../components/NittooLogo';
+
+const DemoProductPreview = lazy(() => import('../components/DemoProductPreview'));
 
 export const LoginPage: React.FC = () => {
   usePageMeta({
@@ -90,14 +92,14 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-between items-center px-4 py-8 sm:py-12 bg-[#FBFBFB]">
+    <div className="min-h-screen flex flex-col justify-between items-center px-4 py-6 sm:py-10 bg-[#FBFBFB]">
       {/* Main Content: Mobile-first single column, 2-column split on desktop */}
-      <div className="w-full max-w-md lg:max-w-4xl my-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
+      <div className="w-full max-w-md lg:max-w-5xl my-auto grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
         {/* Hero & Value Proposition */}
-        <div className="lg:col-span-7 flex flex-col items-center lg:items-start text-center lg:text-left space-y-5">
+        <div className="lg:col-span-7 flex flex-col items-center lg:items-start text-center lg:text-left space-y-4">
           <NittooLogo variant="horizontal" size="xl" showTagline={true} />
 
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 leading-tight">
               Track what you use. Know what it costs.
             </h1>
@@ -107,7 +109,7 @@ export const LoginPage: React.FC = () => {
           </div>
 
           {/* Primary Action: Try the Demo */}
-          <div className="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-3 pt-1">
+          <div className="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-3">
             <button
               type="button"
               onClick={handleTryDemo}
@@ -123,25 +125,36 @@ export const LoginPage: React.FC = () => {
           </div>
 
           {/* 3 Short Feature Highlights */}
-          <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-left">
+          <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
             <div className="bg-white border border-neutral-200/80 rounded-xl p-3.5 shadow-xs space-y-1">
               <p className="text-xs font-bold text-neutral-900">Run-out forecasts</p>
-              <p className="text-[11px] text-neutral-600 leading-relaxed">
+              <p className="text-sm text-neutral-600 leading-relaxed">
                 Estimates remaining days and a run-out window from completed cycles.
               </p>
             </div>
             <div className="bg-white border border-neutral-200/80 rounded-xl p-3.5 shadow-xs space-y-1">
               <p className="text-xs font-bold text-neutral-900">True daily cost</p>
-              <p className="text-[11px] text-neutral-600 leading-relaxed">
+              <p className="text-sm text-neutral-600 leading-relaxed">
                 Turns purchase prices into a clear cost per day and monthly run rate.
               </p>
             </div>
             <div className="bg-white border border-neutral-200/80 rounded-xl p-3.5 shadow-xs space-y-1">
               <p className="text-xs font-bold text-neutral-900">Backup inventory</p>
-              <p className="text-[11px] text-neutral-600 leading-relaxed">
+              <p className="text-sm text-neutral-600 leading-relaxed">
                 Tracks unopened stock separately from what you are using right now.
               </p>
             </div>
+          </div>
+
+          {/* Lazy-loaded non-interactive ProductCard preview using real DEMO_SEED data */}
+          <div className="w-full pt-1 text-left">
+            <Suspense
+              fallback={
+                <div className="h-56 skeleton-shimmer rounded-2xl border border-neutral-200/80" />
+              }
+            >
+              <DemoProductPreview />
+            </Suspense>
           </div>
         </div>
 
