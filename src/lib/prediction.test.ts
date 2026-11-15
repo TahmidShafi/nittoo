@@ -7,6 +7,7 @@ import {
   calculatePricePerUnit,
   calculateMonthlyConsumptionCost,
   calculateProgressPercent,
+  getEffectiveSize,
 } from './prediction';
 import type { UsagePeriod } from '../types';
 
@@ -73,5 +74,25 @@ describe('prediction', () => {
     expect(calculateCurrentDaysUsed('2026-09-01', '2026-09-11')).toBe(10);
     expect(calculatePredictedRemainingDays(60, 25)).toBe(35);
     expect(calculatePredictedRemainingDays(null, 25)).toBeNull();
+  });
+
+  it('computes effective size as COALESCE(purchase, product)', () => {
+    const product = { size_value: 236, size_unit: 'ml' as const };
+    expect(getEffectiveSize({ size_value: 473, size_unit: 'ml' }, product)).toEqual({
+      size_value: 473,
+      size_unit: 'ml',
+    });
+    expect(getEffectiveSize({ size_value: null, size_unit: null }, product)).toEqual({
+      size_value: 236,
+      size_unit: 'ml',
+    });
+    expect(getEffectiveSize(null, product)).toEqual({
+      size_value: 236,
+      size_unit: 'ml',
+    });
+    expect(getEffectiveSize(null, { size_value: null, size_unit: null })).toEqual({
+      size_value: null,
+      size_unit: null,
+    });
   });
 });

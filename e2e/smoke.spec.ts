@@ -19,12 +19,14 @@ test.describe('Nittoo E2E (demo/mock mode)', () => {
 
     await page.locator('#price').fill('999');
     await page.locator('#store-vendor').fill('Playwright Test Mart');
+    await page.locator('#purchase-size-value').fill('473');
     await page.getByRole('button', { name: /Add to Inventory/i }).click();
 
     await expect(page).toHaveURL(/\/inventory/);
     await page.goto(productUrl);
     await expect(page.getByText('Playwright Test Mart')).toBeVisible();
     await expect(page.getByText(/999/)).toBeVisible();
+    await expect(page.getByText(/473 ml/)).toBeVisible();
   });
 
   test('b. Resilience: blocked Supabase host renders login <3s and Try the demo works', async ({

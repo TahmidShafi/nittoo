@@ -78,6 +78,8 @@ export interface ImportPlan {
     price: number;
     currency: string;
     store_vendor: string | null;
+    size_value?: number | null;
+    size_unit?: 'ml' | 'g' | 'count' | null;
     created_at?: string;
   }[];
   usageToCreate: {

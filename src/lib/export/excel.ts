@@ -103,7 +103,7 @@ export function generateExcelWorkbook(data: NittooExportData): Uint8Array {
   for (const pu of data.purchases) {
     const prod = productById.get(pu.product_id);
     const hasOverride = pu.size_value !== undefined && pu.size_value !== null;
-    const effectiveSize = hasOverride ? pu.size_value : (prod?.size ?? '');
+    const effectiveSize = hasOverride ? (pu.size_value ?? '') : (prod?.size ?? '');
     const effectiveUnit = hasOverride ? (pu.size_unit ?? prod?.unit ?? '') : (prod?.unit ?? '');
     purchaseRows.push([
       pu.id,

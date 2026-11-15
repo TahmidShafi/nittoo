@@ -93,7 +93,7 @@ export async function generateCsvZip(data: NittooExportData): Promise<Uint8Array
   for (const pu of data.purchases) {
     const prod = productById.get(pu.product_id);
     const hasOverride = pu.size_value !== undefined && pu.size_value !== null;
-    const effectiveSize = hasOverride ? pu.size_value : (prod?.size ?? null);
+    const effectiveSize = hasOverride ? (pu.size_value ?? null) : (prod?.size ?? null);
     const effectiveUnit = hasOverride ? (pu.size_unit ?? prod?.unit ?? null) : (prod?.unit ?? null);
     purchaseRows.push([
       pu.id,
