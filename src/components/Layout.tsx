@@ -107,15 +107,18 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           className="bg-primary-50 text-brand-dark text-xs px-4 py-1.5 border-b border-primary-200/70 animate-banner-in"
         >
           <div className="max-w-6xl mx-auto flex items-center justify-between gap-2">
-            <p className="font-medium truncate">
-              Demo — sample data stored only in this browser.{' '}
-              <button
-                type="button"
-                onClick={handleDemoSignUp}
-                className="underline font-semibold text-brand-primary hover:text-brand-dark cursor-pointer"
-              >
-                Sign up to save your own.
-              </button>
+            <p className="font-medium sm:truncate">
+              <span className="sm:hidden">Demo mode · data stays in this browser</span>
+              <span className="hidden sm:inline">
+                Demo — sample data stored only in this browser.{' '}
+                <button
+                  type="button"
+                  onClick={handleDemoSignUp}
+                  className="underline font-semibold text-brand-primary hover:text-brand-dark cursor-pointer"
+                >
+                  Sign up to save your own.
+                </button>
+              </span>
             </p>
             <button
               type="button"
