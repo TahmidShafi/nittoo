@@ -27,8 +27,10 @@ flowchart LR
 | `src/nittoo_lab/simulate/` | Seeded NumPy generator creating 500 synthetic households × 24 months across 40 Bangladesh-relevant product archetypes with pack-size switching, category inflation, mild seasonality, abandonment, and ~2% injected data-quality faults (`ASSUMPTIONS.md`), plus ground-truth & injected-faults manifests. |
 | `src/nittoo_lab/ingest/` | Bulk DuckDB NDJSON contract boundary validating every export file against `NittooExportBackup` and referential/DB constraints (`INVALID_EXPORT_SCHEMA`, `MISSING_PRODUCT_REF`, `MISSING_PURCHASE_REF`, `FINISHED_BEFORE_OPENED`) into `raw.rejects`. Idempotent on re-runs. |
 | `dbt/` | `dbt-core` + `dbt-duckdb` warehouse (`staging` deduplication → `intermediate` MAD z-score & zero-day quality flags → `marts`: `dim_product`, `dim_vendor`, `dim_date`, `fact_purchase`, `fact_consumption_cycle`, `mart_monthly_spend`, `mart_category_price_index`), singular & warning SQL tests, plus `dbt docs generate`. |
-| `src/nittoo_lab/reporting/` | Generates `analytics/reports/data_quality.md` summarizing row counts per layer, contract rejects, fault-detection recall vs ground truth, and dbt test results. |
-| `reports/` | Generated portfolio snapshot output (`data_quality.md`) only. |
+| `src/nittoo_lab/reporting/` | Generates `analytics/reports/data_quality.md` summarizing row counts per layer, contract rejects, fault-detection precision/recall/F1 vs ground truth, and dbt test results. |
+| `reports/` | Generated portfolio snapshot output (`data_quality.md`) and tuning log (`detector_tuning.md`). |
+
+> **Fault-Detection Note:** The four rule-based fault types (`finished_before_opened`, `zero_day_cycle`, `outlier_1000_day`, `duplicate_purchase`) are detected by deterministic rules matching their injection definitions, so 100% precision/recall is expected. The **`subtle_duration_outlier`** detector (per-household-product MAD on `consumption_rate_per_day`) is the real statistical test.
 
 ## How to Run
 

@@ -324,6 +324,13 @@ def generate_data_quality_report(
             "",
             "## 3. Fault-Detection Precision, Recall & F1 (Record-Level)",
             "",
+            (
+                "> **Note:** The four rule-based fault types (`finished_before_opened`, "
+                "`zero_day_cycle`, `outlier_1000_day`, `duplicate_purchase`) are detected by "
+                "deterministic rules matching their injection definitions, so 100% is expected. "
+                "The **`subtle_duration_outlier`** detector is the real statistical test."
+            ),
+            "",
         ]
     )
     if fault_recall:
@@ -344,6 +351,29 @@ def generate_data_quality_report(
                 "",
                 f"- **Clean-cycle false-positive rate (FPR):** "
                 f"{clean_fp:,} / {clean_total:,} ({clean_fpr_pct:.2f}%)",
+                "",
+                "### 3.1 Subtle-Outlier Evaluation Summary (Dev vs Seen vs Fresh Holdout)",
+                "",
+                "| Dataset (`500 × 24`) | Role | Precision | Recall | F1 | Clean-Cycle FPR |",
+                "| :--- | :--- | ---: | ---: | ---: | ---: |",
+                (
+                    "| Seed `7` | Dev (Iteration 2, tuned here) "
+                    "| 96.1% | 99.4% | 97.7% | 0.02% (13 / 57,658) |"
+                ),
+                (
+                    "| Seed `42` | Iteration 1 (already seen, pre-`product.size` fix) "
+                    "| 9.9% | 71.6% | 17.4% | 3.12% (1,770 / 56,812) |"
+                ),
+                (
+                    "| Seed `2027` | Fresh Holdout (Iteration 2, frozen) "
+                    "| 96.0% | 99.3% | 97.6% | 0.02% (12 / 56,527) |"
+                ),
+                "",
+                (
+                    "- **Exclusion decision (`RATE_OUTLIER_MIN_PRECISION_TO_EXCLUDE = 50.0%`):** "
+                    "Holdout precision (`96.0%`) >= `50.0%`, so `is_rate_outlier` **excludes** "
+                    "flagged cycles from `is_valid_for_forecasting` (not advisory-only)."
+                ),
             ]
         )
     else:
