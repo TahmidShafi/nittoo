@@ -1,0 +1,68 @@
+version: 2
+
+models:
+  - name: stg_products
+    description: "Cleaned product catalog from raw exports. Grain: one row per product_id."
+    columns:
+      - name: product_id
+        description: "Primary key of the product."
+      - name: user_id
+        description: "Household / user identifier."
+      - name: size_value
+        description: "Numeric pack size (e.g. 500)."
+      - name: size_unit
+        description: "Pack size unit (ml, g, or count)."
+
+  - name: stg_purchases
+    description: >
+      Deduplicated purchase events from raw exports. Deterministic tie-breaker keeps
+      earliest (source_file, raw_row_id) per purchase_id. Grain: one row per purchase_id.
+    columns:
+      - name: purchase_id
+        description: "Deduplicated primary key of the purchase."
+      - name: product_id
+        description: "Foreign key to stg_products."
+      - name: purchase_date
+        description: "Calendar date of purchase."
+      - name: price
+        description: "Total purchase price in currency (BDT)."
+      - name: vendor_name
+        description: "Normalized store/vendor name (defaults to 'Unspecified')."
+
+  - name: stg_purchase_duplicates
+    description: >
+      Duplicate purchase rows removed by stg_purchases deduplication (duplicate_rank > 1).
+      Grain: one row per duplicate raw_row_id.
+    columns:
+      - name: raw_row_id
+        description: "Surrogate raw ingestion row identifier."
+      - name: purchase_id
+        description: "Duplicated purchase identifier."
+      - name: duplicate_rank
+        description: "Row number (> 1) within purchase_id partition."
+
+  - name: stg_usage_periods
+    description: "Cleaned consumption periods (completed or active). Grain: one row per usage_period_id."
+    columns:
+      - name: usage_period_id
+        description: "Primary key of the usage period."
+      - name: product_id
+        description: "Foreign key to stg_products."
+      - name: purchase_id
+        description: "Foreign key to stg_purchases."
+      - name: opened_date
+        description: "Date the item was opened."
+      - name: finished_date
+        description: "Date the item finished (null if active)."
+      - name: status
+        description: "Cycle status: 'completed' or 'active'."
+
+  - name: stg_restock_plans
+    description: "Planned restock reminders from raw exports. Grain: one row per restock_plan_id."
+    columns:
+      - name: restock_plan_id
+        description: "Primary key of the restock plan."
+      - name: product_id
+        description: "Foreign key to stg_products."
+      - name: usage_period_id
+        description: "Foreign key to stg_usage_periods."

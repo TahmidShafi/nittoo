@@ -1,0 +1,39 @@
+version: 2
+
+models:
+  - name: int_purchase_unit_prices
+    description: "Purchases enriched with product pack size and computed price per unit. Grain: one row per purchase_id."
+    columns:
+      - name: purchase_id
+        description: "Primary key of the purchase."
+      - name: unit_price
+        description: "Price divided by size_value (BDT per ml/g/count)."
+
+  - name: int_usage_enriched
+    description: "Usage periods joined with product attributes, duration, consumption rate, and cost per day. Grain: one row per usage_period_id."
+    columns:
+      - name: usage_period_id
+        description: "Primary key of the usage period."
+      - name: duration_days
+        description: "Days between opened_date and finished_date (or reported days_used if active)."
+      - name: consumption_rate_per_day
+        description: "Pack size_value divided by duration_days on positive-duration completed cycles."
+      - name: cost_per_day
+        description: "Purchase price divided by duration_days on positive-duration completed cycles."
+
+  - name: int_cycle_quality
+    description: >
+      Cycle-level data quality flags computed in dbt. Detects zero-day completed cycles and
+      duration outliers using per-(product_name, size_value, size_unit) MAD modified z-score (> 3.5)
+      plus a >= 1000-day guard. Grain: one row per usage_period_id.
+    columns:
+      - name: usage_period_id
+        description: "Primary key of the usage period."
+      - name: is_zero_day
+        description: "True when a completed cycle has duration_days <= 0 or null."
+      - name: is_duration_outlier
+        description: "True when duration_days >= 1000 or MAD modified z-score > 3.5."
+      - name: mad_z_score
+        description: "Modified z-score: 0.6745 * |duration_days - median| / MAD within product+size group."
+      - name: is_valid_for_forecasting
+        description: "True when neither is_zero_day nor is_duration_outlier is flagged."
