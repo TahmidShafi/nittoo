@@ -10,6 +10,7 @@ import numpy as np
 
 from nittoo_lab.config import (
     DEFAULT_CYCLE_NOISE_STD,
+    DEFAULT_PACK_SIZE_ELASTICITY,
     DEFAULT_SUBTLE_FAST_RANGE,
     DEFAULT_SUBTLE_SLOW_RANGE,
 )
@@ -99,6 +100,7 @@ def simulate_households(
     cycle_noise_std: float = DEFAULT_CYCLE_NOISE_STD,
     subtle_slow_range: tuple[float, float] = DEFAULT_SUBTLE_SLOW_RANGE,
     subtle_fast_range: tuple[float, float] = DEFAULT_SUBTLE_FAST_RANGE,
+    pack_size_elasticity: float = DEFAULT_PACK_SIZE_ELASTICITY,
 ) -> SimulationStats:
     t0 = time.perf_counter()
     rng = np.random.default_rng(seed)
@@ -222,7 +224,12 @@ def simulate_households(
                 noise_mult = float(
                     np.clip(rng.normal(1.0, cycle_noise_std), low_clip, high_clip)
                 )
-                effective_rate = true_rate * season_mult * noise_mult
+                elasticity_mult = (
+                    (current_size / float(tpl.sizes[0])) ** pack_size_elasticity
+                    if pack_size_elasticity != 0.0
+                    else 1.0
+                )
+                effective_rate = true_rate * season_mult * noise_mult * elasticity_mult
                 true_duration = max(7, round(current_size / effective_rate))
                 expected_finish = opened_date + timedelta(days=true_duration)
 
