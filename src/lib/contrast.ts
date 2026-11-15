@@ -19,7 +19,7 @@ export const SEMANTIC_COLORS = {
     text: '#B45309',
     bg: '#FFF7E6',
     border: '#FDE68A',
-    fill: '#B45309',
+    fill: '#CC7008',
   },
   critical: {
     text: '#BE123C',

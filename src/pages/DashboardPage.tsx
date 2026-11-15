@@ -384,15 +384,15 @@ export const DashboardPage: React.FC = () => {
 
       {/* Refined Summary Editorial Data Cards */}
       {!loading && !error && products.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
           {/* Card 1: Active Essentials */}
-          <div className="bg-white border border-neutral-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+          <div className="bg-white border border-neutral-200/80 rounded-2xl p-3.5 sm:p-5 shadow-xs flex flex-col justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 block mb-1">
               Active Essentials
             </span>
-            <div className="mt-2 flex items-baseline justify-between">
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-bold text-neutral-900 tracking-tight">
+            <div className="mt-1.5 sm:mt-2 flex flex-wrap items-baseline justify-between gap-1">
+              <div className="flex items-baseline gap-1.5 sm:gap-2">
+                <span className="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight">
                   <CountUpValue value={summaryMetrics.activeCount} />
                 </span>
                 <span className="text-xs text-neutral-500 font-medium">
@@ -401,7 +401,7 @@ export const DashboardPage: React.FC = () => {
               </div>
               <Link
                 to="/inventory"
-                className="text-xs text-[#2D6A4F] hover:underline font-medium"
+                className="hidden sm:inline text-xs text-[#2D6A4F] hover:underline font-medium"
               >
                 View inventory →
               </Link>
@@ -409,12 +409,12 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           {/* Card 2: Running Low / Overdue */}
-          <div className="bg-white border border-neutral-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+          <div className="bg-white border border-neutral-200/80 rounded-2xl p-3.5 sm:p-5 shadow-xs flex flex-col justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 block mb-1">
               Attention Needed
             </span>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-3xl font-bold tracking-tight text-neutral-900">
+            <div className="mt-1.5 sm:mt-2 flex flex-wrap items-baseline gap-1.5 sm:gap-2">
+              <span className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900">
                 <CountUpValue value={summaryMetrics.overdueCount + summaryMetrics.runningSoonCount} />
               </span>
               <span className="inline-flex items-center gap-1.5 text-xs font-medium">
@@ -447,12 +447,12 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           {/* Card 3: Estimated Monthly Consumption */}
-          <div className="bg-white border border-neutral-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+          <div className="col-span-2 sm:col-span-1 bg-white border border-neutral-200/80 rounded-2xl p-3.5 sm:p-5 shadow-xs flex flex-col justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 block mb-1">
               Monthly Consumption
             </span>
-            <div className="mt-2 flex items-baseline gap-1.5">
-              <span className="text-3xl font-bold text-neutral-900 tracking-tight">
+            <div className="mt-1.5 sm:mt-2 flex items-baseline gap-1.5">
+              <span className="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight">
                 <CountUpValue value={summaryMetrics.estimatedMonthlyCost} prefix="৳" />
               </span>
               <span className="text-xs text-neutral-500 font-medium">
