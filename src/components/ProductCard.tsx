@@ -35,7 +35,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     urgencyState,
   } = usePrediction(product);
 
-  const latestPurchase = product.latest_purchase;
+  const activePurchase = product.active_purchase ?? product.latest_purchase;
   const confidence = calculateConfidence(validCompletedCycles);
   const expectedFinishDate =
     product.active_usage && averageLifespan !== null && averageLifespan > 0
@@ -84,13 +84,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               <span className="font-medium text-neutral-700">{product.brand}</span>
             )}
             {(() => {
-              const eff = getEffectiveSize(
-                product.active_purchase ?? product.latest_purchase,
-                product
-              );
+              const eff = getEffectiveSize(activePurchase, product);
               return (
                 <>
-                  {product.brand && (eff.size_value || latestPurchase) && (
+                  {product.brand && (eff.size_value || activePurchase) && (
                     <span className="text-neutral-300">•</span>
                   )}
                   {eff.size_value && (
@@ -101,10 +98,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 </>
               );
             })()}
-            {latestPurchase && (
+            {activePurchase && (
               <>
                 <span className="text-neutral-300">•</span>
-                <span>৳{latestPurchase.price}</span>
+                <span>৳{activePurchase.price}</span>
               </>
             )}
             {Boolean(product.unopened_count && product.unopened_count > 0) && (
