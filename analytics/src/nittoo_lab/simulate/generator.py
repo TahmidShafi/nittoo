@@ -401,7 +401,7 @@ def simulate_households(
                     "name": tpl.name,
                     "brand": tpl.brand,
                     "category": tpl.category,
-                    "size": current_size,
+                    "size": float(tpl.sizes[0]),
                     "unit": tpl.unit,
                     "created_at": f"{first_created.isoformat()}T09:00:00.000Z",
                 }

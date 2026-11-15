@@ -48,3 +48,51 @@ Why: `mad_floor_frac = 0.10`, `min_cycles_for_mad = 4`, `mad_z_threshold = 4.5` 
 - `SUBTLE_OUTLIER_RECALL_FLOOR = 0.60` (seed-7 `0.683` minus `~0.08` margin)
 - `SUBTLE_OUTLIER_PRECISION_FLOOR = 0.10` (seed-7 `0.120` minus `0.02` margin)
 - `CLEAN_FPR_CEILING = 0.035` (seed-7 `0.0279` plus `~0.007` margin)
+
+---
+
+## Iteration 2 (Dev Seed 7 After Fixing `product.size = tpl.sizes[0]` in Simulator)
+
+### Root Cause of Iteration-1 False Positives (Diagnosed on Seed 7)
+Diagnosing the `1,609` seed-7 false positives showed `1,588` came from the MAD path (`520` on `first` cycle, `987` in Dec–Feb when Cycle 1 opens). `generator.py` was writing `"size": current_size` (the product's final size after any pack-size switch) onto the `product` record instead of `"size": float(tpl.sizes[0])` (the initial default size). Every earlier cycle with `purchase.size_value = None` inherited the later pack size, inflating `consumption_rate_per_day` by ~2×.
+
+### Iteration 2 Parameter Grid (Seed 7, `500 × 24`)
+
+| `mad_floor_frac` | `min_cycles_for_mad` | `mad_z_threshold` | Subtle TP | Subtle Recall | Subtle Precision | Subtle F1 | Clean FP | Clean FPR |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| 0.06 | 3 | 3.5 | 321 / 322 | 99.7% | 81.1% | 89.4% | 75 | 0.13% |
+| 0.06 | 3 | 4.0 | 317 / 322 | 98.4% | 91.9% | 95.1% | 28 | 0.05% |
+| 0.06 | 3 | 4.5 | 315 / 322 | 97.8% | 95.7% | 96.8% | 14 | 0.02% |
+| 0.06 | 3 | 5.0 | 304 / 322 | 94.4% | 95.6% | 95.0% | 14 | 0.02% |
+| 0.06 | 4 | 3.5 | 316 / 322 | 98.1% | 79.4% | 87.8% | 82 | 0.14% |
+| 0.06 | 4 | 4.0 | 312 / 322 | 96.9% | 89.7% | 93.1% | 36 | 0.06% |
+| 0.06 | 4 | 4.5 | 310 / 322 | 96.3% | 93.1% | 94.7% | 23 | 0.04% |
+| 0.06 | 4 | 5.0 | 299 / 322 | 92.9% | 92.9% | 92.9% | 23 | 0.04% |
+| 0.08 | 3 | 3.5 | 321 / 322 | 99.7% | 95.5% | 97.6% | 15 | 0.03% |
+| 0.08 | 3 | 4.0 | 317 / 322 | 98.4% | 96.1% | 97.2% | 13 | 0.02% |
+| 0.08 | 3 | 4.5 | 314 / 322 | 97.5% | 96.0% | 96.8% | 13 | 0.02% |
+| 0.08 | 3 | 5.0 | 302 / 322 | 93.8% | 95.9% | 94.8% | 13 | 0.02% |
+| 0.08 | 4 | 3.5 | 316 / 322 | 98.1% | 92.9% | 95.5% | 24 | 0.04% |
+| 0.08 | 4 | 4.0 | 312 / 322 | 96.9% | 93.4% | 95.1% | 22 | 0.04% |
+| 0.08 | 4 | 4.5 | 309 / 322 | 96.0% | 93.4% | 94.6% | 22 | 0.04% |
+| 0.08 | 4 | 5.0 | 297 / 322 | 92.2% | 93.1% | 92.7% | 22 | 0.04% |
+| **0.10** | **3** | **3.5** | **320 / 322** | **99.4%** | **96.1%** | **97.7%** | **13** | **0.02%** |
+| 0.10 | 3 | 4.0 | 311 / 322 | 96.6% | 96.0% | 96.3% | 13 | 0.02% |
+| 0.10 | 3 | 4.5 | 292 / 322 | 90.7% | 95.7% | 93.1% | 13 | 0.02% |
+| 0.10 | 3 | 5.0 | 255 / 322 | 79.2% | 95.1% | 86.4% | 13 | 0.02% |
+| 0.10 | 4 | 3.5 | 315 / 322 | 97.8% | 93.5% | 95.6% | 22 | 0.04% |
+| 0.10 | 4 | 4.0 | 306 / 322 | 95.0% | 93.3% | 94.2% | 22 | 0.04% |
+| 0.10 | 4 | 4.5 | 287 / 322 | 89.1% | 92.9% | 91.0% | 22 | 0.04% |
+| 0.10 | 4 | 5.0 | 250 / 322 | 77.6% | 91.9% | 84.2% | 22 | 0.04% |
+
+### Iteration 2 Chosen & Frozen Values (Before Running Holdout Seed `2027`)
+
+- `MIN_CYCLES_FOR_MAD = 3`
+- `MAD_FLOOR_FRAC = 0.10`
+- `MAD_Z_THRESHOLD = 3.5`
+- `DETECTOR_RECALL_FLOOR = 0.95`
+- `DETECTOR_PRECISION_FLOOR = 0.95`
+- `SUBTLE_OUTLIER_RECALL_FLOOR = 0.90`
+- `SUBTLE_OUTLIER_PRECISION_FLOOR = 0.85`
+- `CLEAN_FPR_CEILING = 0.005`
+- `RATE_OUTLIER_MIN_PRECISION_TO_EXCLUDE = 0.50` (if holdout precision `< 50%`, `is_rate_outlier` becomes advisory only)

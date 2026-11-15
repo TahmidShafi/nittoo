@@ -62,7 +62,7 @@ scored as (
              and b.duration_days > 0
              and b.duration_days < 1000
              and b.consumption_rate_per_day is not null
-             and gm.cycle_count >= {{ var('min_cycles_for_mad', 4) }}
+             and gm.cycle_count >= {{ var('min_cycles_for_mad', 3) }}
              and gm.mad_rate is not null
              and gm.mad_rate > 0
                 then round(0.6745 * abs(b.consumption_rate_per_day - gm.median_rate) / gm.mad_rate, 3)
@@ -74,16 +74,16 @@ scored as (
              and b.duration_days > 0
              and b.duration_days < 1000
              and b.consumption_rate_per_day is not null
-             and gm.cycle_count >= {{ var('min_cycles_for_mad', 4) }}
+             and gm.cycle_count >= {{ var('min_cycles_for_mad', 3) }}
              and gm.mad_rate is not null
              and gm.mad_rate > 0
-                then (0.6745 * abs(b.consumption_rate_per_day - gm.median_rate) / gm.mad_rate) > {{ var('mad_z_threshold', 4.5) }}
+                then (0.6745 * abs(b.consumption_rate_per_day - gm.median_rate) / gm.mad_rate) > {{ var('mad_z_threshold', 3.5) }}
             when b.status = 'completed'
              and b.duration_days is not null
              and b.duration_days > 0
              and b.duration_days < 1000
              and b.consumption_rate_per_day is not null
-             and coalesce(gm.cycle_count, 0) < {{ var('min_cycles_for_mad', 4) }}
+             and coalesce(gm.cycle_count, 0) < {{ var('min_cycles_for_mad', 3) }}
              and bounds.min_plausible_rate is not null
                 then (
                     b.consumption_rate_per_day < bounds.min_plausible_rate
@@ -123,5 +123,9 @@ select
     is_rate_outlier,
     (is_extreme_duration_1000d or is_rate_outlier) as is_duration_outlier,
     mad_z_score,
-    (not is_zero_day and not (is_extreme_duration_1000d or is_rate_outlier)) as is_valid_for_forecasting
+    {% if var('rate_outlier_is_advisory', false) %}
+    (not is_zero_day and not is_extreme_duration_1000d)
+    {% else %}
+    (not is_zero_day and not (is_extreme_duration_1000d or is_rate_outlier))
+    {% endif %} as is_valid_for_forecasting
 from scored
