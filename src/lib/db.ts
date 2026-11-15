@@ -68,7 +68,7 @@ export class SupabaseDatabase implements IDataSource {
     // 1. Verify product ownership
     const { data: product, error: prodErr } = await client
       .from('products')
-      .select('id, user_id')
+      .select('id, user_id, size_value, size_unit')
       .eq('id', input.product_id)
       .eq('user_id', userId)
       .single();
@@ -80,11 +80,29 @@ export class SupabaseDatabase implements IDataSource {
     if (input.size_value !== undefined && input.size_value !== null && input.size_value <= 0) {
       throw new Error('Purchase size must be greater than 0');
     }
+    if (
+      input.size_unit !== undefined &&
+      input.size_unit !== null &&
+      input.size_unit !== 'ml' &&
+      input.size_unit !== 'g' &&
+      input.size_unit !== 'count'
+    ) {
+      throw new Error('Invalid purchase size unit');
+    }
 
     const normalizedVendor =
       input.store_vendor !== undefined && input.store_vendor !== null
         ? input.store_vendor.trim() || null
         : null;
+
+    const prodRow = product as { id: string; user_id: string; size_value?: number | null; size_unit?: string | null };
+    const matchesProductDefault =
+      input.size_value !== undefined &&
+      input.size_value !== null &&
+      input.size_value === (prodRow.size_value ?? null) &&
+      (input.size_unit === undefined ||
+        input.size_unit === null ||
+        input.size_unit === (prodRow.size_unit ?? null));
 
     const insertPayload: Record<string, unknown> = {
       product_id: input.product_id,
@@ -95,7 +113,7 @@ export class SupabaseDatabase implements IDataSource {
     if (normalizedVendor !== null) {
       insertPayload.store_vendor = normalizedVendor;
     }
-    if (input.size_value !== undefined && input.size_value !== null) {
+    if (!matchesProductDefault && input.size_value !== undefined && input.size_value !== null) {
       insertPayload.size_value = input.size_value;
       if (input.size_unit !== undefined && input.size_unit !== null) {
         insertPayload.size_unit = input.size_unit;
@@ -314,7 +332,7 @@ export class SupabaseDatabase implements IDataSource {
     // Verify ownership and check linked usage periods
     const { data: purchase, error: purErr } = await client
       .from('purchases')
-      .select('id, product_id, products!inner(user_id)')
+      .select('id, product_id, products!inner(user_id, size_value, size_unit)')
       .eq('id', purchaseId)
       .single();
 
@@ -325,7 +343,9 @@ export class SupabaseDatabase implements IDataSource {
     const typedPurchase = purchase as unknown as {
       id: string;
       product_id: string;
-      products: { user_id: string } | { user_id: string }[];
+      products:
+        | { user_id: string; size_value?: number | null; size_unit?: string | null }
+        | { user_id: string; size_value?: number | null; size_unit?: string | null }[];
     };
     const prodUser = Array.isArray(typedPurchase.products)
       ? typedPurchase.products[0]
@@ -352,6 +372,15 @@ export class SupabaseDatabase implements IDataSource {
     if (input.size_value !== undefined && input.size_value !== null && input.size_value <= 0) {
       throw new Error('Purchase size must be greater than 0');
     }
+    if (
+      input.size_unit !== undefined &&
+      input.size_unit !== null &&
+      input.size_unit !== 'ml' &&
+      input.size_unit !== 'g' &&
+      input.size_unit !== 'count'
+    ) {
+      throw new Error('Invalid purchase size unit');
+    }
 
     const updatePayload: Record<string, unknown> = {
       purchase_date: input.purchase_date,
@@ -364,8 +393,15 @@ export class SupabaseDatabase implements IDataSource {
         input.store_vendor !== null ? input.store_vendor.trim() || null : null;
     }
     if (input.size_value !== undefined) {
-      updatePayload.size_value = input.size_value;
-      updatePayload.size_unit = input.size_value !== null ? (input.size_unit ?? null) : null;
+      const matchesDefault =
+        input.size_value !== null &&
+        input.size_value === (prodUser.size_value ?? null) &&
+        (input.size_unit === undefined ||
+          input.size_unit === null ||
+          input.size_unit === (prodUser.size_unit ?? null));
+      updatePayload.size_value = matchesDefault ? null : input.size_value;
+      updatePayload.size_unit =
+        !matchesDefault && input.size_value !== null ? (input.size_unit ?? null) : null;
     } else if (input.size_unit !== undefined) {
       updatePayload.size_unit = input.size_unit;
     }
@@ -919,7 +955,11 @@ export class SupabaseDatabase implements IDataSource {
       if (purchasesRes.error) throw new Error(`Failed to export purchases: ${purchasesRes.error.message}`);
       if (usageRes.error) throw new Error(`Failed to export usage periods: ${usageRes.error.message}`);
 
-      purchases = (purchasesRes.data || []) as Purchase[];
+      purchases = ((purchasesRes.data || []) as Purchase[]).map((p) => ({
+        ...p,
+        size_value: p.size_value ?? null,
+        size_unit: p.size_unit ?? null,
+      }));
       usagePeriods = (usageRes.data || []) as UsagePeriod[];
     }
 

@@ -117,6 +117,11 @@ export class MockDatabase implements IDataSource {
       if (!parsed.restock_plans) {
         parsed.restock_plans = [];
       }
+      parsed.purchases = (parsed.purchases || []).map((pu: Purchase) => ({
+        ...pu,
+        size_value: pu.size_value ?? null,
+        size_unit: pu.size_unit ?? null,
+      }));
       return parsed;
     } catch {
       return { products: [], purchases: [], usage_periods: [], restock_plans: [] };
@@ -462,11 +467,28 @@ export class MockDatabase implements IDataSource {
     if (input.size_value !== undefined && input.size_value !== null && input.size_value <= 0) {
       throw new Error('Purchase size must be greater than 0');
     }
+    if (
+      input.size_unit !== undefined &&
+      input.size_unit !== null &&
+      input.size_unit !== 'ml' &&
+      input.size_unit !== 'g' &&
+      input.size_unit !== 'count'
+    ) {
+      throw new Error('Invalid purchase size unit');
+    }
 
     const normalizedVendor =
       input.store_vendor !== undefined && input.store_vendor !== null
         ? input.store_vendor.trim() || null
         : null;
+
+    const matchesDefault =
+      input.size_value !== undefined &&
+      input.size_value !== null &&
+      input.size_value === (product.size_value ?? null) &&
+      (input.size_unit === undefined ||
+        input.size_unit === null ||
+        input.size_unit === (product.size_unit ?? null));
 
     const newPurchase: Purchase = {
       id: `pur-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
@@ -475,8 +497,8 @@ export class MockDatabase implements IDataSource {
       price: input.price,
       currency: input.currency || 'BDT',
       store_vendor: normalizedVendor,
-      size_value: input.size_value ?? null,
-      size_unit: input.size_value != null ? (input.size_unit ?? null) : null,
+      size_value: matchesDefault ? null : (input.size_value ?? null),
+      size_unit: !matchesDefault && input.size_value != null ? (input.size_unit ?? null) : null,
       created_at: new Date().toISOString(),
     };
 
@@ -658,6 +680,15 @@ export class MockDatabase implements IDataSource {
     if (input.size_value !== undefined && input.size_value !== null && input.size_value <= 0) {
       throw new Error('Purchase size must be greater than 0');
     }
+    if (
+      input.size_unit !== undefined &&
+      input.size_unit !== null &&
+      input.size_unit !== 'ml' &&
+      input.size_unit !== 'g' &&
+      input.size_unit !== 'count'
+    ) {
+      throw new Error('Invalid purchase size unit');
+    }
 
     const updatedPurchase: Purchase = {
       ...purchase,
@@ -671,8 +702,15 @@ export class MockDatabase implements IDataSource {
         input.store_vendor !== null ? input.store_vendor.trim() || null : null;
     }
     if (input.size_value !== undefined) {
-      updatedPurchase.size_value = input.size_value;
-      updatedPurchase.size_unit = input.size_value !== null ? (input.size_unit ?? null) : null;
+      const matchesDefault =
+        input.size_value !== null &&
+        input.size_value === (product.size_value ?? null) &&
+        (input.size_unit === undefined ||
+          input.size_unit === null ||
+          input.size_unit === (product.size_unit ?? null));
+      updatedPurchase.size_value = matchesDefault ? null : input.size_value;
+      updatedPurchase.size_unit =
+        !matchesDefault && input.size_value !== null ? (input.size_unit ?? null) : null;
     } else if (input.size_unit !== undefined) {
       updatedPurchase.size_unit = input.size_unit;
     }
