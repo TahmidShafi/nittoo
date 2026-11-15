@@ -1072,6 +1072,7 @@ export class MockDatabase implements IDataSource {
       existingUserUsage.filter((u) => u.status === 'active').map((u) => u.product_id)
     );
     const usedPurchaseIds = new Set<string>(existingUserUsage.map((u) => u.purchase_id));
+    const usageIdMap = new Map<string, string>();
 
     for (const u of input.usage_periods) {
       let targetProductId = productIdMap.get(u.product_id);
@@ -1085,6 +1086,7 @@ export class MockDatabase implements IDataSource {
       if (!targetProductId || !targetPurchaseId) continue;
 
       if (existingUsageIdSet.has(u.id)) {
+        usageIdMap.set(u.id, u.id);
         usedPurchaseIds.add(targetPurchaseId);
         continue; // Idempotent skip
       }
@@ -1109,6 +1111,7 @@ export class MockDatabase implements IDataSource {
             status: 'active',
             created_at: u.created_at || new Date().toISOString(),
           });
+          usageIdMap.set(u.id, targetId);
           activeProductIds.add(targetProductId);
           usedPurchaseIds.add(targetPurchaseId);
         }
@@ -1129,8 +1132,65 @@ export class MockDatabase implements IDataSource {
           status: 'finished',
           created_at: u.created_at || new Date().toISOString(),
         });
+        usageIdMap.set(u.id, targetId);
         restoredCycles++;
         usedPurchaseIds.add(targetPurchaseId);
+      }
+    }
+
+    // 4. Restore Restock Plans (idempotent, single 'planned' per usage_period)
+    let restoredRestockPlans = 0;
+    if (input.restock_plans && input.restock_plans.length > 0) {
+      if (!data.restock_plans) data.restock_plans = [];
+      const existingUserPlans = data.restock_plans.filter((rp) => rp.user_id === userId);
+      const existingPlanIdSet = new Set(existingUserPlans.map((rp) => rp.id));
+      const allPlanIdsGlobal = new Set(data.restock_plans.map((rp) => rp.id));
+      const plannedUsageIds = new Set(
+        existingUserPlans.filter((rp) => rp.status === 'planned').map((rp) => rp.usage_period_id)
+      );
+
+      for (const rp of input.restock_plans) {
+        let targetProductId = productIdMap.get(rp.product_id);
+        if (!targetProductId && existingProductIdSet.has(rp.product_id)) {
+          targetProductId = rp.product_id;
+        }
+        let targetUsageId = usageIdMap.get(rp.usage_period_id);
+        if (!targetUsageId && existingUsageIdSet.has(rp.usage_period_id)) {
+          targetUsageId = rp.usage_period_id;
+        }
+        if (!targetProductId || !targetUsageId) continue;
+
+        if (existingPlanIdSet.has(rp.id) || existingPlanIdSet.has(`${userId}_${rp.id}`)) {
+          continue; // Idempotent skip
+        }
+
+        if (rp.status === 'planned' && plannedUsageIds.has(targetUsageId)) {
+          continue; // Respect single planned restock plan constraint
+        }
+
+        let targetId = rp.id;
+        if (allPlanIdsGlobal.has(targetId)) {
+          targetId = `${userId}_${rp.id}`;
+        }
+        allPlanIdsGlobal.add(targetId);
+
+        data.restock_plans.push({
+          id: targetId,
+          user_id: userId,
+          product_id: targetProductId,
+          usage_period_id: targetUsageId,
+          mode: rp.mode,
+          days_before_finish: rp.days_before_finish ?? null,
+          reminder_date: rp.reminder_date,
+          status: rp.status,
+          created_at: rp.created_at || new Date().toISOString(),
+          completed_at: rp.completed_at ?? null,
+        });
+
+        if (rp.status === 'planned') {
+          plannedUsageIds.add(targetUsageId);
+        }
+        restoredRestockPlans++;
       }
     }
 
@@ -1147,6 +1207,7 @@ export class MockDatabase implements IDataSource {
       restoredPurchases,
       restoredCycles,
       restoredUnopened,
+      restoredRestockPlans,
       skippedConflicts,
     };
   }

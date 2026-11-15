@@ -543,8 +543,73 @@ async function runRestoreVerification() {
     'Test 40: Warning states combine icons, text banners, and explicit action explanations'
   );
 
+  // ============================================================================
+  // GROUP 13: RESTOCK PLANS RESTORE & CONFLICT HANDLING (Tests 41 - 44)
+  // ============================================================================
+  console.log('\n--- 13. RESTOCK PLANS RESTORE & CONFLICT HANDLING (Tests 41 - 44) ---');
+  const rpUser = 'restore-rp-user';
+  const rpProd = await db.createProduct(rpUser, { name: 'Restock Test Balm', category: 'Skincare' });
+  const rpPur = await db.createPurchase(rpUser, { product_id: rpProd.id, purchase_date: '2026-08-01', price: 300 });
+  const rpUse = await db.startUsagePeriod(rpUser, { product_id: rpProd.id, purchase_id: rpPur.id, opened_date: '2026-08-02' });
+  await db.createRestockPlan(rpUser, {
+    product_id: rpProd.id,
+    usage_period_id: rpUse.id,
+    mode: 'relative',
+    days_before_finish: 7,
+    reminder_date: '2026-09-10',
+  });
+
+  const rpExport = await db.exportUserData(rpUser);
+  const rpJson = JSON.stringify({
+    version: '1.0.0',
+    exported_at: rpExport.exported_at,
+    user: rpExport.user,
+    products: rpExport.products,
+    purchases: rpExport.purchases,
+    usage_history: rpExport.usage_periods,
+    restock_plans: rpExport.restock_plans,
+  });
+
+  // 41. Validation rejects invalid restock plan mode
+  const badRpJson = JSON.parse(rpJson);
+  badRpJson.restock_plans[0].mode = 'invalid_mode';
+  const badRpVal = validateBackupFile(JSON.stringify(badRpJson));
+  assert(!badRpVal.valid, 'Test 41: Validator rejects restock plan with invalid mode');
+
+  // 42. Restore into clean user B restores restock_plans with user_id reassigned
+  const rpTargetUser = 'restore-rp-target';
+  const rpVal = validateBackupFile(rpJson);
+  assert(rpVal.valid, 'Test 42a: Backup with restock_plans passes validation');
+  if (rpVal.valid) {
+    const rpPlan = await buildImportPlan(rpVal.backupData, rpTargetUser, db);
+    assert(rpPlan.summary.newRestockPlansCount === 1, 'Test 42b: ImportPlan schedules 1 new restock plan');
+    const rpExec = await executeRestore(rpPlan, rpTargetUser, db);
+    assert(rpExec.success && rpExec.restoredRestockPlans === 1, 'Test 42c: executeRestore restores 1 restock plan');
+    const targetPlans = await db.getRestockPlans(rpTargetUser);
+    assert(targetPlans.length === 1 && targetPlans[0].user_id === rpTargetUser, 'Test 42d: Restored restock plan belongs strictly to target user');
+
+    // 43. Idempotent re-restore skips duplicate restock plan
+    const rpPlan2 = await buildImportPlan(rpVal.backupData, rpTargetUser, db);
+    assert(rpPlan2.summary.newRestockPlansCount === 0, 'Test 43: Re-running plan skips already restored restock plan (0 duplicates)');
+  }
+
+  // 44. Single-planned conflict: if target already has a planned restock plan on same usage_period, skip duplicate planned
+  const rpConflictBackup = JSON.parse(rpJson);
+  rpConflictBackup.restock_plans[0].id = 'different-plan-id';
+  const rpConflictVal = validateBackupFile(JSON.stringify(rpConflictBackup));
+  if (rpConflictVal.valid) {
+    const rpConflictPlan = await buildImportPlan(rpConflictVal.backupData, rpTargetUser, db);
+    assert(
+      rpConflictPlan.restockPlansToCreate.length === 0,
+      'Test 44: Planner skips conflicting planned restock plan on same usage_period'
+    );
+  }
+
+  await db.resetUserData(rpUser, true);
+  await db.resetUserData(rpTargetUser, true);
+
   console.log('\n=================================================================');
-  console.log('ALL 40 RESTORE & IMPORT TESTS PASSED SUCCESSFULLY! ✓');
+  console.log('ALL 44 RESTORE & IMPORT TESTS PASSED SUCCESSFULLY! ✓');
   console.log('=================================================================\n');
 }
 

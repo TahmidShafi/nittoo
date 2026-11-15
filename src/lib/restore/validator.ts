@@ -187,6 +187,7 @@ export function validateBackupFile(
   }
 
   // 9. Validate Usage Periods
+  const usagePeriodIds = new Set<string>();
   for (const u of usagePeriods) {
     if (!u || typeof u !== 'object') {
       return { valid: false, error: "That file isn't a valid Nittoo backup.", details: 'Invalid usage period record.' };
@@ -236,6 +237,69 @@ export function validateBackupFile(
           valid: false,
           error: "That file isn't a valid Nittoo backup.",
           details: `Usage period ${u.id} finished_date precedes opened_date.`,
+        };
+      }
+    }
+    usagePeriodIds.add(u.id);
+  }
+
+  // 9b. Validate Restock Plans (optional for backward compatibility with older backups)
+  if (parsed.restock_plans !== undefined) {
+    if (!Array.isArray(parsed.restock_plans)) {
+      return {
+        valid: false,
+        error: "That file isn't a valid Nittoo backup.",
+        details: 'Invalid restock_plans array.',
+      };
+    }
+
+    for (const rp of parsed.restock_plans) {
+      if (!rp || typeof rp !== 'object') {
+        return { valid: false, error: "That file isn't a valid Nittoo backup.", details: 'Invalid restock plan record.' };
+      }
+      if (!rp.id || typeof rp.id !== 'string' || !rp.id.trim()) {
+        return { valid: false, error: "That file isn't a valid Nittoo backup.", details: 'Restock plan missing valid ID.' };
+      }
+      if (!rp.product_id || typeof rp.product_id !== 'string' || !productIds.has(rp.product_id)) {
+        return {
+          valid: false,
+          error: "That file isn't a valid Nittoo backup.",
+          details: `Restock plan ${rp.id} references non-existent product ${rp.product_id}.`,
+        };
+      }
+      if (!rp.usage_period_id || typeof rp.usage_period_id !== 'string' || !usagePeriodIds.has(rp.usage_period_id)) {
+        return {
+          valid: false,
+          error: "That file isn't a valid Nittoo backup.",
+          details: `Restock plan ${rp.id} references non-existent usage period ${rp.usage_period_id}.`,
+        };
+      }
+      if (rp.mode !== 'relative' && rp.mode !== 'custom') {
+        return {
+          valid: false,
+          error: "That file isn't a valid Nittoo backup.",
+          details: `Restock plan ${rp.id} has invalid mode: ${rp.mode}.`,
+        };
+      }
+      if (rp.mode === 'relative' && (typeof rp.days_before_finish !== 'number' || rp.days_before_finish < 0)) {
+        return {
+          valid: false,
+          error: "That file isn't a valid Nittoo backup.",
+          details: `Restock plan ${rp.id} with relative mode requires non-negative days_before_finish.`,
+        };
+      }
+      if (!isValidIsoDate(rp.reminder_date)) {
+        return {
+          valid: false,
+          error: "That file isn't a valid Nittoo backup.",
+          details: `Restock plan ${rp.id} has invalid reminder_date: ${rp.reminder_date}.`,
+        };
+      }
+      if (rp.status !== 'planned' && rp.status !== 'completed' && rp.status !== 'dismissed') {
+        return {
+          valid: false,
+          error: "That file isn't a valid Nittoo backup.",
+          details: `Restock plan ${rp.id} has invalid status: ${rp.status}.`,
         };
       }
     }
