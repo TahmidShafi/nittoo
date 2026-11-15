@@ -32,3 +32,5 @@ dist-ssr
 docs/CONTEXT_AUDIT.md
 supabase/.temp/
 coverage/
+playwright-report/
+test-results/
