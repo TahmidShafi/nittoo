@@ -35,3 +35,22 @@ CLEAN_FPR_CEILING: float = 0.005
 
 # Min holdout precision to exclude is_rate_outlier from is_valid_for_forecasting (else advisory).
 RATE_OUTLIER_MIN_PRECISION_TO_EXCLUDE: float = 0.50
+
+# Baseline simulator cycle-to-cycle noise std dev.
+DEFAULT_CYCLE_NOISE_STD: float = 0.08
+
+# Robustness sweep noise levels (baseline, ~2.5x, ~4x).
+ROBUSTNESS_NOISE_LEVELS: tuple[float, ...] = (0.08, 0.20, 0.32)
+
+# Baseline subtle_duration_outlier slow/fast multiplier ranges.
+DEFAULT_SUBTLE_SLOW_RANGE: tuple[float, float] = (2.5, 6.0)
+DEFAULT_SUBTLE_FAST_RANGE: tuple[float, float] = (0.2, 0.4)
+
+# Harder subtle_duration_outlier slow/fast multiplier ranges for robustness sweep.
+HARDER_SUBTLE_SLOW_RANGE: tuple[float, float] = (1.5, 2.5)
+HARDER_SUBTLE_FAST_RANGE: tuple[float, float] = (0.4, 0.67)
+
+# Fresh seeds (never used in dev/holdout) for the 6-cell robustness matrix (200 HH x 24 mo).
+ROBUSTNESS_SEEDS: tuple[int, ...] = (3001, 3002, 3003, 3004, 3005, 3006)
+ROBUSTNESS_HOUSEHOLDS: int = 200
+ROBUSTNESS_MONTHS: int = 24

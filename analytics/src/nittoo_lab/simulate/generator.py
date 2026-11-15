@@ -8,6 +8,11 @@ from pathlib import Path
 
 import numpy as np
 
+from nittoo_lab.config import (
+    DEFAULT_CYCLE_NOISE_STD,
+    DEFAULT_SUBTLE_FAST_RANGE,
+    DEFAULT_SUBTLE_SLOW_RANGE,
+)
 from nittoo_lab.contracts.models import ProductCategory, SizeUnit
 from nittoo_lab.simulate.archetypes import ARCHETYPES, ProductArchetype
 
@@ -91,6 +96,9 @@ def simulate_households(
     ground_truth_path: Path = DEFAULT_GROUND_TRUTH_PATH,
     faults_manifest_path: Path | None = None,
     reference_date: date = date(2026, 11, 15),
+    cycle_noise_std: float = DEFAULT_CYCLE_NOISE_STD,
+    subtle_slow_range: tuple[float, float] = DEFAULT_SUBTLE_SLOW_RANGE,
+    subtle_fast_range: tuple[float, float] = DEFAULT_SUBTLE_FAST_RANGE,
 ) -> SimulationStats:
     t0 = time.perf_counter()
     rng = np.random.default_rng(seed)
@@ -209,7 +217,11 @@ def simulate_households(
 
                 opened_date = cursor_date
                 season_mult = _seasonality_multiplier(tpl.seasonality, opened_date.month)
-                noise_mult = float(np.clip(rng.normal(1.0, 0.08), 0.75, 1.30))
+                low_clip = 0.75 if cycle_noise_std == DEFAULT_CYCLE_NOISE_STD else 0.25
+                high_clip = 1.30 if cycle_noise_std == DEFAULT_CYCLE_NOISE_STD else 2.50
+                noise_mult = float(
+                    np.clip(rng.normal(1.0, cycle_noise_std), low_clip, high_clip)
+                )
                 effective_rate = true_rate * season_mult * noise_mult
                 true_duration = max(7, round(current_size / effective_rate))
                 expected_finish = opened_date + timedelta(days=true_duration)
@@ -262,9 +274,9 @@ def simulate_households(
                         )
                     elif fault_roll < 0.020:
                         factor = (
-                            float(rng.uniform(2.5, 6.0))
+                            float(rng.uniform(*subtle_slow_range))
                             if rng.random() < 0.5
-                            else float(rng.uniform(0.2, 0.4))
+                            else float(rng.uniform(*subtle_fast_range))
                         )
                         days_used = max(1, round(true_duration * factor))
                         finished_date = opened_date + timedelta(days=days_used)

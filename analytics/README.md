@@ -30,7 +30,7 @@ flowchart LR
 | `src/nittoo_lab/reporting/` | Generates `analytics/reports/data_quality.md` summarizing row counts per layer, contract rejects, fault-detection precision/recall/F1 vs ground truth, and dbt test results. |
 | `reports/` | Generated portfolio snapshot output (`data_quality.md`) and tuning log (`detector_tuning.md`). |
 
-> **Fault-Detection Note:** The four rule-based fault types (`finished_before_opened`, `zero_day_cycle`, `outlier_1000_day`, `duplicate_purchase`) are detected by deterministic rules matching their injection definitions, so 100% precision/recall is expected. The **`subtle_duration_outlier`** detector (per-household-product MAD on `consumption_rate_per_day`) is the real statistical test.
+> **Fault-Detection Note:** The four rule-based fault types (`finished_before_opened`, `zero_day_cycle`, `outlier_1000_day`, `duplicate_purchase`) are detected by deterministic rules matching their injection definitions, so 100% precision/recall is expected. The **`subtle_duration_outlier`** detector (per-household-product MAD on `consumption_rate_per_day`) is the real statistical test; its performance across cycle-noise levels and outlier severities is characterized in `reports/detector_robustness.md` rather than by a single headline number.
 
 ## How to Run
 

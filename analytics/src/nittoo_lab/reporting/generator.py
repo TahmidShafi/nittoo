@@ -361,7 +361,7 @@ def generate_data_quality_report(
                     "| 96.1% | 99.4% | 97.7% | 0.02% (13 / 57,658) |"
                 ),
                 (
-                    "| Seed `42` | Iteration 1 (already seen, pre-`product.size` fix) "
+                    "| Seed `42` | Iteration 1 (pre-fix simulator, not comparable) "
                     "| 9.9% | 71.6% | 17.4% | 3.12% (1,770 / 56,812) |"
                 ),
                 (
