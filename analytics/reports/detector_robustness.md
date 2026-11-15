@@ -1,6 +1,6 @@
 # Outlier Detector Robustness Analysis
 
-Evaluated with frozen Iteration-2 thresholds (`MIN_CYCLES_FOR_MAD=3`, `MAD_FLOOR_FRAC=0.1`, `MAD_Z_THRESHOLD=3.5`) at `200 households x 24 months` on fresh seeds `3001-3006` (evaluation only; no re-tuning).
+Evaluated with frozen Iteration-2 thresholds (`MIN_CYCLES_FOR_MAD=3`, `MAD_FLOOR_FRAC=0.1`, `MAD_Z_THRESHOLD=3.5`) at `200 households x 24 months` on fresh seeds `3001-3006` (evaluation only; no re-tuning). Note: each cell uses a single seed with relatively small fault counts, so individual cell values are approximate.
 
 | Cycle Noise (`std`) | Subtle-Outlier Ranges | Seed | TP / FP / FN | Precision | Recall | F1 | Clean-Cycle FPR |
 | :---: | :--- | :---: | :---: | ---: | ---: | ---: | ---: |

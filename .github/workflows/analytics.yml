@@ -7,7 +7,9 @@ on:
       - "src/types/**"
       - "src/lib/export/**"
       - "src/lib/demo/**"
+      - "src/lib/prediction.ts"
       - "scripts/export-demo-fixture.ts"
+      - "scripts/export-baseline-parity.ts"
       - ".github/workflows/analytics.yml"
   pull_request:
     paths:
@@ -15,7 +17,9 @@ on:
       - "src/types/**"
       - "src/lib/export/**"
       - "src/lib/demo/**"
+      - "src/lib/prediction.ts"
       - "scripts/export-demo-fixture.ts"
+      - "scripts/export-baseline-parity.ts"
       - ".github/workflows/analytics.yml"
 
 jobs:
@@ -33,10 +37,12 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
-      - name: Install Node dependencies & regenerate demo fixture
+      - name: Install Node dependencies & regenerate demo fixtures
         run: |
           npm ci
           npx tsx scripts/export-demo-fixture.ts
+          npx tsx scripts/export-baseline-parity.ts
+          git diff --exit-code analytics/fixtures/baseline_parity.json
 
       - name: Setup uv & Python 3.12
         uses: astral-sh/setup-uv@v5

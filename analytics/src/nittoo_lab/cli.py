@@ -6,6 +6,7 @@ from typing import Annotated
 
 import typer
 
+from nittoo_lab.forecast.report import run_forecast_evaluation
 from nittoo_lab.ingest.loader import DEFAULT_DB_PATH, ingest_exports
 from nittoo_lab.reporting.generator import generate_data_quality_report
 from nittoo_lab.simulate.generator import simulate_households
@@ -69,6 +70,18 @@ def report(
     )
 
 
+@app.command()
+def forecast(
+    db_path: Annotated[Path, typer.Option(help="Source DuckDB database file")] = DEFAULT_DB_PATH,
+) -> None:
+    """Run rolling-origin forecasting backtest and write analytics/reports/forecast_report.md."""
+    res = run_forecast_evaluation(db_path=db_path)
+    typer.echo(
+        f"Wrote {res.report_path} in {res.elapsed_seconds:.2f}s "
+        f"(n={res.rule_clean_targets}, winner={res.winner[0]} ({res.winner[1]}))"
+    )
+
+
 @app.command("all")
 def run_all(
     households: Annotated[int, typer.Option(min=1, help="Number of synthetic households")] = 500,
@@ -88,6 +101,7 @@ def run_all(
     ing_stats = ingest_exports(db_path=db_path)
     dbt_res = run_dbt_pipeline(db_path=db_path, generate_docs=docs)
     rep_res = generate_data_quality_report(db_path=db_path)
+    fc_res = run_forecast_evaluation(db_path=db_path)
 
     total_s = round(time.perf_counter() - t_total, 3)
 
@@ -103,4 +117,5 @@ def run_all(
         f"({dbt_res.models_passed} models, {dbt_res.tests_passed}/{dbt_res.tests_total} tests)"
     )
     typer.echo(f"  report   : {rep_res.elapsed_seconds:6.2f}s -> {rep_res.report_path}")
+    typer.echo(f"  forecast : {fc_res.elapsed_seconds:6.2f}s -> {fc_res.report_path}")
     typer.echo(f"  total    : {total_s:6.2f}s")

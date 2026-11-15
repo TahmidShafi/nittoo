@@ -1,0 +1,517 @@
+{
+  "cases": [
+    {
+      "product_id": "demo-prod-cerave-cleanser",
+      "k": 1,
+      "history_durations": [
+        64
+      ],
+      "average_lifespan": 64,
+      "predicted_duration": 64
+    },
+    {
+      "product_id": "demo-prod-cerave-cleanser",
+      "k": 2,
+      "history_durations": [
+        64,
+        61
+      ],
+      "average_lifespan": 62.5,
+      "predicted_duration": 63
+    },
+    {
+      "product_id": "demo-prod-cerave-cleanser",
+      "k": 3,
+      "history_durations": [
+        64,
+        61,
+        63
+      ],
+      "average_lifespan": 62.7,
+      "predicted_duration": 63
+    },
+    {
+      "product_id": "demo-prod-cerave-cleanser",
+      "k": 4,
+      "history_durations": [
+        64,
+        61,
+        63,
+        60
+      ],
+      "average_lifespan": 62,
+      "predicted_duration": 62
+    },
+    {
+      "product_id": "demo-prod-cerave-cleanser",
+      "k": 5,
+      "history_durations": [
+        64,
+        61,
+        63,
+        60,
+        62
+      ],
+      "average_lifespan": 62,
+      "predicted_duration": 62
+    },
+    {
+      "product_id": "demo-prod-biore-sunscreen",
+      "k": 1,
+      "history_durations": [
+        44
+      ],
+      "average_lifespan": 44,
+      "predicted_duration": 44
+    },
+    {
+      "product_id": "demo-prod-biore-sunscreen",
+      "k": 2,
+      "history_durations": [
+        44,
+        46
+      ],
+      "average_lifespan": 45,
+      "predicted_duration": 45
+    },
+    {
+      "product_id": "demo-prod-biore-sunscreen",
+      "k": 3,
+      "history_durations": [
+        44,
+        46,
+        42
+      ],
+      "average_lifespan": 44,
+      "predicted_duration": 44
+    },
+    {
+      "product_id": "demo-prod-biore-sunscreen",
+      "k": 4,
+      "history_durations": [
+        44,
+        46,
+        42,
+        45
+      ],
+      "average_lifespan": 44.3,
+      "predicted_duration": 44
+    },
+    {
+      "product_id": "demo-prod-biore-sunscreen",
+      "k": 5,
+      "history_durations": [
+        44,
+        46,
+        42,
+        45,
+        43
+      ],
+      "average_lifespan": 44,
+      "predicted_duration": 44
+    },
+    {
+      "product_id": "demo-prod-sensodyne-rapid",
+      "k": 1,
+      "history_durations": [
+        46
+      ],
+      "average_lifespan": 46,
+      "predicted_duration": 46
+    },
+    {
+      "product_id": "demo-prod-sensodyne-rapid",
+      "k": 2,
+      "history_durations": [
+        46,
+        45
+      ],
+      "average_lifespan": 45.5,
+      "predicted_duration": 46
+    },
+    {
+      "product_id": "demo-prod-sensodyne-rapid",
+      "k": 3,
+      "history_durations": [
+        46,
+        45,
+        44
+      ],
+      "average_lifespan": 45,
+      "predicted_duration": 45
+    },
+    {
+      "product_id": "demo-prod-sensodyne-rapid",
+      "k": 4,
+      "history_durations": [
+        46,
+        45,
+        44,
+        47
+      ],
+      "average_lifespan": 45.5,
+      "predicted_duration": 46
+    },
+    {
+      "product_id": "demo-prod-sensodyne-rapid",
+      "k": 5,
+      "history_durations": [
+        46,
+        45,
+        44,
+        47,
+        45
+      ],
+      "average_lifespan": 45.4,
+      "predicted_duration": 45
+    },
+    {
+      "product_id": "demo-prod-sensodyne-rapid",
+      "k": 6,
+      "history_durations": [
+        46,
+        45,
+        44,
+        47,
+        45,
+        46
+      ],
+      "average_lifespan": 45.5,
+      "predicted_duration": 46
+    },
+    {
+      "product_id": "demo-prod-oralb-floss",
+      "k": 1,
+      "history_durations": [
+        90
+      ],
+      "average_lifespan": 90,
+      "predicted_duration": 90
+    },
+    {
+      "product_id": "demo-prod-oralb-floss",
+      "k": 2,
+      "history_durations": [
+        90,
+        95
+      ],
+      "average_lifespan": 92.5,
+      "predicted_duration": 93
+    },
+    {
+      "product_id": "demo-prod-oralb-floss",
+      "k": 3,
+      "history_durations": [
+        90,
+        95,
+        88
+      ],
+      "average_lifespan": 91,
+      "predicted_duration": 91
+    },
+    {
+      "product_id": "demo-prod-loreal-shampoo",
+      "k": 1,
+      "history_durations": [
+        75
+      ],
+      "average_lifespan": 75,
+      "predicted_duration": 75
+    },
+    {
+      "product_id": "demo-prod-loreal-shampoo",
+      "k": 2,
+      "history_durations": [
+        75,
+        78
+      ],
+      "average_lifespan": 76.5,
+      "predicted_duration": 77
+    },
+    {
+      "product_id": "demo-prod-loreal-shampoo",
+      "k": 3,
+      "history_durations": [
+        75,
+        78,
+        72
+      ],
+      "average_lifespan": 75,
+      "predicted_duration": 75
+    },
+    {
+      "product_id": "demo-prod-loreal-shampoo",
+      "k": 4,
+      "history_durations": [
+        75,
+        78,
+        72,
+        74
+      ],
+      "average_lifespan": 74.8,
+      "predicted_duration": 75
+    },
+    {
+      "product_id": "demo-prod-dove-bodywash",
+      "k": 1,
+      "history_durations": [
+        58
+      ],
+      "average_lifespan": 58,
+      "predicted_duration": 58
+    },
+    {
+      "product_id": "demo-prod-dove-bodywash",
+      "k": 2,
+      "history_durations": [
+        58,
+        60
+      ],
+      "average_lifespan": 59,
+      "predicted_duration": 59
+    },
+    {
+      "product_id": "demo-prod-dove-bodywash",
+      "k": 3,
+      "history_durations": [
+        58,
+        60,
+        56
+      ],
+      "average_lifespan": 58,
+      "predicted_duration": 58
+    },
+    {
+      "product_id": "demo-prod-dove-bodywash",
+      "k": 4,
+      "history_durations": [
+        58,
+        60,
+        56,
+        59
+      ],
+      "average_lifespan": 58.3,
+      "predicted_duration": 58
+    },
+    {
+      "product_id": "demo-prod-nivea-deo",
+      "k": 1,
+      "history_durations": [
+        70
+      ],
+      "average_lifespan": 70,
+      "predicted_duration": 70
+    },
+    {
+      "product_id": "demo-prod-nivea-deo",
+      "k": 2,
+      "history_durations": [
+        70,
+        68
+      ],
+      "average_lifespan": 69,
+      "predicted_duration": 69
+    },
+    {
+      "product_id": "demo-prod-nivea-deo",
+      "k": 3,
+      "history_durations": [
+        70,
+        68,
+        72
+      ],
+      "average_lifespan": 70,
+      "predicted_duration": 70
+    },
+    {
+      "product_id": "demo-prod-gillette-foam",
+      "k": 1,
+      "history_durations": [
+        110
+      ],
+      "average_lifespan": 110,
+      "predicted_duration": 110
+    },
+    {
+      "product_id": "demo-prod-gillette-foam",
+      "k": 2,
+      "history_durations": [
+        110,
+        105
+      ],
+      "average_lifespan": 107.5,
+      "predicted_duration": 108
+    },
+    {
+      "product_id": "demo-prod-vim-dishwash",
+      "k": 1,
+      "history_durations": [
+        38
+      ],
+      "average_lifespan": 38,
+      "predicted_duration": 38
+    },
+    {
+      "product_id": "demo-prod-vim-dishwash",
+      "k": 2,
+      "history_durations": [
+        38,
+        40
+      ],
+      "average_lifespan": 39,
+      "predicted_duration": 39
+    },
+    {
+      "product_id": "demo-prod-vim-dishwash",
+      "k": 3,
+      "history_durations": [
+        38,
+        40,
+        39
+      ],
+      "average_lifespan": 39,
+      "predicted_duration": 39
+    },
+    {
+      "product_id": "demo-prod-vim-dishwash",
+      "k": 4,
+      "history_durations": [
+        38,
+        40,
+        39,
+        41
+      ],
+      "average_lifespan": 39.5,
+      "predicted_duration": 40
+    },
+    {
+      "product_id": "demo-prod-vim-dishwash",
+      "k": 5,
+      "history_durations": [
+        38,
+        40,
+        39,
+        41,
+        37
+      ],
+      "average_lifespan": 39,
+      "predicted_duration": 39
+    },
+    {
+      "product_id": "demo-prod-vim-dishwash",
+      "k": 6,
+      "history_durations": [
+        38,
+        40,
+        39,
+        41,
+        37,
+        40
+      ],
+      "average_lifespan": 39.2,
+      "predicted_duration": 39
+    },
+    {
+      "product_id": "demo-prod-surf-excel",
+      "k": 1,
+      "history_durations": [
+        48
+      ],
+      "average_lifespan": 48,
+      "predicted_duration": 48
+    },
+    {
+      "product_id": "demo-prod-surf-excel",
+      "k": 2,
+      "history_durations": [
+        48,
+        52
+      ],
+      "average_lifespan": 50,
+      "predicted_duration": 50
+    },
+    {
+      "product_id": "demo-prod-surf-excel",
+      "k": 3,
+      "history_durations": [
+        48,
+        52,
+        50
+      ],
+      "average_lifespan": 50,
+      "predicted_duration": 50
+    },
+    {
+      "product_id": "demo-prod-surf-excel",
+      "k": 4,
+      "history_durations": [
+        48,
+        52,
+        50,
+        49
+      ],
+      "average_lifespan": 49.8,
+      "predicted_duration": 50
+    },
+    {
+      "product_id": "demo-prod-omega3-softgels",
+      "k": 1,
+      "history_durations": [
+        90
+      ],
+      "average_lifespan": 90,
+      "predicted_duration": 90
+    },
+    {
+      "product_id": "demo-prod-omega3-softgels",
+      "k": 2,
+      "history_durations": [
+        90,
+        90
+      ],
+      "average_lifespan": 90,
+      "predicted_duration": 90
+    },
+    {
+      "product_id": "demo-prod-omega3-softgels",
+      "k": 3,
+      "history_durations": [
+        90,
+        90,
+        90
+      ],
+      "average_lifespan": 90,
+      "predicted_duration": 90
+    },
+    {
+      "product_id": "demo-prod-nescafe-gold",
+      "k": 1,
+      "history_durations": [
+        55
+      ],
+      "average_lifespan": 55,
+      "predicted_duration": 55
+    },
+    {
+      "product_id": "demo-prod-nescafe-gold",
+      "k": 2,
+      "history_durations": [
+        55,
+        58
+      ],
+      "average_lifespan": 56.5,
+      "predicted_duration": 57
+    },
+    {
+      "product_id": "demo-prod-nescafe-gold",
+      "k": 3,
+      "history_durations": [
+        55,
+        58,
+        54
+      ],
+      "average_lifespan": 55.7,
+      "predicted_duration": 56
+    }
+  ]
+}
