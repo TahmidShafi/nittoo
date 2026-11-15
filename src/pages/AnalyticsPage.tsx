@@ -16,6 +16,8 @@ import {
 } from 'recharts';
 import { useAuth } from '../hooks/useAuth';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { useReducedMotion } from '../hooks/useReducedMotion';
+import { CountUpValue } from '../components/CountUpValue';
 import { db } from '../lib/dataSource';
 import { formatDisplayDate } from '../lib/dateUtils';
 import {
@@ -37,6 +39,7 @@ export const AnalyticsPage: React.FC = () => {
   usePageMeta({ title: 'Consumption Analytics', noindex: true });
 
   const { user } = useAuth();
+  const prefersReducedMotion = useReducedMotion();
 
   // Instant SWR state initialization from in-memory cache
   const cachedEntry = user?.id ? dataCache.get<ProductWithHistory[]>(user.id, 'analytics') : null;
@@ -176,18 +179,18 @@ export const AnalyticsPage: React.FC = () => {
   // Loading Skeleton State
   if (loading) {
     return (
-      <div className="space-y-8 max-w-5xl mx-auto animate-pulse">
+      <div className="space-y-8">
         <div className="space-y-2">
-          <div className="h-8 bg-neutral-200/60 rounded-xl w-64" />
-          <div className="h-4 bg-neutral-100 rounded-lg w-96" />
+          <div className="h-8 skeleton-shimmer rounded-xl w-64" />
+          <div className="h-4 skeleton-shimmer rounded-lg w-96 max-w-full" />
         </div>
-        <div className="h-48 bg-white border border-neutral-200/80 rounded-2xl p-6" />
-        <div className="h-32 bg-white border border-neutral-200/80 rounded-2xl p-6" />
+        <div className="h-48 skeleton-shimmer border border-neutral-200/80 rounded-2xl p-6" />
+        <div className="h-32 skeleton-shimmer border border-neutral-200/80 rounded-2xl p-6" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 h-48" />
-          <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 h-48" />
+          <div className="skeleton-shimmer border border-neutral-200/80 rounded-2xl p-6 h-48" />
+          <div className="skeleton-shimmer border border-neutral-200/80 rounded-2xl p-6 h-48" />
         </div>
-        <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 h-64" />
+        <div className="skeleton-shimmer border border-neutral-200/80 rounded-2xl p-6 h-64" />
       </div>
     );
   }
@@ -241,7 +244,7 @@ export const AnalyticsPage: React.FC = () => {
   const eligibleCount = costRankings.mostEfficient.length;
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto animate-page-in">
+    <div className="space-y-8">
       {/* Page Header */}
       <div>
         <span className="text-[11px] font-bold uppercase tracking-wider text-[#2D6A4F] block mb-1">
@@ -328,7 +331,7 @@ export const AnalyticsPage: React.FC = () => {
                           >
                             {conf.label}
                           </span>
-                          <span className="text-neutral-400 text-[10px]">
+                          <span className="text-neutral-500 text-[10px]">
                             ({conf.supportingText})
                           </span>
                         </>
@@ -338,11 +341,11 @@ export const AnalyticsPage: React.FC = () => {
                 </div>
 
                 <div className="text-left sm:text-right shrink-0 pt-1 sm:pt-0">
-                  <span className="text-[10px] uppercase font-semibold text-neutral-400 block tracking-wider">Estimated next rebuy</span>
-                  <div className="font-bold text-neutral-900 text-base">
+                  <span className="text-[10px] uppercase font-semibold text-neutral-500 block tracking-wider">Estimated next rebuy</span>
+                  <div className="font-bold text-neutral-900 text-base tabular-nums">
                     ৳{Math.round(item.estimatedNextPrice).toLocaleString()}
                   </div>
-                  <span className="text-[10px] text-neutral-400 block">(from purchase history)</span>
+                  <span className="text-[10px] text-neutral-500 block">(from purchase history)</span>
                 </div>
               </div>
             ))}
@@ -382,7 +385,7 @@ export const AnalyticsPage: React.FC = () => {
           {monthlyConsumption !== null ? (
             <>
               <div className="text-3xl sm:text-4xl font-black text-[#2D6A4F] tracking-tight">
-                ৳{Math.round(monthlyConsumption).toLocaleString()}
+                <CountUpValue value={Math.round(monthlyConsumption)} prefix="৳" />
               </div>
               <span className="text-xs text-neutral-500 font-medium">/ month normalized</span>
             </>
@@ -464,6 +467,9 @@ export const AnalyticsPage: React.FC = () => {
                     fill="#2D6A4F"
                     radius={[0, 6, 6, 0]}
                     maxBarSize={22}
+                    isAnimationActive={!prefersReducedMotion}
+                    animationDuration={300}
+                    animationEasing="ease-out"
                   />
                 </BarChart>
               </ResponsiveContainer>
@@ -654,6 +660,9 @@ export const AnalyticsPage: React.FC = () => {
                   fill="#2D6A4F"
                   radius={[6, 6, 0, 0]}
                   maxBarSize={44}
+                  isAnimationActive={!prefersReducedMotion}
+                  animationDuration={300}
+                  animationEasing="ease-out"
                 />
               </BarChart>
             </ResponsiveContainer>
