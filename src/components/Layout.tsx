@@ -104,7 +104,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       {isDemoMode && (
         <div
           role="status"
-          className="bg-[#2D6A4F] text-white text-xs px-4 py-2 border-b border-[#23533D]"
+          className="bg-[#2D6A4F] text-white text-xs px-4 py-2 border-b border-[#23533D] animate-banner-in"
         >
           <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-2">
             <p className="font-medium">
@@ -185,7 +185,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
       {/* Main Content Viewport */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 mb-20 md:mb-8">
-        {children}
+        <div key={location.pathname} className="animate-page-in">
+          {children}
+        </div>
       </main>
 
       {/* Mobile Deliberate Bottom Navigation Bar (Fixed, 375px+ compliant) */}
@@ -217,7 +219,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       </nav>
 
       {/* Desktop Minimal Footer */}
-      <footer className="hidden md:block border-t border-neutral-200/50 py-6 text-center text-xs text-neutral-400">
+      <footer className="hidden md:block border-t border-neutral-200/50 py-6 text-center text-xs text-neutral-500">
         <p className="flex items-center justify-center gap-1.5">
           <span>Nittoo</span>
           <span>•</span>
