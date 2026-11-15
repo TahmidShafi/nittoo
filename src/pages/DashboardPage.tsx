@@ -16,6 +16,7 @@ import {
   recalculatePlanReminderDate,
 } from '../lib/restock';
 import { getPredictionMetrics } from '../hooks/usePrediction';
+import { calculateEstimatedMonthlyConsumptionFromDetails } from '../lib/analytics';
 import { ProductCard } from '../components/ProductCard';
 import { FinishUsageModal } from '../components/FinishUsageModal';
 import { CountUpValue } from '../components/CountUpValue';
@@ -173,7 +174,6 @@ export const DashboardPage: React.FC = () => {
   const summaryMetrics = useMemo(() => {
     let runningSoonCount = 0;
     let overdueCount = 0;
-    let monthlyConsumptionTotal = 0;
 
     for (const p of products) {
       const metrics = getPredictionMetrics(p);
@@ -186,12 +186,10 @@ export const DashboardPage: React.FC = () => {
       ) {
         runningSoonCount++;
       }
-
-      // Estimated Monthly Consumption: price / averageLifespan * 30
-      if (metrics.averageLifespan !== null && metrics.averageLifespan > 0 && p.latest_purchase) {
-        monthlyConsumptionTotal += (p.latest_purchase.price / metrics.averageLifespan) * 30;
-      }
     }
+
+    const monthlyConsumptionTotal =
+      calculateEstimatedMonthlyConsumptionFromDetails(products) ?? 0;
 
     return {
       activeCount: products.length,

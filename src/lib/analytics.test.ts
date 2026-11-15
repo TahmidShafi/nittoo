@@ -5,6 +5,7 @@ import {
   calculateEstimatedNextPrice,
   getUpcomingPurchases,
   calculateEstimatedMonthlyConsumption,
+  calculateEstimatedMonthlyConsumptionFromDetails,
   getCostEfficiencyRankings,
   getCostComparisonChartData,
   getCategorySpending,
@@ -326,5 +327,81 @@ describe('analytics', () => {
     expect(rankings.mostEfficient[0].averageLifespan).toBe(80);
     expect(rankings.mostEfficient[0].costPerDay).toBe(12.5);
     expect(calculateEstimatedMonthlyConsumption([item])).toBe(375);
+  });
+
+  it('Dashboard and Analytics produce identical monthly consumption using active purchase price when backup differs', () => {
+    const activePurchase = {
+      id: 'pu-active',
+      product_id: 'p-diff',
+      purchase_date: '2026-02-01',
+      price: 400,
+      currency: 'BDT',
+      vendor: 'Active Mart',
+      size_value: 200,
+      size_unit: 'ml' as const,
+      created_at: '2026-02-01T00:00:00Z',
+    };
+    const latestBackupPurchase = {
+      id: 'pu-backup',
+      product_id: 'p-diff',
+      purchase_date: '2026-03-10',
+      price: 900,
+      currency: 'BDT',
+      vendor: 'Backup Mart',
+      size_value: 200,
+      size_unit: 'ml' as const,
+      created_at: '2026-03-10T00:00:00Z',
+    };
+    const finishedPeriod = {
+      id: 'u-1',
+      product_id: 'p-diff',
+      purchase_id: 'pu-old',
+      opened_date: '2026-01-01',
+      finished_date: '2026-01-31',
+      status: 'finished' as const,
+      created_at: '2026-01-01T00:00:00Z',
+    };
+    const activeUsage = {
+      id: 'u-2',
+      product_id: 'p-diff',
+      purchase_id: 'pu-active',
+      opened_date: '2026-02-01',
+      finished_date: null,
+      status: 'active' as const,
+      created_at: '2026-02-01T00:00:00Z',
+    };
+
+    const history = makeProductHistory({
+      product: {
+        id: 'p-diff',
+        user_id: 'u1',
+        name: 'Facewash',
+        category: 'Skincare',
+        brand: 'Simple',
+        size_value: 200,
+        size_unit: 'ml',
+        created_at: '2026-01-01T00:00:00Z',
+      },
+      purchases: [latestBackupPurchase, activePurchase],
+      finished_periods: [finishedPeriod],
+      usage_periods: [finishedPeriod, activeUsage],
+      active_usage: activeUsage,
+    });
+
+    const details = {
+      ...history.product,
+      purchases: [latestBackupPurchase, activePurchase],
+      active_purchase: activePurchase,
+      latest_purchase: latestBackupPurchase,
+      active_usage: activeUsage,
+      finished_periods: [finishedPeriod],
+      unopened_count: 1,
+    };
+
+    const analyticsTotal = calculateEstimatedMonthlyConsumption([history]);
+    const dashboardTotal = calculateEstimatedMonthlyConsumptionFromDetails([details]);
+
+    expect(analyticsTotal).toBe(400); // 400 / 30 * 30 = 400 (uses active purchase, not 900 backup)
+    expect(dashboardTotal).toBe(analyticsTotal);
   });
 });

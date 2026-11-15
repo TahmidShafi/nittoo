@@ -14,7 +14,7 @@
 //   calculateEstimatedNextPrice (historical average purchase price).
 // ==============================================================================
 
-import type { Product, UsagePeriod, ProductWithHistory } from '../types';
+import type { Product, UsagePeriod, ProductWithDetails, ProductWithHistory } from '../types';
 import {
   calculateCostPerDay,
   calculateCurrentDaysUsed,
@@ -198,6 +198,37 @@ export function calculateEstimatedMonthlyConsumption(
 
   if (eligibleCount === 0) return null;
   return totalMonthlyCost;
+}
+
+/**
+ * Single source of truth for Dashboard summary monthly consumption:
+ * converts ProductWithDetails[] to ProductWithHistory[] and delegates
+ * to calculateEstimatedMonthlyConsumption so Dashboard and Analytics
+ * always match identically.
+ */
+export function calculateEstimatedMonthlyConsumptionFromDetails(
+  products: ProductWithDetails[]
+): number | null {
+  const histories: ProductWithHistory[] = products.map((p) => {
+    const purchases = p.purchases ?? [];
+    const fallbackPurchases =
+      purchases.length > 0
+        ? purchases
+        : [p.active_purchase, p.latest_purchase].filter(
+            (x): x is NonNullable<typeof x> => Boolean(x)
+          );
+
+    return {
+      product: p,
+      purchases: fallbackPurchases,
+      usage_periods: p.finished_periods ?? [],
+      finished_periods: p.finished_periods ?? [],
+      active_usage: p.active_usage ?? null,
+      unopened_purchases: [],
+    };
+  });
+
+  return calculateEstimatedMonthlyConsumption(histories);
 }
 
 /**
