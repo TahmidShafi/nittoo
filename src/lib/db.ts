@@ -1051,7 +1051,10 @@ export class SupabaseDatabase implements IDataSource {
           insertedId = inserted.id;
         }
 
-        productIdMap.set(p.id, insertedId!);
+        if (!insertedId) {
+          throw new Error(`Failed to resolve restored product ID for ${p.name}`);
+        }
+        productIdMap.set(p.id, insertedId);
         restoredProducts++;
       }
     }
@@ -1120,8 +1123,11 @@ export class SupabaseDatabase implements IDataSource {
           insertedId = inserted.id;
         }
 
-        purchaseIdMap.set(pu.id, insertedId!);
-        newlyCreatedPurchaseIds.add(insertedId!);
+        if (!insertedId) {
+          throw new Error(`Failed to resolve restored purchase ID for ${pu.id}`);
+        }
+        purchaseIdMap.set(pu.id, insertedId);
+        newlyCreatedPurchaseIds.add(insertedId);
         restoredPurchases++;
       }
     }
