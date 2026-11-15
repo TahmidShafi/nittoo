@@ -169,6 +169,58 @@ async function runAuthVerification() {
     'buildDemoSeedData uses BDT prices'
   );
 
+  // Freshness check across two distant "today" dates
+  const classifySeed = (todayStr: string) => {
+    const b = buildDemoSeedData(DEMO_USER_ID, todayStr);
+    const msPerDay = 86_400_000;
+    const todayMs = Date.parse(`${todayStr}T00:00:00Z`);
+    let onTrack = 0;
+    let dueSoon = 0;
+    let overdue = 0;
+    let minRemaining = Infinity;
+
+    for (const p of b.products) {
+      const active = b.usage_periods.find((u) => u.product_id === p.id && u.status === 'active');
+      if (!active) continue;
+      const finished = b.usage_periods.filter((u) => u.product_id === p.id && u.status === 'finished');
+      if (finished.length === 0) continue;
+      const avg =
+        finished.reduce((sum, u) => {
+          const d = (Date.parse(`${u.finished_date}T00:00:00Z`) - Date.parse(`${u.opened_date}T00:00:00Z`)) / msPerDay;
+          return sum + d;
+        }, 0) / finished.length;
+      const used = (todayMs - Date.parse(`${active.opened_date}T00:00:00Z`)) / msPerDay;
+      const remaining = Math.round(avg - used);
+      minRemaining = Math.min(minRemaining, remaining);
+      if (remaining < 0) overdue++;
+      else if (remaining <= 7) dueSoon++;
+      else onTrack++;
+    }
+
+    const usedPurchaseIds = new Set(b.usage_periods.map((u) => u.purchase_id));
+    const unopenedCount = b.purchases.filter((pu) => !usedPurchaseIds.has(pu.id)).length;
+    return { onTrack, dueSoon, overdue, minRemaining, unopenedCount };
+  };
+
+  const mixA = classifySeed('2026-03-15');
+  const mixB = classifySeed('2027-08-22');
+  assert(
+    mixA.onTrack > 0 && mixA.dueSoon > 0 && mixA.unopenedCount >= 1,
+    `Demo seed has on-track (${mixA.onTrack}), due-soon (${mixA.dueSoon}), and unopened backup (${mixA.unopenedCount})`
+  );
+  assert(
+    mixA.onTrack === mixB.onTrack &&
+      mixA.dueSoon === mixB.dueSoon &&
+      mixA.overdue === mixB.overdue &&
+      mixA.minRemaining === mixB.minRemaining &&
+      mixA.unopenedCount === mixB.unopenedCount,
+    'Demo seed produces identical state mix across two different "today" dates'
+  );
+  assert(
+    mixA.minRemaining >= -7,
+    `Nothing in demo seed is more overdue than intended (minRemaining=${mixA.minRemaining})`
+  );
+
   db.seedDemoUser(DEMO_USER_ID, demoBundle);
   const demoProducts = await db.getAllUserProducts(DEMO_USER_ID);
   assert(demoProducts.length === 12, 'seedDemoUser stores 12 products for DEMO_USER_ID');
