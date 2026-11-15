@@ -9,9 +9,11 @@ test.describe('Nittoo E2E (demo/mock mode)', () => {
 
     await expect(page).toHaveURL(/\/dashboard/);
     await expect(page.getByText(/CeraVe/i).first()).toBeVisible();
+    await expect(page.getByText(/Runs out between /).first()).toBeVisible();
 
     await page.locator('a[href^="/product/"]').first().click();
     await expect(page).toHaveURL(/\/product\//);
+    await expect(page.getByText(/Runs out between /).first()).toBeVisible();
     const productUrl = page.url();
 
     await page.getByRole('button', { name: /Add Inventory/i }).click();

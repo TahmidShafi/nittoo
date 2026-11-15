@@ -9,7 +9,7 @@ import { useAuth } from '../hooks/useAuth';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { db } from '../lib/dataSource';
 import { formatDisplayDate } from '../lib/dateUtils';
-import { calculateAverageLifespan } from '../lib/prediction';
+import { calculatePredictedLifespan } from '../lib/prediction';
 import { isReminderDue, calculateExpectedFinishDate } from '../lib/restock';
 import { getPredictionMetrics } from '../hooks/usePrediction';
 import { ProductCard } from '../components/ProductCard';
@@ -311,7 +311,12 @@ export const DashboardPage: React.FC = () => {
 
           <div className="divide-y divide-amber-200/40">
             {dueRestockProducts.map((p) => {
-              const avgLifespan = calculateAverageLifespan(p.finished_periods || []);
+              const avgLifespan = calculatePredictedLifespan({
+                usagePeriods: p.finished_periods || [],
+                product: p,
+                purchases: p.purchases || [],
+                activePurchase: p.active_purchase ?? p.latest_purchase,
+              });
               const expectedFinish =
                 p.active_usage && avgLifespan !== null && avgLifespan > 0
                   ? calculateExpectedFinishDate(p.active_usage.opened_date, avgLifespan)

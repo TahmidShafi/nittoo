@@ -23,6 +23,7 @@ A modern, high-precision personal essentials tracker for everyday consumables: s
 ## 📌 Table of Contents
 
 - [The Nittoo Philosophy](#-the-nittoo-philosophy)
+- [How Predictions Work](#-how-predictions-work)
 - [Key Features](#-key-features)
 - [Product Lifecycle & User Flow](#-product-lifecycle--user-flow)
 - [Calculation & Prediction Engine](#-calculation--prediction-engine)
@@ -51,6 +52,17 @@ For everyday personal consumables (facewash, shampoo, sunscreen, toothpaste, dis
 4. **"What is my true monthly consumption budget across all my essentials?"**
 
 Nittoo replaces guesswork with data-driven personal consumption intelligence.
+
+---
+
+## 🔮 How predictions work
+
+Nittoo estimates how long your active bottle will last from your own finished-cycle history:
+
+- **Size-normalized daily pace:** For each valid finished cycle (excluding `0`-day accidental logs and `>= 1000`-day stale entries), Nittoo computes your daily usage rate (`effective pack size ÷ days used`), averages those rates across matching-unit cycles, and divides your active bottle's effective pack size by that average rate. If pack sizes aren't recorded, it falls back to your cleaned average cycle duration.
+- **Run-out range (`Runs out between ... and ...`):** Once you have at least 2 valid finished cycles, Nittoo shows a calibrated P10–P90 date window from [src/lib/forecast/calibration.json](src/lib/forecast/calibration.json) until the high date passes (after which the overdue badge is shown).
+- **Why predictions for existing users change after this release:** Previously, Nittoo averaged raw cycle durations without adjusting for pack-size changes or excluding `0`-day / `>= 1000`-day entries. Existing users who switched bottle sizes or have outlier logs will see updated lifespans, cost-per-day, monthly run-rate, and restock reminder dates.
+- **Limitation:** Rate normalization assumes a similar daily usage pace regardless of pack size; it may overestimate lifespan for larger packs if you tend to use bigger bottles faster. See the full evaluation in [analytics/reports/forecast_report.md](analytics/reports/forecast_report.md).
 
 ---
 

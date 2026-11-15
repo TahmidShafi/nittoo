@@ -18,10 +18,11 @@ import type {
   ExportRestockPlanItem,
 } from './types';
 import {
-  calculateAverageLifespan,
-  calculateUsageDuration,
   calculateCurrentDaysUsed,
+  calculatePredictedLifespan,
   calculatePredictedRemainingDays,
+  calculateUsageDuration,
+  getValidFinishedPeriods,
 } from '../prediction';
 import { addDays } from '../dateUtils';
 import { calculateConfidence } from '../confidence';
@@ -138,7 +139,13 @@ export async function buildExportData(
     const finishedPeriods = (usageByProduct.get(activeItem.id) || []).filter(
       (u) => u.status === 'finished' && u.finished_date
     );
-    const avgLifespan = calculateAverageLifespan(finishedPeriods);
+    const productPurchases = rawExport.purchases.filter((p) => p.product_id === activeItem.id);
+    const avgLifespan = calculatePredictedLifespan({
+      usagePeriods: finishedPeriods,
+      product: activeItem,
+      purchases: productPurchases,
+      activePurchase: activeItem.active_purchase ?? activeItem.latest_purchase,
+    });
     const predictedRemaining =
       daysUsed !== null && avgLifespan !== null
         ? calculatePredictedRemainingDays(avgLifespan, daysUsed)
@@ -193,9 +200,18 @@ export async function buildExportData(
     const finishedPeriods = pUsage.filter((u) => u.status === 'finished' && u.finished_date);
     const activePeriod = pUsage.find((u) => u.status === 'active' || !u.finished_date);
 
-    // Observed historical metrics (strictly completed cycles)
-    const observedLifespan = calculateAverageLifespan(finishedPeriods);
-    const confidence = calculateConfidence(finishedPeriods.length);
+    // Predicted lifespan (valid completed cycles, rate-normalized when sized)
+    const activePurchase = activePeriod
+      ? (purchaseMap.get(activePeriod.purchase_id) ?? pPurchases[0] ?? null)
+      : (pPurchases[0] ?? null);
+    const validCompletedCycles = getValidFinishedPeriods(finishedPeriods).length;
+    const observedLifespan = calculatePredictedLifespan({
+      usagePeriods: finishedPeriods,
+      product: p,
+      purchases: pPurchases,
+      activePurchase,
+    });
+    const confidence = calculateConfidence(validCompletedCycles);
 
     let observedCostPerDay: number | null = null;
     if (finishedPeriods.length > 0) {

@@ -19,12 +19,15 @@ import { usePageMeta } from '../hooks/usePageMeta';
 import { db } from '../lib/dataSource';
 import { formatDisplayDate } from '../lib/dateUtils';
 import {
-  calculateAverageLifespan,
   calculateCurrentDaysUsed,
-  calculateUsageDuration,
+  calculatePredictedLifespan,
   calculatePricePerUnit,
   calculateProgressPercent,
+  calculateRunOutRange,
+  calculateUsageDuration,
+  formatRunOutRange,
   getEffectiveSize,
+  getValidFinishedPeriods,
 } from '../lib/prediction';
 import { calculateConfidence, getConfidenceBadgeStyles } from '../lib/confidence';
 import {
@@ -177,8 +180,19 @@ export const ProductDetailPage: React.FC = () => {
 
     const { product, purchases, finished_periods } = history;
 
-    // 1. Average Duration (strictly from finished periods)
-    const averageDuration = calculateAverageLifespan(finished_periods);
+    // 1. Predicted Lifespan (valid finished periods, rate-normalized when sized)
+    const activePurchase = history.active_usage
+      ? purchases.find((p) => p.id === history.active_usage!.purchase_id) || null
+      : null;
+    const latestPurchase = purchases[0] || null;
+    const currentPurchase = activePurchase || latestPurchase;
+    const averageDuration = calculatePredictedLifespan({
+      usagePeriods: finished_periods,
+      product,
+      purchases,
+      activePurchase: currentPurchase,
+    });
+    const validCompletedCycles = getValidFinishedPeriods(finished_periods).length;
 
     // 2. Weighted Average Cost Per Day:
     // total price of completed purchase cycles ÷ total completed usage days
@@ -208,11 +222,6 @@ export const ProductDetailPage: React.FC = () => {
     const purchaseCount = purchases.length;
 
     // 5. Unit Rate: active purchase's price ÷ effective size (falling back to latest purchase)
-    const activePurchase = history.active_usage
-      ? purchases.find((p) => p.id === history.active_usage!.purchase_id) || null
-      : null;
-    const latestPurchase = purchases[0] || null;
-    const currentPurchase = activePurchase || latestPurchase;
     const effectiveSize = getEffectiveSize(currentPurchase, product);
     const unitRate =
       currentPurchase && effectiveSize.size_value
@@ -221,6 +230,7 @@ export const ProductDetailPage: React.FC = () => {
 
     return {
       averageDuration,
+      validCompletedCycles,
       weightedCostPerDay,
       totalSpent,
       purchaseCount,
@@ -230,8 +240,8 @@ export const ProductDetailPage: React.FC = () => {
     };
   }, [history]);
 
-  // Evidence Confidence Calculation strictly from finished periods
-  const completedCycles = history ? history.finished_periods.length : 0;
+  // Evidence Confidence Calculation strictly from valid finished periods
+  const completedCycles = summaryStats ? summaryStats.validCompletedCycles : 0;
   const confidence = useMemo(() => calculateConfidence(completedCycles), [completedCycles]);
   const confidenceBadgeStyles = useMemo(() => getConfidenceBadgeStyles(confidence.state), [confidence.state]);
 
@@ -263,19 +273,21 @@ export const ProductDetailPage: React.FC = () => {
     }
 
     const progress = avgDuration !== null ? calculateProgressPercent(daysUsed, avgDuration) : null;
+    const runOutRange = calculateRunOutRange(active.opened_date, avgDuration, completedCycles);
 
     return {
       active,
       daysUsed,
       predictedRemaining,
       avgDuration,
+      runOutRange,
       progress,
       isOverdue,
       overdueDays,
       urgencyLabel,
       urgencyState,
     };
-  }, [history, summaryStats]);
+  }, [history, summaryStats, completedCycles]);
 
   // Prepare Chart Data: Finished Periods sorted chronologically
   const chartData = useMemo(() => {
@@ -689,6 +701,11 @@ export const ProductDetailPage: React.FC = () => {
                       {confidence.label}
                     </span>
                   </div>
+                  {activeUsageData.runOutRange && (
+                    <p className="text-xs font-medium text-neutral-600">
+                      {formatRunOutRange(activeUsageData.runOutRange)}
+                    </p>
+                  )}
                   <p className="text-xs text-neutral-500 flex items-center gap-1.5 flex-wrap">
                     <span>{confidence.supportingText}</span>
                     <span className="text-neutral-300">•</span>
@@ -705,6 +722,11 @@ export const ProductDetailPage: React.FC = () => {
                       {confidence.label}
                     </span>
                   </div>
+                  {activeUsageData.runOutRange && (
+                    <p className="text-xs font-medium text-neutral-600">
+                      {formatRunOutRange(activeUsageData.runOutRange)}
+                    </p>
+                  )}
                   <p className="text-xs text-neutral-400 italic">
                     Complete a cycle to start learning.
                   </p>

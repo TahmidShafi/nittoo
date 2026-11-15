@@ -1,9 +1,9 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import {
-  calculateAverageLifespan,
   calculatePredictedRemainingDays,
   calculateUsageDuration,
+  legacyAverageLifespan,
 } from '../src/lib/prediction';
 import type { UsagePeriod } from '../src/types';
 
@@ -63,7 +63,7 @@ function main() {
     for (let k = 1; k <= finished.length; k += 1) {
       const prefix = finished.slice(0, k);
       const durations = prefix.map((p) => calculateUsageDuration(p) ?? 0);
-      const avg = calculateAverageLifespan(prefix);
+      const avg = legacyAverageLifespan(prefix);
       const pred = calculatePredictedRemainingDays(avg, 0);
       cases.push({
         product_id: product.id,
