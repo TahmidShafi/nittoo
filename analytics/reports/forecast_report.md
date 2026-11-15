@@ -1,7 +1,7 @@
 # Nittoo Forecast Lab — Rolling-Origin Backtest Report
 
-Generated at: `2026-11-15T14:19:37+00:00`  
-Scale: `500 households x 24 months` | Seed: `4001 (holdout) / 7 (dev) / 4002 (2.5x noise) / 4003 (eps=0.3) / 4004 (eps=0.6)` | Git commit: `e00e98a`  
+Generated at: `2026-11-15T15:06:25+00:00`  
+Scale: `500 households x 24 months` | Seed: `4001 (holdout) / 7 (dev) / 4002 (2.5x noise) / 4003 (eps=0.3) / 4004 (eps=0.6)` | Git commit: `b8f67e4`  
 Config: `MIN_TRAIN_CYCLES=2`, `EWMA_DURATION_ALPHA=0.85`, `EWMA_RATE_ALPHA=0.25`, `BONFERRONI_CI=99.58%` (`m=12`).
 
 ## 1. Selection Rule & Primary Comparison (Rule-Clean Next Cycles)
