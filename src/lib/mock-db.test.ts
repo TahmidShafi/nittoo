@@ -95,5 +95,17 @@ describe('MockDatabase lifecycle & isolation', () => {
       }
     );
     expect(updatedPurchase.store_vendor).toBe('Daraz Mall');
+
+    const updatedProd = await db.updateProduct(DEFAULT_MOCK_USER_ID, cerave.product.id, {
+      name: 'CeraVe Updated',
+      category: cerave.product.category,
+      brand: 'CeraVe',
+      size_value: 250,
+      size_unit: 'ml',
+    });
+    expect(updatedProd.name).toBe('CeraVe Updated');
+
+    await db.resetUserData(DEFAULT_MOCK_USER_ID);
+    expect(await db.getAllUserProducts(DEFAULT_MOCK_USER_ID)).toHaveLength(3);
   });
 });

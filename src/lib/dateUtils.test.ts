@@ -6,6 +6,8 @@ import {
   addDays,
   getDaysUsed,
   parseISODateToUTC,
+  formatDisplayDate,
+  formatDate,
 } from './dateUtils';
 
 describe('dateUtils', () => {
@@ -34,5 +36,13 @@ describe('dateUtils', () => {
     expect(getTodayLocal(dhaka2am, 'Asia/Dhaka')).toBe('2026-11-15');
     expect(getDaysUsed('2026-11-14', getTodayLocal(dhaka2am, 'Asia/Dhaka'))).toBe(1);
     expect(getTodayUTC()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('formats ISO dates and timestamps for display', () => {
+    expect(formatDisplayDate('2026-08-30')).toBe('Aug 30, 2026');
+    expect(formatDisplayDate('')).toBe('');
+    expect(formatDisplayDate('not-a-date')).toBe('not-a-date');
+    expect(formatDate('2026-08-30T12:34:56Z')).toBe('Aug 30, 2026');
+    expect(formatDate('')).toBe('');
   });
 });

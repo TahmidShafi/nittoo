@@ -31,3 +31,4 @@ dist-ssr
 
 docs/CONTEXT_AUDIT.md
 supabase/.temp/
+coverage/

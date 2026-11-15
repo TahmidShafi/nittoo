@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { dataCache, areValuesEqual, STALE_TIME_MS } from './dataCache';
+import {
+  dataCache,
+  areValuesEqual,
+  STALE_TIME_MS,
+  MAX_CACHE_ENTRIES_PER_USER,
+} from './dataCache';
 
 describe('dataCache', () => {
   beforeEach(() => {
@@ -40,5 +45,17 @@ describe('dataCache', () => {
   it('compares values deterministically with areValuesEqual', () => {
     expect(areValuesEqual({ a: 1, b: [2, 3] }, { a: 1, b: [2, 3] })).toBe(true);
     expect(areValuesEqual({ a: 1 }, { a: 2 })).toBe(false);
+    expect(areValuesEqual(null, { a: 1 })).toBe(false);
+    expect(areValuesEqual([1, 2], [1, 2, 3])).toBe(false);
+  });
+
+  it('evicts oldest entries when exceeding MAX_CACHE_ENTRIES_PER_USER', () => {
+    for (let i = 0; i <= MAX_CACHE_ENTRIES_PER_USER + 2; i++) {
+      dataCache.set('u-lru', `key-${i}`, i);
+    }
+    expect(dataCache.get('u-lru', 'key-0')).toBeNull();
+    expect(dataCache.get('u-lru', `key-${MAX_CACHE_ENTRIES_PER_USER + 2}`)?.data).toBe(
+      MAX_CACHE_ENTRIES_PER_USER + 2
+    );
   });
 });

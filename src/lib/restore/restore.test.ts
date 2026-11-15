@@ -48,6 +48,9 @@ describe('restore', () => {
     const plan2 = await buildImportPlan(validation.backupData, targetUserId, targetDb);
     expect(plan2.summary.newProductsCount).toBe(0);
     expect(plan2.summary.newRestockPlansCount).toBe(0);
+
+    // Error handling when userId is missing
+    await expect(executeRestore(plan2, '', targetDb)).rejects.toThrow();
   });
 
   it('rejects malformed backup JSON and invalid restock plan modes', () => {
@@ -75,5 +78,45 @@ describe('restore', () => {
       ],
     });
     expect(validateBackupFile(badRestock).valid).toBe(false);
+  });
+
+  it('rejects invalid backup shapes, missing fields, and bad purchases/usage_periods', () => {
+    expect(validateBackupFile('[]').valid).toBe(false);
+    expect(validateBackupFile('{}').valid).toBe(false);
+    expect(
+      validateBackupFile(
+        JSON.stringify({
+          products: [{ id: '', name: '', category: '' }],
+          purchases: [],
+          usage_periods: [],
+        })
+      ).valid
+    ).toBe(false);
+    expect(
+      validateBackupFile(
+        JSON.stringify({
+          products: [{ id: 'p1', name: 'Soap', category: 'Personal Care' }],
+          purchases: [{ id: 'pur1', product_id: 'p1', purchase_date: 'bad', price: -5 }],
+          usage_periods: [],
+        })
+      ).valid
+    ).toBe(false);
+    expect(
+      validateBackupFile(
+        JSON.stringify({
+          products: [{ id: 'p1', name: 'Soap', category: 'Personal Care' }],
+          purchases: [{ id: 'pur1', product_id: 'p1', purchase_date: '2026-04-01', price: 100 }],
+          usage_periods: [
+            {
+              id: 'u1',
+              product_id: 'p1',
+              purchase_id: 'pur1',
+              opened_date: '2026-04-02',
+              status: 'unknown',
+            },
+          ],
+        })
+      ).valid
+    ).toBe(false);
   });
 });

@@ -12,6 +12,8 @@ import {
   UpcItemDbProvider,
   CompositeDiscoveryProvider,
 } from './provider';
+import { searchExternalProducts, lookupExternalProductByBarcode } from './index';
+import { discoveryCache } from './cache';
 import {
   isAllowedOrigin,
   getCorsHeaders,
@@ -123,5 +125,74 @@ describe('discovery & GS1 barcode', () => {
     );
     expect(valid.valid).toBe(true);
     expect(valid.userId).toBe('u1');
+  });
+
+  it('searches OpenFoodFacts, OpenBeautyFacts, and exercises CompositeDiscoveryProvider search', async () => {
+    const obf = new OpenBeautyFactsProvider({
+      fetchFn: async () =>
+        new Response(
+          JSON.stringify({
+            products: [
+              {
+                code: '3600541358522',
+                product_name: 'Moisturizer',
+                brands: 'BrandX',
+                quantity: '50 ml',
+                categories_tags: ['en:moisturizers'],
+              },
+            ],
+          }),
+          { status: 200 }
+        ),
+    });
+
+    const off = new OpenFoodFactsProvider({
+      fetchFn: async () =>
+        new Response(
+          JSON.stringify({
+            products: [
+              {
+                code: '8901234567890',
+                product_name: 'Oat Milk',
+                brands: 'Oatly',
+                quantity: '1 l',
+                categories_tags: ['en:plant-milks'],
+              },
+            ],
+          }),
+          { status: 200 }
+        ),
+    });
+
+    const upc = new UpcItemDbProvider({
+      fetchFn: async () =>
+        new Response(
+          JSON.stringify({
+            items: [{ ean: '012345678905', title: 'Item', brand: 'B', size: '100 g' }],
+          }),
+          { status: 200 }
+        ),
+    });
+
+    const composite = new CompositeDiscoveryProvider({
+      beautyProvider: obf,
+      foodProvider: off,
+      upcItemDbProvider: upc,
+    });
+    const results = await composite.search('milk');
+    expect(results.length).toBeGreaterThanOrEqual(2);
+    expect(parseSize('500 g')).toEqual({ sizeValue: 500, sizeUnit: 'g' });
+    expect(mapCategory('en:beverages')).toBe('Food & Beverage');
+
+    discoveryCache.clear();
+    discoveryCache.set('milk', results);
+    expect(discoveryCache.get('milk')).toHaveLength(results.length);
+    discoveryCache.setBarcode('3600541358522', results[0]);
+    expect(discoveryCache.getBarcode('3600541358522')?.name).toBe(results[0].name);
+
+    const cachedSearch = await searchExternalProducts('milk');
+    expect(cachedSearch).toHaveLength(results.length);
+    const cachedBarcode = await lookupExternalProductByBarcode('3600541358522');
+    expect(cachedBarcode?.name).toBe(results[0].name);
   });
 });

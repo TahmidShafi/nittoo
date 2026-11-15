@@ -1,10 +1,12 @@
-import { describe, it, expect } from 'vitest';
+// @vitest-environment jsdom
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { MockDatabase, InMemoryStorageAdapter, DEFAULT_MOCK_USER_ID } from '../mock-db';
 import { buildExportData } from './normalizer';
 import { generateJsonBackup } from './json';
 import { generateCsvZip } from './csv';
 import { generateExcelWorkbook } from './excel';
 import { generatePdfReport } from './pdf';
+import { exportUserDataAs } from './index';
 
 describe('export', () => {
   it('builds normalized export data and generates valid JSON, CSV ZIP, Excel, and PDF outputs', async () => {
@@ -28,5 +30,24 @@ describe('export', () => {
 
     const pdfBytes = generatePdfReport(data);
     expect(pdfBytes.byteLength).toBeGreaterThan(500);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('exports all 4 formats via exportUserDataAs and triggers browser download', async () => {
+    const db = new MockDatabase(new InMemoryStorageAdapter());
+    URL.createObjectURL = vi.fn(() => 'blob:mock-url');
+    URL.revokeObjectURL = vi.fn();
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    for (const fmt of ['excel', 'csv', 'json', 'pdf'] as const) {
+      const res = await exportUserDataAs(fmt, DEFAULT_MOCK_USER_ID, 'demo@nittoo.local', db);
+      expect(res.filename).toContain('nittoo-');
+      expect(res.data.products).toHaveLength(3);
+    }
+    expect(URL.createObjectURL).toHaveBeenCalledTimes(4);
+    expect(URL.revokeObjectURL).toHaveBeenCalledTimes(4);
   });
 });

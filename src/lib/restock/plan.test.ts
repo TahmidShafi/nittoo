@@ -5,6 +5,8 @@ import {
   isReminderDue,
   getRestockDisplayStatus,
   recalculatePlanReminderDate,
+  getRelativeOptionLabel,
+  getRestockStatusInfo,
 } from './plan';
 import { MockDatabase, InMemoryStorageAdapter, DEFAULT_MOCK_USER_ID } from '../mock-db';
 import type { RestockPlan } from '../../types';
@@ -78,5 +80,22 @@ describe('restock/plan', () => {
     await db.finishUsagePeriod(DEFAULT_MOCK_USER_ID, cerave.active_usage!.id, '2026-10-25');
     const plansAfterFinish = await db.getRestockPlans(DEFAULT_MOCK_USER_ID);
     expect(plansAfterFinish.find((p) => p.id === created.id)?.status).toBe('completed');
+  });
+
+  it('formats relative labels and status display info', () => {
+    expect(getRelativeOptionLabel(null)).toBe('');
+    expect(getRelativeOptionLabel(0)).toBe('On expected finish');
+    expect(getRelativeOptionLabel(7)).toBe('7 days before');
+
+    expect(getRestockStatusInfo('due').label).toBe('Restock Due');
+    expect(getRestockStatusInfo('planned', '2026-10-17', 7, 'relative').description).toContain(
+      '7 days before'
+    );
+    expect(getRestockStatusInfo('planned', '2026-10-17', null, 'custom').description).toContain(
+      '2026-10-17'
+    );
+    expect(getRestockStatusInfo('completed').label).toBe('Restock Completed');
+    expect(getRestockStatusInfo('dismissed').label).toBe('Restock Dismissed');
+    expect(getRestockStatusInfo('inactive').label).toBe('No Restock Plan');
   });
 });
