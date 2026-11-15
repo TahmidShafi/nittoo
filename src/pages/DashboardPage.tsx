@@ -18,7 +18,8 @@ import {
 import { getPredictionMetrics } from '../hooks/usePrediction';
 import { calculateEstimatedMonthlyConsumptionFromDetails } from '../lib/analytics';
 import { ProductCard } from '../components/ProductCard';
-import { FinishUsageModal } from '../components/FinishUsageModal';
+import { FinishUsageModal, type FinishUsageSummary } from '../components/FinishUsageModal';
+import { Toast } from '../components/Toast';
 import { CountUpValue } from '../components/CountUpValue';
 import { dataCache, areValuesEqual } from '../lib/dataCache';
 import { getStaggerStyle } from '../lib/motion';
@@ -95,6 +96,7 @@ export const DashboardPage: React.FC = () => {
   // Modal State for Finishing a Usage Period
   const [modalProduct, setModalProduct] = useState<ProductWithDetails | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [finishToast, setFinishToast] = useState<string | null>(null);
 
   const loadActiveProducts = useCallback(
     async (isSilent = false) => {
@@ -591,8 +593,13 @@ export const DashboardPage: React.FC = () => {
         product={modalProduct}
         isOpen={isModalOpen}
         onClose={handleCloseFinishModal}
-        onFinished={() => loadActiveProducts()}
+        onFinished={(summary: FinishUsageSummary) => {
+          setFinishToast(`${summary.productName} is finished. ${summary.daysUsed}-day cycle recorded.`);
+          loadActiveProducts();
+        }}
       />
+
+      <Toast message={finishToast} onDismiss={() => setFinishToast(null)} />
     </div>
   );
 };

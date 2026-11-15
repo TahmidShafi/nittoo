@@ -11,11 +11,16 @@ import { calculateCurrentDaysUsed } from '../lib/prediction';
 import { ModalShell } from './ModalShell';
 import type { ProductWithDetails } from '../types';
 
+export interface FinishUsageSummary {
+  productName: string;
+  daysUsed: number;
+}
+
 interface FinishUsageModalProps {
   product: ProductWithDetails | null;
   isOpen: boolean;
   onClose: () => void;
-  onFinished: () => void;
+  onFinished: (summary: FinishUsageSummary) => void;
 }
 
 export const FinishUsageModal: React.FC<FinishUsageModalProps> = ({
@@ -66,7 +71,7 @@ export const FinishUsageModal: React.FC<FinishUsageModalProps> = ({
     setSubmitting(true);
     try {
       await db.finishUsagePeriod(user.id, activeUsage.id, finishedDate);
-      onFinished();
+      onFinished({ productName: effectiveProduct.name, daysUsed });
       onClose();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to finish usage period';

@@ -37,7 +37,8 @@ import {
   getRelativeOptionLabel,
   recalculatePlanReminderDate,
 } from '../lib/restock';
-import { FinishUsageModal } from '../components/FinishUsageModal';
+import { FinishUsageModal, type FinishUsageSummary } from '../components/FinishUsageModal';
+import { Toast } from '../components/Toast';
 import { LifespanBar } from '../components/LifespanBar';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { EditInventoryModal } from '../components/EditInventoryModal';
@@ -77,6 +78,7 @@ export const ProductDetailPage: React.FC = () => {
 
   // Modal State for Finishing the Active Bottle
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [finishToast, setFinishToast] = useState<string | null>(null);
 
   // Modal State for Editing Current Inventory
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -1309,8 +1311,13 @@ export const ProductDetailPage: React.FC = () => {
         product={modalProduct}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onFinished={() => loadData()}
+        onFinished={(summary: FinishUsageSummary) => {
+          setFinishToast(`${summary.productName} is finished. ${summary.daysUsed}-day cycle recorded.`);
+          loadData();
+        }}
       />
+
+      <Toast message={finishToast} onDismiss={() => setFinishToast(null)} />
 
       {/* Reusable Edit Current Inventory Modal */}
       <EditInventoryModal

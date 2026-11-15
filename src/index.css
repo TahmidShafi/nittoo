@@ -133,6 +133,22 @@ body {
   animation: rangeBandFadeIn var(--duration-base) var(--ease-out) var(--duration-base) backwards;
 }
 
+/* Calm Finish Check-Mark Draw (~400ms) */
+@keyframes checkDraw {
+  from {
+    stroke-dashoffset: 24;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-check-draw {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 0;
+  animation: checkDraw 400ms var(--ease-out) backwards;
+}
+
 /* Demo Banner Slide-In */
 @keyframes bannerSlideIn {
   from {
@@ -281,6 +297,7 @@ input, select, textarea {
   .animate-stagger-in,
   .animate-progress-fill,
   .animate-range-band,
+  .animate-check-draw,
   .animate-banner-in,
   .animate-modal-in,
   .animate-modal-out,
