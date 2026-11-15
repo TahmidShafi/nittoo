@@ -106,7 +106,7 @@ export const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({
 
         {error && (
           <div
-            className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-medium flex items-start gap-2"
+            className="p-3.5 rounded-xl bg-status-critical-bg border border-status-critical-border text-xs text-status-critical-text font-medium flex items-start gap-2"
             role="alert"
           >
             <span className="font-bold shrink-0">!</span>

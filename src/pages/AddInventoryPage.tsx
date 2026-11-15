@@ -226,15 +226,15 @@ export const AddInventoryPage: React.FC = () => {
       </div>
 
       {error && (
-        <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs sm:text-sm text-rose-800 flex items-center justify-between gap-3 animate-page-in">
+        <div className="p-3.5 rounded-xl bg-status-critical-bg border border-status-critical-border text-xs sm:text-sm text-status-critical-text flex items-center justify-between gap-3 animate-page-in">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+            <span className="w-2 h-2 rounded-full bg-status-critical-fill shrink-0" />
             <span>{error}</span>
           </div>
           <button
             type="button"
             onClick={() => setError(null)}
-            className="text-rose-500 hover:text-rose-700 font-bold p-1 cursor-pointer"
+            className="text-status-critical-text hover:text-status-critical-text font-bold p-1 cursor-pointer"
           >
             ✕
           </button>
@@ -555,7 +555,7 @@ export const AddInventoryPage: React.FC = () => {
                     <span className="text-xs text-neutral-500">
                       Begin consumption tracking immediately.
                       {hasActiveBottle && (
-                        <span className="text-amber-700 block mt-0.5 font-medium">
+                        <span className="text-status-attention-text block mt-0.5 font-medium">
                           ⚠️ Note: An active bottle is already in use for this essential. Only one bottle can be active at a time.
                         </span>
                       )}

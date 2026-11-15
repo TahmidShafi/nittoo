@@ -79,7 +79,7 @@ export const DeleteCompletedCycleModal: React.FC<DeleteCompletedCycleModalProps>
       backdropClassName="bg-black/50 backdrop-blur-xs"
     >
         <div className="space-y-1.5">
-          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 border border-amber-200/60 flex items-center justify-center text-lg font-bold">
+          <div className="w-10 h-10 rounded-xl bg-status-attention-bg text-status-attention-text border border-status-attention-border flex items-center justify-center text-lg font-bold">
             ⚠️
           </div>
           <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block pt-1">
@@ -115,8 +115,8 @@ export const DeleteCompletedCycleModal: React.FC<DeleteCompletedCycleModalProps>
         </div>
 
         {error && (
-          <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-start gap-2 animate-page-in">
-            <span className="text-rose-600 font-bold leading-none mt-0.5">!</span>
+          <div className="p-3.5 rounded-xl bg-status-critical-bg border border-status-critical-border text-status-critical-text text-xs font-medium flex items-start gap-2 animate-page-in">
+            <span className="text-status-critical-text font-bold leading-none mt-0.5">!</span>
             <span className="flex-1 leading-relaxed">{error}</span>
           </div>
         )}
@@ -135,7 +135,7 @@ export const DeleteCompletedCycleModal: React.FC<DeleteCompletedCycleModalProps>
             type="button"
             onClick={handleDelete}
             disabled={submitting}
-            className="btn-press px-4 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-all shadow-xs disabled:opacity-60 cursor-pointer"
+            className="btn-press px-4 py-2 text-xs font-semibold text-white bg-status-critical-text hover:bg-status-critical-fill rounded-xl transition-all shadow-xs disabled:opacity-60 cursor-pointer"
           >
             {submitting ? 'Deleting Cycle...' : 'Delete Cycle'}
           </button>

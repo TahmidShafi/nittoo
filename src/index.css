@@ -29,6 +29,26 @@
   --color-text-secondary: #4B5563;
   --color-text-muted: #6B7280;
 
+  /* Semantic status tokens (WCAG AA verified) */
+  --color-status-healthy-text: #2D6A4F;
+  --color-status-healthy-bg: #EBF4F0;
+  --color-status-healthy-border: #C6DFD3;
+  --color-status-healthy-fill: #2D6A4F;
+
+  --color-status-attention-text: #B45309;
+  --color-status-attention-bg: #FFF7E6;
+  --color-status-attention-border: #FDE68A;
+  --color-status-attention-fill: #B45309;
+
+  --color-status-critical-text: #BE123C;
+  --color-status-critical-bg: #FFF1F2;
+  --color-status-critical-border: #FECDD3;
+  --color-status-critical-fill: #C0395B;
+
+  --color-status-learning-text: #4B5563;
+  --color-status-learning-bg: #F3F4F6;
+  --color-status-learning-border: #E5E7EB;
+
   /* Motion tokens */
   --duration-fast: 150ms;
   --duration-base: 220ms;

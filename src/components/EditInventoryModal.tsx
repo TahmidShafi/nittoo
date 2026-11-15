@@ -224,7 +224,7 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
 
         {/* Error Notification */}
         {error && (
-          <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200/80 text-rose-800 text-xs flex items-center gap-2">
+          <div className="p-3.5 rounded-xl bg-status-critical-bg border border-status-critical-border text-status-critical-text text-xs flex items-center gap-2">
             <span>⚠️</span>
             <span className="font-medium">{error}</span>
           </div>
@@ -239,7 +239,7 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
 
             <div className="space-y-1">
               <label htmlFor="edit-product-name" className="font-medium text-neutral-700 block">
-                Product Name <span className="text-rose-500">*</span>
+                Product Name <span className="text-status-critical-text">*</span>
               </label>
               <input
                 id="edit-product-name"
@@ -269,7 +269,7 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
 
               <div className="space-y-1">
                 <label htmlFor="edit-category" className="font-medium text-neutral-700 block">
-                  Category <span className="text-rose-500">*</span>
+                  Category <span className="text-status-critical-text">*</span>
                 </label>
                 <select
                   id="edit-category"
@@ -332,7 +332,7 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1 sm:col-span-1">
                 <label htmlFor="edit-purchase-date" className="font-medium text-neutral-700 block">
-                  Purchase Date <span className="text-rose-500">*</span>
+                  Purchase Date <span className="text-status-critical-text">*</span>
                 </label>
                 <input
                   id="edit-purchase-date"
@@ -347,7 +347,7 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
 
               <div className="space-y-1 sm:col-span-1">
                 <label htmlFor="edit-price" className="font-medium text-neutral-700 block">
-                  Price (৳) <span className="text-rose-500">*</span>
+                  Price (৳) <span className="text-status-critical-text">*</span>
                 </label>
                 <input
                   id="edit-price"
@@ -426,7 +426,7 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
 
               <div className="space-y-1">
                 <label htmlFor="edit-opened-date" className="font-medium text-neutral-700 block">
-                  Opened Date <span className="text-rose-500">*</span>
+                  Opened Date <span className="text-status-critical-text">*</span>
                 </label>
                 <input
                   id="edit-opened-date"

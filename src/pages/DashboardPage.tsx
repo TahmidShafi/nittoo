@@ -264,7 +264,7 @@ export const DashboardPage: React.FC = () => {
     <div className="space-y-8">
       {/* Notice Banner */}
       {infoNotice && (
-        <div className="p-4 rounded-xl bg-amber-50/90 border border-amber-200/80 text-amber-900 text-xs font-medium flex items-start justify-between shadow-xs">
+        <div className="p-4 rounded-xl bg-status-attention-bg border border-status-attention-border text-status-attention-text text-xs font-medium flex items-start justify-between shadow-xs">
           <div className="flex items-center gap-2.5">
             <span className="text-sm">💡</span>
             <span className="leading-relaxed">{infoNotice}</span>
@@ -272,7 +272,7 @@ export const DashboardPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setInfoNotice(null)}
-            className="text-amber-600 hover:text-amber-900 text-base font-bold ml-3"
+            className="text-status-attention-text hover:text-status-attention-text text-base font-bold ml-3"
             aria-label="Dismiss notice"
           >
             ×
@@ -306,9 +306,9 @@ export const DashboardPage: React.FC = () => {
 
       {/* Error State */}
       {error && (
-        <div className="p-6 bg-rose-50 border border-rose-200 rounded-2xl text-center max-w-md mx-auto space-y-3">
-          <p className="text-sm font-semibold text-rose-900">Unable to load active essentials</p>
-          <p className="text-xs text-rose-600">A connection issue occurred. Please try again.</p>
+        <div className="p-6 bg-status-critical-bg border border-status-critical-border rounded-2xl text-center max-w-md mx-auto space-y-3">
+          <p className="text-sm font-semibold text-status-critical-text">Unable to load active essentials</p>
+          <p className="text-xs text-status-critical-text">A connection issue occurred. Please try again.</p>
           <button
             type="button"
             onClick={() => loadActiveProducts()}
@@ -321,20 +321,20 @@ export const DashboardPage: React.FC = () => {
 
       {/* Due Restock Reminders (Stage 21) - Only rendered when due items exist */}
       {!loading && !error && dueRestockProducts.length > 0 && (
-        <div className="bg-amber-500/10 border border-amber-500/25 rounded-2xl p-5 shadow-xs space-y-3">
+        <div className="bg-status-attention-bg border border-status-attention-border rounded-2xl p-5 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800">
+              <span className="w-2 h-2 rounded-full bg-status-attention-fill animate-pulse" />
+              <span className="text-[11px] font-bold uppercase tracking-wider text-status-attention-text">
                 Restock Reminders
               </span>
             </div>
-            <span className="text-xs font-semibold text-amber-800 bg-amber-100/70 px-2.5 py-0.5 rounded-full">
+            <span className="text-xs font-semibold text-status-attention-text bg-status-attention-bg px-2.5 py-0.5 rounded-full">
               {dueRestockProducts.length} due
             </span>
           </div>
 
-          <div className="divide-y divide-amber-200/40">
+          <div className="divide-y divide-status-attention-border/60">
             {dueRestockProducts.map((p) => {
               const avgLifespan = calculatePredictedLifespan({
                 usagePeriods: p.finished_periods || [],
@@ -361,7 +361,7 @@ export const DashboardPage: React.FC = () => {
                           <span className="text-neutral-400 mx-1.5">•</span>
                         </>
                       ) : null}
-                      <span className="text-amber-800 font-medium">
+                      <span className="text-status-attention-text font-medium">
                         Reminder due today
                       </span>
                     </p>
@@ -370,7 +370,7 @@ export const DashboardPage: React.FC = () => {
                   <div className="flex items-center gap-2 self-start sm:self-auto">
                     <Link
                       to={`/product/${p.id}`}
-                      className="btn-press px-3.5 py-1.5 rounded-xl bg-white border border-amber-300 hover:bg-amber-50 text-neutral-800 text-xs font-semibold transition-colors cursor-pointer"
+                      className="btn-press px-3.5 py-1.5 rounded-xl bg-white border border-status-attention-border hover:bg-status-attention-bg text-neutral-800 text-xs font-semibold transition-colors cursor-pointer"
                     >
                       View
                     </Link>
@@ -414,7 +414,7 @@ export const DashboardPage: React.FC = () => {
               Attention Needed
             </span>
             <div className="mt-2 flex items-baseline gap-2">
-              <span className={`text-3xl font-bold tracking-tight ${summaryMetrics.overdueCount > 0 ? 'text-rose-600' : summaryMetrics.runningSoonCount > 0 ? 'text-amber-600' : 'text-neutral-900'}`}>
+              <span className={`text-3xl font-bold tracking-tight ${summaryMetrics.overdueCount > 0 ? 'text-status-critical-text' : summaryMetrics.runningSoonCount > 0 ? 'text-status-attention-text' : 'text-neutral-900'}`}>
                 <CountUpValue value={summaryMetrics.overdueCount + summaryMetrics.runningSoonCount} />
               </span>
               <span className="text-xs text-neutral-500 font-medium">

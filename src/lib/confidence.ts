@@ -99,8 +99,8 @@ export function getConfidenceBadgeStyles(state: ConfidenceState): {
       };
     case 'early':
       return {
-        badgeClass: 'bg-amber-50/90 text-amber-800 border border-amber-200/70',
-        dotClass: 'bg-amber-500',
+        badgeClass: 'bg-status-attention-bg text-status-attention-text border border-status-attention-border',
+        dotClass: 'bg-status-attention-fill',
       };
     case 'developing':
       return {

@@ -98,7 +98,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
 
         {error && (
           <div
-            className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-medium flex items-start gap-2"
+            className="p-3.5 rounded-xl bg-status-critical-bg border border-status-critical-border text-xs text-status-critical-text font-medium flex items-start gap-2"
             role="alert"
           >
             <span className="font-bold shrink-0">!</span>
@@ -124,7 +124,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
               className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 text-xs text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20 focus:border-[#2D6A4F] transition-all disabled:bg-neutral-50 min-h-[44px]"
             />
             {isPasswordTooShort && (
-              <p className="text-[11px] text-amber-600 mt-1">
+              <p className="text-[11px] text-status-attention-text mt-1">
                 Password must be at least 6 characters.
               </p>
             )}
@@ -147,7 +147,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
               className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 text-xs text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#2D6A4F]/20 focus:border-[#2D6A4F] transition-all disabled:bg-neutral-50 min-h-[44px]"
             />
             {isMismatch && (
-              <p className="text-[11px] text-rose-600 mt-1">
+              <p className="text-[11px] text-status-critical-text mt-1">
                 Passwords do not match.
               </p>
             )}

@@ -47,19 +47,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </span>
 
           {urgencyState === 'overdue' ? (
-            <span className="text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+            <span className="text-xs font-semibold text-status-critical-text bg-status-critical-bg border border-status-critical-border px-2.5 py-0.5 rounded-full flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-status-critical-fill animate-pulse" />
               <span>Overdue by {overdueDays}d</span>
             </span>
           ) : urgencyState === 'running_soon' ? (
             <span
               className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border flex items-center gap-1 ${
                 predictedRemainingDays !== null && predictedRemainingDays < 14
-                  ? 'text-amber-800 bg-amber-50 border-amber-200'
+                  ? 'text-status-attention-text bg-status-attention-bg border-status-attention-border'
                   : 'text-[#2D6A4F] bg-[#EBF4F0] border-[#2D6A4F]/20'
               }`}
             >
-              <span className={`w-1.5 h-1.5 rounded-full ${predictedRemainingDays !== null && predictedRemainingDays < 14 ? 'bg-amber-500' : 'bg-[#2D6A4F]'}`} />
+              <span className={`w-1.5 h-1.5 rounded-full ${predictedRemainingDays !== null && predictedRemainingDays < 14 ? 'bg-status-attention-fill' : 'bg-[#2D6A4F]'}`} />
               <span>{predictedRemainingDays}d left</span>
             </span>
           ) : (
@@ -143,9 +143,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               <div
                 className={`h-full rounded-full animate-progress-fill ${
                   isOverdue
-                    ? 'bg-rose-500 w-full'
+                    ? 'bg-status-critical-fill w-full'
                     : predictedRemainingDays !== null && predictedRemainingDays < 14
-                    ? 'bg-amber-500'
+                    ? 'bg-status-attention-fill'
                     : 'bg-[#2D6A4F]'
                 }`}
                 style={{ width: `${progressPercent}%` }}

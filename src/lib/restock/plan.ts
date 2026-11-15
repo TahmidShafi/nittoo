@@ -156,8 +156,8 @@ export function getRestockStatusInfo(
       return {
         status: 'due',
         label: 'Restock Due',
-        badgeClass: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20',
-        dotClass: 'bg-amber-500',
+        badgeClass: 'bg-status-attention-bg text-status-attention-text border border-status-attention-border',
+        dotClass: 'bg-status-attention-fill',
         description: 'Reminder date is today or has passed.',
       };
     case 'planned':

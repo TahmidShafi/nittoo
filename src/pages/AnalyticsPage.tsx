@@ -199,7 +199,7 @@ export const AnalyticsPage: React.FC = () => {
   if (error) {
     return (
       <div className="max-w-md mx-auto text-center py-16 space-y-4">
-        <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto text-xl font-bold">
+        <div className="w-12 h-12 rounded-2xl bg-status-critical-bg text-status-critical-text flex items-center justify-center mx-auto text-xl font-bold">
           !
         </div>
         <h2 className="text-xl font-bold text-neutral-900">Error Loading Analytics</h2>
@@ -268,7 +268,7 @@ export const AnalyticsPage: React.FC = () => {
             </p>
           </div>
           {upcomingPurchases.length > 0 ? (
-            <span className="self-start sm:self-auto text-xs font-semibold px-3 py-1 bg-amber-50 text-amber-800 rounded-full border border-amber-200">
+            <span className="self-start sm:self-auto text-xs font-semibold px-3 py-1 bg-status-attention-bg text-status-attention-text rounded-full border border-status-attention-border">
               {upcomingPurchases.length} Needs Attention
             </span>
           ) : (
@@ -300,13 +300,13 @@ export const AnalyticsPage: React.FC = () => {
                       {item.product.category}
                     </span>
                     {item.isOverdue ? (
-                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-status-critical-bg text-status-critical-text border border-status-critical-border flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-status-critical-fill animate-pulse" />
                         <span>Overdue by {Math.abs(item.predictedRemainingDays)} day{Math.abs(item.predictedRemainingDays) === 1 ? '' : 's'}</span>
                       </span>
                     ) : (
-                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-status-attention-bg text-status-attention-text border border-status-attention-border flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-status-attention-fill" />
                         <span>{item.predictedRemainingDays} day{item.predictedRemainingDays === 1 ? '' : 's'} left</span>
                       </span>
                     )}
@@ -569,7 +569,7 @@ export const AnalyticsPage: React.FC = () => {
         <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-xs space-y-4 flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              <span className="w-2 h-2 rounded-full bg-status-attention-fill" />
               <h3 className="text-sm font-bold text-neutral-900">
                 Highest Daily Cost Essentials
               </h3>
@@ -598,7 +598,7 @@ export const AnalyticsPage: React.FC = () => {
                       Avg: {Math.round(item.averageLifespan)}d · ~৳{Math.round(item.monthlyCost)}/mo
                     </span>
                   </div>
-                  <span className="font-bold text-amber-800 shrink-0 text-sm">
+                  <span className="font-bold text-status-attention-text shrink-0 text-sm">
                     ৳{item.costPerDay.toFixed(2)}/day
                   </span>
                 </div>

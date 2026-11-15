@@ -195,8 +195,8 @@ export const PlanRestockModal: React.FC<PlanRestockModalProps> = ({
         </div>
 
         {error && (
-          <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-start gap-2">
-            <span className="text-rose-600 font-bold leading-none mt-0.5">!</span>
+          <div className="p-3.5 rounded-xl bg-status-critical-bg border border-status-critical-border text-status-critical-text text-xs font-medium flex items-start gap-2">
+            <span className="text-status-critical-text font-bold leading-none mt-0.5">!</span>
             <span className="flex-1 leading-relaxed">{error}</span>
           </div>
         )}
@@ -224,7 +224,7 @@ export const PlanRestockModal: React.FC<PlanRestockModalProps> = ({
             </div>
           </div>
         ) : (
-          <div className="bg-amber-500/5 rounded-xl p-4 border border-amber-500/20 text-xs space-y-1">
+          <div className="bg-status-attention-bg rounded-xl p-4 border border-status-attention-border text-xs space-y-1">
             <p className="font-semibold text-neutral-800">
               Not enough history to estimate when this product will finish.
             </p>

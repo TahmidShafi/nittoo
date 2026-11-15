@@ -215,13 +215,13 @@ export const RestoreDataModal: React.FC<RestoreDataModalProps> = ({
         <div className="p-5 sm:p-6 overflow-y-auto space-y-4 flex-1">
           {/* Error Banner */}
           {errorMessage && (
-            <div className="p-3.5 bg-rose-50 border border-rose-200/80 rounded-xl text-rose-800 text-xs flex items-start gap-2.5">
-              <svg className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="p-3.5 bg-status-critical-bg border border-status-critical-border rounded-xl text-status-critical-text text-xs flex items-start gap-2.5">
+              <svg className="w-4 h-4 text-status-critical-text shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
               <div>
                 <span className="font-semibold block">{errorMessage}</span>
-                {errorDetails && <span className="text-rose-700/90 text-[11px] mt-0.5 block">{errorDetails}</span>}
+                {errorDetails && <span className="text-status-critical-text text-[11px] mt-0.5 block">{errorDetails}</span>}
               </div>
             </div>
           )}
@@ -401,17 +401,17 @@ export const RestoreDataModal: React.FC<RestoreDataModalProps> = ({
 
               {/* Active Bottle Conflicts Warning */}
               {importPlan.activeConflicts.length > 0 && (
-                <div className="p-3.5 bg-amber-50 border border-amber-200/80 rounded-xl space-y-2">
-                  <div className="flex items-center gap-1.5 text-amber-800 text-xs font-bold">
-                    <svg className="w-4 h-4 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="p-3.5 bg-status-attention-bg border border-status-attention-border rounded-xl space-y-2">
+                  <div className="flex items-center gap-1.5 text-status-attention-text text-xs font-bold">
+                    <svg className="w-4 h-4 text-status-attention-text shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                     <span>ACTIVE CONFLICT: {importPlan.activeConflicts.length} item(s)</span>
                   </div>
                   {importPlan.activeConflicts.map((c, idx) => (
-                    <div key={idx} className="text-[11px] text-amber-900/90 pl-5 leading-relaxed">
+                    <div key={idx} className="text-[11px] text-status-attention-text pl-5 leading-relaxed">
                       <span className="font-semibold">{c.productName}</span> has an active bottle in both your current data and the backup.
-                      <span className="block text-amber-800 font-medium mt-0.5">
+                      <span className="block text-status-attention-text font-medium mt-0.5">
                         Action: Keep current active bottle. (Conflicting backup bottle will be preserved as unopened inventory).
                       </span>
                     </div>
@@ -518,7 +518,7 @@ export const RestoreDataModal: React.FC<RestoreDataModalProps> = ({
                   <div>• {executionResult.restoredUnopened} Unopened Purchases</div>
                 </div>
                 {executionResult.skippedConflicts > 0 && (
-                  <div className="pt-2 border-t border-neutral-200 text-amber-700 text-[11px]">
+                  <div className="pt-2 border-t border-neutral-200 text-status-attention-text text-[11px]">
                     Skipped {executionResult.skippedConflicts} conflicting active bottle (kept your current active container; purchase preserved as unopened).
                   </div>
                 )}

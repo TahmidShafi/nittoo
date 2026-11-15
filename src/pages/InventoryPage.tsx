@@ -225,15 +225,15 @@ export const InventoryPage: React.FC = () => {
 
       {/* Notifications / Feedback */}
       {error && (
-        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200/80 text-xs sm:text-sm text-rose-800 flex items-center justify-between gap-3 animate-page-in">
+        <div className="p-4 rounded-xl bg-status-critical-bg border border-status-critical-border text-xs sm:text-sm text-status-critical-text flex items-center justify-between gap-3 animate-page-in">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+            <span className="w-2 h-2 rounded-full bg-status-critical-fill shrink-0" />
             <span>{error}</span>
           </div>
           <button
             type="button"
             onClick={() => setError(null)}
-            className="text-rose-500 hover:text-rose-700 font-bold p-1 cursor-pointer"
+            className="text-status-critical-text hover:text-status-critical-text font-bold p-1 cursor-pointer"
           >
             ✕
           </button>
@@ -327,8 +327,8 @@ export const InventoryPage: React.FC = () => {
                         {/* Status, Lifespan, Cost & Backup Count */}
                         <div className="flex items-center gap-2 flex-wrap text-xs text-neutral-500 pt-0.5">
                           {metrics.urgencyState === 'overdue' ? (
-                            <span className="font-semibold text-rose-700 bg-rose-50 border border-rose-200/60 px-2 py-0.5 rounded-full flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                            <span className="font-semibold text-status-critical-text bg-status-critical-bg border border-status-critical-border px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-status-critical-fill animate-pulse" />
                               <span>{metrics.overdueDays} days overdue</span>
                             </span>
                           ) : metrics.urgencyState === 'running_soon' ? (
@@ -371,14 +371,14 @@ export const InventoryPage: React.FC = () => {
                               <span
                                 className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${
                                   isReminderDue(prod.restock_plan.reminder_date)
-                                    ? 'bg-amber-500/10 text-amber-700 border border-amber-500/20'
+                                    ? 'bg-status-attention-bg text-status-attention-text border border-status-attention-border'
                                     : 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20'
                                 }`}
                               >
                                 <span
                                   className={`w-1.5 h-1.5 rounded-full ${
                                     isReminderDue(prod.restock_plan.reminder_date)
-                                      ? 'bg-amber-500 animate-pulse'
+                                      ? 'bg-status-attention-fill animate-pulse'
                                       : 'bg-emerald-500'
                                   }`}
                                 />

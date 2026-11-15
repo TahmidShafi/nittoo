@@ -118,8 +118,8 @@ export const ExportDataModal: React.FC<ExportDataModalProps> = ({ isOpen, onClos
         )}
 
         {errorMessage && (
-          <div className="mx-5 sm:mx-6 mt-4 p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900 flex items-center gap-2">
-            <span className="text-rose-600 font-bold">✕</span>
+          <div className="mx-5 sm:mx-6 mt-4 p-3.5 bg-status-critical-bg border border-status-critical-border rounded-xl text-xs text-status-critical-text flex items-center gap-2">
+            <span className="text-status-critical-text font-bold">✕</span>
             <span className="font-medium">{errorMessage}</span>
           </div>
         )}

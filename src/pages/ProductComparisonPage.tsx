@@ -235,15 +235,15 @@ export const ProductComparisonPage: React.FC = () => {
 
       {/* Error Feedback */}
       {error && (
-        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs sm:text-sm text-rose-800 flex items-center justify-between gap-3">
+        <div className="p-4 rounded-xl bg-status-critical-bg border border-status-critical-border text-xs sm:text-sm text-status-critical-text flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+            <span className="w-2 h-2 rounded-full bg-status-critical-fill shrink-0" />
             <span>{error}</span>
           </div>
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="btn-press text-xs font-semibold px-2.5 py-1 bg-white border border-rose-300 rounded-lg hover:bg-rose-100/50"
+            className="btn-press text-xs font-semibold px-2.5 py-1 bg-white border border-status-critical-border rounded-lg hover:bg-status-critical-bg"
           >
             Retry
           </button>
@@ -475,7 +475,7 @@ export const ProductComparisonPage: React.FC = () => {
 
           {/* Cross-Category Advisory Notice */}
           {!report.isSameCategory && (
-            <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200/80 text-xs text-amber-900 flex items-center gap-2 animate-page-in">
+            <div className="p-3.5 rounded-xl bg-status-attention-bg border border-status-attention-border text-xs text-status-attention-text flex items-center gap-2 animate-page-in">
               <span>⚠️</span>
               <span>
                 These products are from different categories ({report.productA.product.category} vs {report.productB.product.category}). Compare value metrics carefully.
@@ -493,7 +493,7 @@ export const ProductComparisonPage: React.FC = () => {
                 </span>
               </div>
               {report.isEarlyData && (
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-status-attention-bg text-status-attention-text border border-status-attention-border">
                   Early / Limited Data
                 </span>
               )}
@@ -535,7 +535,7 @@ export const ProductComparisonPage: React.FC = () => {
                           ? 'bg-neutral-100 text-neutral-700 border-neutral-200'
                           : report.priceComparison.absolute < 0
                           ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                          : 'bg-amber-50 text-amber-800 border-amber-200'
+                          : 'bg-status-attention-bg text-status-attention-text border-status-attention-border'
                       }`}
                     >
                       {report.priceComparison.formattedDiff}
@@ -708,7 +708,7 @@ export const ProductComparisonPage: React.FC = () => {
                         report.costPerDayComparison.absolute < 0
                           ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                           : report.costPerDayComparison.absolute > 0
-                          ? 'bg-amber-50 text-amber-800 border-amber-200'
+                          ? 'bg-status-attention-bg text-status-attention-text border-status-attention-border'
                           : 'bg-neutral-100 text-neutral-700 border-neutral-200'
                       }`}
                     >

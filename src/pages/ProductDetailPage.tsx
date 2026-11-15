@@ -506,7 +506,7 @@ export const ProductDetailPage: React.FC = () => {
   if (error || !history) {
     return (
       <div className="max-w-xl mx-auto py-16 text-center space-y-4">
-        <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto text-xl font-bold">
+        <div className="w-12 h-12 rounded-2xl bg-status-critical-bg text-status-critical-text flex items-center justify-center mx-auto text-xl font-bold">
           !
         </div>
         <h2 className="text-xl font-bold text-neutral-900">Unable to load essential</h2>
@@ -629,8 +629,8 @@ export const ProductDetailPage: React.FC = () => {
 
             <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
               {activeUsageData.urgencyState === 'overdue' ? (
-                <span className="text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-3 py-1 rounded-full flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                <span className="text-xs font-semibold text-status-critical-text bg-status-critical-bg border border-status-critical-border px-3 py-1 rounded-full flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-status-critical-fill animate-pulse" />
                   <span>Overdue by {activeUsageData.overdueDays} day{activeUsageData.overdueDays === 1 ? '' : 's'}</span>
                 </span>
               ) : activeUsageData.urgencyState === 'running_soon' ? (
@@ -668,7 +668,7 @@ export const ProductDetailPage: React.FC = () => {
                 Day <strong className="font-semibold text-neutral-900">{activeUsageData.daysUsed}</strong> in use
               </span>
               {activeUsageData.urgencyState === 'overdue' ? (
-                <span className="text-xs font-semibold text-rose-700 flex items-center gap-1">
+                <span className="text-xs font-semibold text-status-critical-text flex items-center gap-1">
                   <span>Overdue by {activeUsageData.overdueDays}d</span>
                 </span>
               ) : activeUsageData.predictedRemaining !== null ? (
@@ -682,9 +682,9 @@ export const ProductDetailPage: React.FC = () => {
                 <div
                   className={`h-full rounded-full animate-progress-fill ${
                     activeUsageData.isOverdue
-                      ? 'bg-rose-500 w-full'
+                      ? 'bg-status-critical-fill w-full'
                       : activeUsageData.predictedRemaining !== null && activeUsageData.predictedRemaining < 14
-                      ? 'bg-amber-500'
+                      ? 'bg-status-attention-fill'
                       : 'bg-[#2D6A4F]'
                   }`}
                   style={{ width: `${activeUsageData.progress}%` }}
@@ -848,11 +848,11 @@ export const ProductDetailPage: React.FC = () => {
               {effectiveRestockPlan &&
                 effectiveRestockPlan.status === 'planned' &&
                 getRestockDisplayStatus(effectiveRestockPlan, activeUsageData.active.status) === 'due' && (
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-amber-500/10 rounded-xl p-3.5 border border-amber-500/30">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-status-attention-bg rounded-xl p-3.5 border border-status-attention-border">
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                        <span className="text-xs font-bold text-amber-800">
+                        <span className="w-2 h-2 rounded-full bg-status-attention-fill animate-pulse" />
+                        <span className="text-xs font-bold text-status-attention-text">
                           Restock reminder due
                         </span>
                       </div>
@@ -952,7 +952,7 @@ export const ProductDetailPage: React.FC = () => {
 
       {/* Action Notification Alert Messages */}
       {actionError && (
-        <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium flex items-start justify-between animate-page-in shadow-xs">
+        <div className="p-4 rounded-xl bg-status-attention-bg border border-status-attention-border text-status-attention-text text-xs font-medium flex items-start justify-between animate-page-in shadow-xs">
           <div className="flex items-center gap-2">
             <span className="text-base leading-none">⚠️</span>
             <span className="leading-relaxed">{actionError}</span>
@@ -960,7 +960,7 @@ export const ProductDetailPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setActionError(null)}
-            className="text-amber-600 hover:text-amber-900 font-bold ml-3 text-sm cursor-pointer"
+            className="text-status-attention-text hover:text-status-attention-text font-bold ml-3 text-sm cursor-pointer"
           >
             ×
           </button>
@@ -1292,7 +1292,7 @@ export const ProductDetailPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => handleOpenDeleteCycle(cycle.rawPeriod, cycle.cycleNumber, cycle.duration)}
-                      className="btn-press min-h-[30px] px-2.5 py-1 rounded-lg text-neutral-400 hover:text-rose-600 hover:bg-rose-50 text-xs font-medium transition-colors cursor-pointer"
+                      className="btn-press min-h-[30px] px-2.5 py-1 rounded-lg text-neutral-400 hover:text-status-critical-text hover:bg-status-critical-bg text-xs font-medium transition-colors cursor-pointer"
                       title="Delete this completed cycle"
                     >
                       Delete

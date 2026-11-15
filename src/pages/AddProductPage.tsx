@@ -493,15 +493,15 @@ export const AddProductPage: React.FC = () => {
 
       {/* Error Alert */}
       {error && (
-        <div className="mb-5 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-start justify-between animate-page-in">
+        <div className="mb-5 p-3.5 rounded-xl bg-status-critical-bg border border-status-critical-border text-status-critical-text text-xs font-medium flex items-start justify-between animate-page-in">
           <div className="flex items-start gap-2">
-            <span className="text-rose-600 font-bold leading-none mt-0.5">!</span>
+            <span className="text-status-critical-text font-bold leading-none mt-0.5">!</span>
             <span className="leading-relaxed">{error}</span>
           </div>
           <button
             type="button"
             onClick={() => setError(null)}
-            className="text-rose-400 hover:text-rose-700 text-sm font-bold ml-2 leading-none p-1"
+            className="text-status-critical-text hover:text-status-critical-text text-sm font-bold ml-2 leading-none p-1"
           >
             ×
           </button>
@@ -510,7 +510,7 @@ export const AddProductPage: React.FC = () => {
 
       {/* Active Bottle Notice */}
       {activeBottleWarning && (
-        <div className="mb-5 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
+        <div className="mb-5 p-4 rounded-xl bg-status-attention-bg border border-status-attention-border text-status-attention-text text-xs font-medium">
           {activeBottleWarning}
         </div>
       )}
@@ -719,7 +719,7 @@ export const AddProductPage: React.FC = () => {
 
                     {/* Validation Error Feedback */}
                     {barcodeError && (
-                      <p className="text-xs text-rose-600 font-medium">
+                      <p className="text-xs text-status-critical-text font-medium">
                         {barcodeError}
                       </p>
                     )}
