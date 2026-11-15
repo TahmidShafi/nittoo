@@ -4,14 +4,34 @@
 -- ==============================================================================
 
 -- 1. Enforce valid size units on products
-ALTER TABLE public.products
-    ADD CONSTRAINT chk_products_size_unit
-    CHECK (size_unit IS NULL OR size_unit IN ('ml', 'g', 'count'));
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'chk_products_size_unit'
+          AND conrelid = 'public.products'::regclass
+    ) THEN
+        ALTER TABLE public.products
+            ADD CONSTRAINT chk_products_size_unit
+            CHECK (size_unit IS NULL OR size_unit IN ('ml', 'g', 'count'));
+    END IF;
+END $$;
 
 -- 2. Enforce 1-to-1 relationship between a purchase and its usage period
-ALTER TABLE public.usage_periods
-    ADD CONSTRAINT uq_usage_periods_purchase_id
-    UNIQUE (purchase_id);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'uq_usage_periods_purchase_id'
+          AND conrelid = 'public.usage_periods'::regclass
+    ) THEN
+        ALTER TABLE public.usage_periods
+            ADD CONSTRAINT uq_usage_periods_purchase_id
+            UNIQUE (purchase_id);
+    END IF;
+END $$;
 
 -- 3. Add updated_at columns to all 4 core tables
 ALTER TABLE public.products

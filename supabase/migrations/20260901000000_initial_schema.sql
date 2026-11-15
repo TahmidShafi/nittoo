@@ -81,22 +81,26 @@ ALTER TABLE public.usage_periods ENABLE ROW LEVEL SECURITY;
 -- ------------------------------------------------------------------------------
 -- PRODUCTS POLICIES (Direct User Ownership)
 -- ------------------------------------------------------------------------------
+DROP POLICY IF EXISTS "Users can read own products" ON public.products;
 CREATE POLICY "Users can read own products"
     ON public.products
     FOR SELECT
     USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own products" ON public.products;
 CREATE POLICY "Users can insert own products"
     ON public.products
     FOR INSERT
     WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own products" ON public.products;
 CREATE POLICY "Users can update own products"
     ON public.products
     FOR UPDATE
     USING (auth.uid() = user_id)
     WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own products" ON public.products;
 CREATE POLICY "Users can delete own products"
     ON public.products
     FOR DELETE
@@ -105,6 +109,7 @@ CREATE POLICY "Users can delete own products"
 -- ------------------------------------------------------------------------------
 -- PURCHASES POLICIES (Indirect Ownership via Linked Product)
 -- ------------------------------------------------------------------------------
+DROP POLICY IF EXISTS "Users can read purchases of own products" ON public.purchases;
 CREATE POLICY "Users can read purchases of own products"
     ON public.purchases
     FOR SELECT
@@ -116,6 +121,7 @@ CREATE POLICY "Users can read purchases of own products"
         )
     );
 
+DROP POLICY IF EXISTS "Users can insert purchases for own products" ON public.purchases;
 CREATE POLICY "Users can insert purchases for own products"
     ON public.purchases
     FOR INSERT
@@ -127,6 +133,7 @@ CREATE POLICY "Users can insert purchases for own products"
         )
     );
 
+DROP POLICY IF EXISTS "Users can update purchases of own products" ON public.purchases;
 CREATE POLICY "Users can update purchases of own products"
     ON public.purchases
     FOR UPDATE
@@ -145,6 +152,7 @@ CREATE POLICY "Users can update purchases of own products"
         )
     );
 
+DROP POLICY IF EXISTS "Users can delete purchases of own products" ON public.purchases;
 CREATE POLICY "Users can delete purchases of own products"
     ON public.purchases
     FOR DELETE
@@ -159,6 +167,7 @@ CREATE POLICY "Users can delete purchases of own products"
 -- ------------------------------------------------------------------------------
 -- USAGE PERIODS POLICIES (Indirect Ownership + Product/Purchase Integrity)
 -- ------------------------------------------------------------------------------
+DROP POLICY IF EXISTS "Users can read usage periods of own products" ON public.usage_periods;
 CREATE POLICY "Users can read usage periods of own products"
     ON public.usage_periods
     FOR SELECT
@@ -170,6 +179,7 @@ CREATE POLICY "Users can read usage periods of own products"
         )
     );
 
+DROP POLICY IF EXISTS "Users can insert usage periods for own products and purchases" ON public.usage_periods;
 CREATE POLICY "Users can insert usage periods for own products and purchases"
     ON public.usage_periods
     FOR INSERT
@@ -183,6 +193,7 @@ CREATE POLICY "Users can insert usage periods for own products and purchases"
         )
     );
 
+DROP POLICY IF EXISTS "Users can update usage periods of own products" ON public.usage_periods;
 CREATE POLICY "Users can update usage periods of own products"
     ON public.usage_periods
     FOR UPDATE
@@ -201,6 +212,7 @@ CREATE POLICY "Users can update usage periods of own products"
         )
     );
 
+DROP POLICY IF EXISTS "Users can delete usage periods of own products" ON public.usage_periods;
 CREATE POLICY "Users can delete usage periods of own products"
     ON public.usage_periods
     FOR DELETE
@@ -250,11 +262,13 @@ WHERE status = 'planned';
 -- ------------------------------------------------------------------------------
 ALTER TABLE public.restock_plans ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can read own restock plans" ON public.restock_plans;
 CREATE POLICY "Users can read own restock plans"
     ON public.restock_plans
     FOR SELECT
     USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own restock plans" ON public.restock_plans;
 CREATE POLICY "Users can insert own restock plans"
     ON public.restock_plans
     FOR INSERT
@@ -269,12 +283,14 @@ CREATE POLICY "Users can insert own restock plans"
         )
     );
 
+DROP POLICY IF EXISTS "Users can update own restock plans" ON public.restock_plans;
 CREATE POLICY "Users can update own restock plans"
     ON public.restock_plans
     FOR UPDATE
     USING (auth.uid() = user_id)
     WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own restock plans" ON public.restock_plans;
 CREATE POLICY "Users can delete own restock plans"
     ON public.restock_plans
     FOR DELETE
