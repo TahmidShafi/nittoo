@@ -1,0 +1,34 @@
+name: Supabase Keep-Alive
+
+on:
+  schedule:
+    - cron: '0 0 */3 * *'
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    name: Ping Supabase REST Endpoint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Verify required secrets are configured
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "ERROR: SUPABASE_URL and SUPABASE_ANON_KEY repository secrets must be set." >&2
+            exit 1
+          fi
+
+      - name: Perform minimal REST read to prevent free-tier pause
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          BASE_URL="${SUPABASE_URL%/}"
+          curl -fsS \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            "${BASE_URL}/rest/v1/products?select=id&limit=1" > /dev/null
+          echo "Supabase keep-alive ping succeeded."

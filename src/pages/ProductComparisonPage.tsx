@@ -18,15 +18,16 @@ export const ProductComparisonPage: React.FC = () => {
   usePageMeta({ title: 'Product Comparison', noindex: true });
 
   const { user } = useAuth();
+  const userId = user?.id;
   const [searchParams, setSearchParams] = useSearchParams();
 
   const baseId = searchParams.get('base') || '';
   const targetId = searchParams.get('target') || '';
 
   // Instant SWR state initialization from in-memory cache
-  const cachedProds = user?.id ? dataCache.get<Product[]>(user.id, 'all-products') : null;
-  const cachedA = user?.id && baseId ? dataCache.get<ProductWithHistory>(user.id, `product:${baseId}`) : null;
-  const cachedB = user?.id && targetId ? dataCache.get<ProductWithHistory>(user.id, `product:${targetId}`) : null;
+  const cachedProds = userId ? dataCache.get<Product[]>(userId, 'all-products') : null;
+  const cachedA = userId && baseId ? dataCache.get<ProductWithHistory>(userId, `product:${baseId}`) : null;
+  const cachedB = userId && targetId ? dataCache.get<ProductWithHistory>(userId, `product:${targetId}`) : null;
   const hasBothCached = (!baseId || !!cachedA) && (!targetId || !!cachedB);
 
   // Data State
@@ -43,32 +44,37 @@ export const ProductComparisonPage: React.FC = () => {
   // Search filter for comparison product selector
   const [searchQuery, setSearchQuery] = useState('');
 
-  // 1. Load User Tracked Products with SWR
+  // 1. Load User Tracked Products with SWR (re-hydrates or clears on account switch)
   useEffect(() => {
-    if (!user?.id) return;
+    if (!userId) {
+      setAllProducts([]);
+      setHistoryA(null);
+      setHistoryB(null);
+      return;
+    }
     let mounted = true;
+    const activeUserId = userId;
 
     async function loadProducts() {
       try {
-        const prods = await db.getAllUserProducts(user!.id);
-        dataCache.set(user!.id, 'all-products', prods);
+        const prods = await db.getAllUserProducts(activeUserId);
+        dataCache.set(activeUserId, 'all-products', prods);
         if (mounted) setAllProducts((prev) => (areValuesEqual(prev, prods) ? prev : prods));
       } catch (err) {
         console.error('Failed to load user products:', err);
       }
     }
 
-    const entry = dataCache.get<Product[]>(user.id, 'all-products');
-    if (!entry) {
-      loadProducts();
-    } else if (dataCache.isStale(entry)) {
+    const entry = dataCache.get<Product[]>(activeUserId, 'all-products');
+    setAllProducts(entry?.data ?? []);
+    if (!entry || dataCache.isStale(entry)) {
       loadProducts();
     }
 
     return () => {
       mounted = false;
     };
-  }, [user?.id]);
+  }, [userId]);
 
   // 2. Load Histories for Base and Target Products (Batched & Stale-while-revalidate)
   const loadHistories = useCallback(

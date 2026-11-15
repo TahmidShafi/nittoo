@@ -6,6 +6,8 @@
 
 A modern, high-precision personal essentials tracker for everyday consumables: skincare, haircare, oral care, household supplies, and daily essentials.
 
+[![CI](https://github.com/TahmidShafi/nittoo/actions/workflows/ci.yml/badge.svg)](https://github.com/TahmidShafi/nittoo/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/badge/Coverage-80.65%25_src%2Flib-2D6A4F)](.github/workflows/ci.yml)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-6-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
@@ -372,36 +374,24 @@ To connect Nittoo to a live Supabase backend:
 
 ## 🧪 Automated Verification & Test Suite
 
-Nittoo was engineered with a strict quality-gate methodology. Every stage has a dedicated automated verification script that tests real business logic, database constraints, and security boundaries.
+Nittoo uses **Vitest** for unit/domain tests, **Playwright** for end-to-end and SEO/PWA checks against the production build, **ESLint** + **TypeScript** for static checks, and standalone integration scripts in `scripts/integration/` for live Supabase and browser verification.
 
-Run any verification script with `npm run`:
-
-| Command | Focus Area | What It Validates |
+| Command | Tool / Scope | What It Validates |
 | :--- | :--- | :--- |
-| `npm run verify:auth` | Authentication | Deterministic mock IDs, session persistence, logout, multi-user isolation |
-| `npm run verify:data` | Data Layer | CRUD operations, foreign key cascades, storage adapter abstraction |
-| `npm run verify:add-product` | Product Creation | Free-form inputs, instant usage opening, purchase logging |
-| `npm run verify:dashboard` | Dashboard Engine | Filtering, search, overdue categorization, runout sort order |
-| `npm run verify:product-detail` | Lifecycle Operations | Bottle finish flow, repeat purchases, timeline calculations |
-| `npm run verify:analytics` | Consumption Intelligence | 30-day run rate, upcoming rebuys sort order, efficiency rankings |
-| `npm run verify:walkthrough` | End-to-End Simulation | Complete user journey from signup to multiple bottle lifecycles |
-| `npm run verify:supabase` | Cloud Integration | Live database connectivity, table schema verification, client detection |
-| `npm run verify:unopened` | Unopened Lifecycle | Storage, backup purchases, separate purchase/usage, and activation |
-| `npm run verify:edit-inventory` | Edit Current Inventory | In-place metadata, purchase, and opened date editing without duplication |
-| `npm run verify:inventory` | Inventory Management UX | Derived inventory query, Active vs Unopened sections, Add Inventory flow |
-| `npm run verify:comparison` | Product Comparison & Value Intelligence | 1-on-1 personal comparison, unit economics, observed vs predicted isolation, deterministic insights |
-| `npm run verify:confidence` | Prediction Confidence & Evidence | 5 deterministic evidence states, cycle-count maturity, non-invasive calculation isolation |
-| `npm run verify:account` | Account Settings UX | Quiet document layout, email change, password update, global session signout, data export, and account deletion |
-| `npm run verify:export` | Data Export System | Excel (.xlsx), CSV (.zip), PDF report, and JSON backup generation & integrity |
-| `npm run verify:restore` | Data Restore & Import | Schema validation, user ID isolation, active bottle conflicts, safe merge, and idempotency |
-| `npm run verify:rls` | Security & RLS | **Two-account live RLS audit**: verifies Account B cannot read, write, update, or delete Account A's data |
-| `npm run verify:audit` | 9-Domain Full Audit | 100% comprehensive production audit across all 9 architectural domains |
+| `npm test` | Vitest | Unit and domain tests across `src/` (prediction, analytics, confidence, comparison, restock, restore, discovery, mock DB, SWR cache, auth, export, demo seed) |
+| `npm run test:coverage` | Vitest + V8 | Unit tests with coverage reporting across `src/lib/` |
+| `npm run test:e2e` | Playwright | End-to-end smoke, Supabase resilience, auth flash, and SEO/PWA checks against `vite preview` |
+| `npm run lint` | ESLint | Flat-config TypeScript and React Hooks lint rules |
+| `npm run integration:supabase` | Live Supabase | Database connectivity, schema verification, and client detection |
+| `npm run integration:rls` | Live/Local Supabase | **Two-account RLS audit**: verifies Account B cannot read, write, update, or delete Account A's data |
+| `npm run integration:audit` | Live Supabase | Comprehensive multi-domain integration audit |
+| `npm run integration:chrome` | Headless Chrome | Live browser smoke verification |
 
-### Running the Live Two-Account RLS Audit
+### Running the Two-Account RLS Audit
 ```bash
-npm run verify:rls
+npm run integration:rls
 ```
-*Tests complete tenant isolation using two real authenticated Supabase accounts against the live cloud database.*
+*Tests complete tenant isolation using two authenticated Supabase accounts (reads `TEST_USER_A_*` / `TEST_USER_B_*` from `.env`, or auto-registers ephemeral accounts via `signUp` on local Supabase).*
 
 ---
 

@@ -26,7 +26,7 @@ export async function executeRestore(
   try {
     const result = await dataSource.importUserData(currentUserId, input);
     return result;
-  } catch (err: any) {
+  } catch (err: unknown) {
     return {
       success: false,
       restoredProducts: 0,
@@ -34,7 +34,7 @@ export async function executeRestore(
       restoredCycles: 0,
       restoredUnopened: 0,
       skippedConflicts: plan.activeConflicts.length,
-      error: err?.message || 'Failed to restore backup data.',
+      error: err instanceof Error ? err.message : 'Failed to restore backup data.',
     };
   }
 }

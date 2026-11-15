@@ -44,7 +44,7 @@ export async function buildImportPlan(
   // Track currently active products
   const activeProductIds = new Set<string>();
   for (const activeItem of currentInventory.active) {
-    const pId = activeItem.id || (activeItem as any).product?.id;
+    const pId = activeItem.id || (activeItem as { product?: { id?: string } }).product?.id;
     if (pId) activeProductIds.add(pId);
   }
   for (const u of existingUsage) {
@@ -128,7 +128,7 @@ export async function buildImportPlan(
         price: bpu.price,
         currency: bpu.currency || 'BDT',
         store_vendor: bpu.store_vendor ? (bpu.store_vendor.trim() || null) : null,
-        created_at: (bpu as any).created_at,
+        created_at: (bpu as { created_at?: string }).created_at,
       });
     }
   }
@@ -149,7 +149,10 @@ export async function buildImportPlan(
   let historicalCyclesCount = 0;
   let activeUsageCount = 0;
 
-  const rawUsageList = backupData.usage_history || (backupData as any).usage_periods || [];
+  const rawUsageList =
+    backupData.usage_history ||
+    (backupData as { usage_periods?: typeof backupData.usage_history }).usage_periods ||
+    [];
 
   for (const bu of rawUsageList) {
     const effectiveProductId = productMapping.get(bu.product_id);
@@ -181,7 +184,7 @@ export async function buildImportPlan(
         opened_date: bu.opened_date,
         finished_date: bu.finished_date || bu.opened_date,
         status: 'finished',
-        created_at: (bu as any).created_at,
+        created_at: (bu as { created_at?: string }).created_at,
       });
     } else {
       // Active bottle
@@ -208,7 +211,7 @@ export async function buildImportPlan(
           opened_date: bu.opened_date,
           finished_date: null,
           status: 'active',
-          created_at: (bu as any).created_at,
+          created_at: (bu as { created_at?: string }).created_at,
         });
       }
     }
@@ -257,7 +260,7 @@ export async function buildImportPlan(
       reminder_date: brp.reminder_date,
       status: brp.status,
       created_at: brp.created_at,
-      completed_at: (brp as any).completed_at ?? null,
+      completed_at: (brp as { completed_at?: string | null }).completed_at ?? null,
     });
   }
 

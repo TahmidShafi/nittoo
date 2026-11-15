@@ -98,9 +98,9 @@ export const RestoreDataModal: React.FC<RestoreDataModalProps> = ({
       const plan = await buildImportPlan(validation.backupData, user.id, db);
       setImportPlan(plan);
       setStep('preview');
-    } catch (err: any) {
+    } catch (err: unknown) {
       setErrorMessage("That file isn't a valid Nittoo backup.");
-      setErrorDetails(err?.message || 'Failed to inspect backup file.');
+      setErrorDetails(err instanceof Error ? err.message : 'Failed to inspect backup file.');
     } finally {
       setIsValidating(false);
     }
@@ -149,9 +149,9 @@ export const RestoreDataModal: React.FC<RestoreDataModalProps> = ({
       }
       setExecutionResult(result);
       setStep('complete');
-    } catch (err: any) {
+    } catch (err: unknown) {
       setErrorMessage("Couldn't restore this backup.");
-      setErrorDetails(err?.message || 'No changes were made.');
+      setErrorDetails(err instanceof Error ? err.message : 'No changes were made.');
       setStep('preview');
     }
   };

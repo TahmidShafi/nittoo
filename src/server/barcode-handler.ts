@@ -13,7 +13,10 @@ import {
 export { lookupUpcItemDbServer };
 
 export async function handleBarcodeApiRequest(
-  req: IncomingMessage & { body?: any; query?: any },
+  req: IncomingMessage & {
+    body?: Record<string, unknown>;
+    query?: Record<string, string | string[] | undefined>;
+  },
   res: ServerResponse
 ): Promise<void> {
   const originHeader = Array.isArray(req.headers.origin)
@@ -65,7 +68,8 @@ export async function handleBarcodeApiRequest(
       '';
   } else if (req.method === 'POST') {
     if (req.body && typeof req.body === 'object') {
-      barcode = req.body.barcode || req.body.upc || '';
+      const rawBarcode = req.body.barcode ?? req.body.upc;
+      barcode = typeof rawBarcode === 'string' ? rawBarcode : '';
     } else {
       const chunks: Buffer[] = [];
       for await (const chunk of req) {

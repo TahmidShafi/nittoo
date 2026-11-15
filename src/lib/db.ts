@@ -82,7 +82,7 @@ export class SupabaseDatabase implements IDataSource {
         ? input.store_vendor.trim() || null
         : null;
 
-    const insertPayload: Record<string, any> = {
+    const insertPayload: Record<string, unknown> = {
       product_id: input.product_id,
       purchase_date: input.purchase_date,
       price: input.price,
@@ -339,7 +339,7 @@ export class SupabaseDatabase implements IDataSource {
       }
     }
 
-    const updatePayload: Record<string, any> = {
+    const updatePayload: Record<string, unknown> = {
       purchase_date: input.purchase_date,
       price: input.price,
       currency: input.currency.trim() || 'BDT',
@@ -950,7 +950,7 @@ export class SupabaseDatabase implements IDataSource {
       if (existingProductIdSet.has(p.id)) {
         productIdMap.set(p.id, p.id);
       } else {
-        const insertPayload: any = {
+        const insertPayload: Record<string, unknown> = {
           user_id: userId,
           name: p.name.trim(),
           category: p.category,
@@ -1019,7 +1019,7 @@ export class SupabaseDatabase implements IDataSource {
       if (existingPurchaseIdSet.has(pu.id)) {
         purchaseIdMap.set(pu.id, pu.id);
       } else {
-        const insertPayload: any = {
+        const insertPayload: Record<string, unknown> = {
           product_id: targetProductId,
           purchase_date: pu.purchase_date,
           price: Number(pu.price),
@@ -1101,7 +1101,7 @@ export class SupabaseDatabase implements IDataSource {
           // Active bottle conflict! Keep current active bottle, backup active record remains unopened
           skippedConflicts++;
         } else {
-          const insertPayload: any = {
+          const insertPayload: Record<string, unknown> = {
             product_id: targetProductId,
             purchase_id: targetPurchaseId,
             opened_date: u.opened_date,
@@ -1133,7 +1133,7 @@ export class SupabaseDatabase implements IDataSource {
         }
       } else {
         // Historical finished cycle
-        const insertPayload: any = {
+        const insertPayload: Record<string, unknown> = {
           product_id: targetProductId,
           purchase_id: targetPurchaseId,
           opened_date: u.opened_date,
@@ -1198,7 +1198,7 @@ export class SupabaseDatabase implements IDataSource {
         if (existingPlanIdSet.has(rp.id)) continue;
         if (rp.status === 'planned' && plannedUsageIds.has(targetUsageId)) continue;
 
-        const insertPayload: any = {
+        const insertPayload: Record<string, unknown> = {
           user_id: userId,
           product_id: targetProductId,
           usage_period_id: targetUsageId,
@@ -1395,7 +1395,7 @@ export class SupabaseDatabase implements IDataSource {
       throw new Error(`Invalid reminder date: "${input.reminder_date}"`);
     }
 
-    const payload: Record<string, any> = {};
+    const payload: Record<string, unknown> = {};
     if (input.mode !== undefined) payload.mode = input.mode;
     if (input.mode === 'custom') {
       payload.days_before_finish = null;
