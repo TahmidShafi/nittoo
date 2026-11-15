@@ -116,6 +116,7 @@ def simulate_households(
         "duplicate_purchase": 0,
         "outlier_1000_day": 0,
         "finished_before_opened": 0,
+        "subtle_duration_outlier": 0,
     }
     ground_truth_records: list[dict[str, object]] = []
     fault_records: list[dict[str, object]] = []
@@ -172,6 +173,10 @@ def simulate_households(
                 days_since_start = (purchase_date - start_date).days
                 price = _compute_price(rng, tpl, current_size, days_since_start, vendor)
 
+                default_size = float(tpl.sizes[0])
+                size_override = current_size if current_size != default_size else None
+                unit_override = tpl.unit if size_override is not None else None
+
                 pur_id = f"{hh_id}-pur-{tpl.slug}-{cycle_num:02d}"
                 pur_row: dict[str, object] = {
                     "id": pur_id,
@@ -183,6 +188,8 @@ def simulate_households(
                     "price": price,
                     "currency": "BDT",
                     "store_vendor": vendor,
+                    "size_value": size_override,
+                    "size_unit": unit_override,
                 }
                 purchases.append(pur_row)
 
@@ -212,7 +219,7 @@ def simulate_households(
                     finished_date = expected_finish
                     days_used = (finished_date - opened_date).days
 
-                    # ~1.5% fault injection across finished cycles (~2% total across all faults)
+                    # ~2.0% fault injection across finished cycles
                     fault_roll = rng.random()
                     if fault_roll < 0.005:
                         finished_date = opened_date
@@ -247,6 +254,24 @@ def simulate_households(
                         fault_records.append(
                             {
                                 "fault_type": "finished_before_opened",
+                                "entity_type": "usage_period",
+                                "record_id": use_id,
+                                "source_file": f"{hh_id}.json",
+                                "household_id": hh_id,
+                            }
+                        )
+                    elif fault_roll < 0.020:
+                        factor = (
+                            float(rng.uniform(2.5, 6.0))
+                            if rng.random() < 0.5
+                            else float(rng.uniform(0.2, 0.4))
+                        )
+                        days_used = max(1, round(true_duration * factor))
+                        finished_date = opened_date + timedelta(days=days_used)
+                        fault_counts["subtle_duration_outlier"] += 1
+                        fault_records.append(
+                            {
+                                "fault_type": "subtle_duration_outlier",
                                 "entity_type": "usage_period",
                                 "record_id": use_id,
                                 "source_file": f"{hh_id}.json",
@@ -325,6 +350,8 @@ def simulate_households(
                                 "price": backup_price,
                                 "currency": "BDT",
                                 "store_vendor": last_vendor,
+                                "size_value": size_override,
+                                "size_unit": unit_override,
                             }
                         )
                         unopened_count += 1
@@ -410,7 +437,7 @@ def simulate_households(
             )
 
         export_payload = {
-            "version": "1.0.0",
+            "version": "1.1.0",
             "exported_at": f"{reference_date.isoformat()}T10:00:00.000Z",
             "user": {"id": hh_id, "email": hh_email},
             "summary": {

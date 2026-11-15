@@ -78,6 +78,7 @@ def test_fault_rate_near_2_percent_with_all_types_present(tmp_path: Path) -> Non
         "duplicate_purchase",
         "outlier_1000_day",
         "finished_before_opened",
+        "subtle_duration_outlier",
     }
     assert set(stats.injected_faults.keys()) == expected_types
     for fault_type in expected_types:
