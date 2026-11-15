@@ -4,7 +4,16 @@ from statistics import median
 
 import duckdb
 
+from nittoo_lab.config import (
+    CLEAN_FPR_CEILING,
+    DETECTOR_PRECISION_FLOOR,
+    DETECTOR_RECALL_FLOOR,
+    RATE_RECOVERY_REL_TOL,
+    SUBTLE_OUTLIER_PRECISION_FLOOR,
+    SUBTLE_OUTLIER_RECALL_FLOOR,
+)
 from nittoo_lab.ingest.loader import ingest_exports
+from nittoo_lab.reporting.generator import generate_data_quality_report
 from nittoo_lab.simulate.generator import simulate_households
 from nittoo_lab.transform.runner import run_dbt_pipeline
 
@@ -32,96 +41,273 @@ def test_dbt_run_test_and_docs_end_to_end(tmp_path: Path) -> None:
     assert res.docs_generated is True
 
 
-def test_dbt_flags_catch_at_least_95_percent_of_injected_faults(tmp_path: Path) -> None:
+def test_detector_precision_recall_and_clean_fpr_meet_frozen_floors(tmp_path: Path) -> None:
     exports_dir = tmp_path / "exports"
     gt_path = tmp_path / "true_rates.json"
+    fm_path = tmp_path / "injected_faults.json"
     db_path = tmp_path / "nittoo.duckdb"
+    report_path = tmp_path / "data_quality.md"
 
-    sim = simulate_households(
-        households=80, months=24, seed=42, exports_dir=exports_dir, ground_truth_path=gt_path
+    simulate_households(
+        households=100,
+        months=24,
+        seed=42,
+        exports_dir=exports_dir,
+        ground_truth_path=gt_path,
+        faults_manifest_path=fm_path,
     )
     ingest_exports(exports_dir=exports_dir, db_path=db_path)
     run_dbt_pipeline(db_path=db_path, generate_docs=False)
 
-    con = duckdb.connect(str(db_path), read_only=True)
-    try:
-        zero_day_flagged, outlier_flagged = con.execute(
-            """
-            SELECT
-                SUM(CASE WHEN is_zero_day THEN 1 ELSE 0 END),
-                SUM(CASE WHEN is_duration_outlier THEN 1 ELSE 0 END)
-            FROM main_marts.fact_consumption_cycle
-            """
-        ).fetchone()
-        dup_flagged = con.execute(
-            "SELECT COUNT(*) FROM main_staging.stg_purchase_duplicates"
-        ).fetchone()[0]
-    finally:
-        con.close()
+    rr_path = Path(__file__).resolve().parent.parent / "dbt" / "target" / "run_results.json"
+    rep = generate_data_quality_report(
+        db_path=db_path,
+        run_results_path=rr_path,
+        report_path=report_path,
+        faults_manifest_path=fm_path,
+    )
+    by_type = {r.fault_type: r for r in rep.fault_recall}
 
-    assert zero_day_flagged >= 0.95 * sim.injected_faults["zero_day_cycle"]
-    assert outlier_flagged >= 0.95 * sim.injected_faults["outlier_1000_day"]
-    assert dup_flagged >= 0.95 * sim.injected_faults["duplicate_purchase"]
+    for ftype in ("finished_before_opened", "zero_day_cycle", "duplicate_purchase"):
+        row = by_type[ftype]
+        assert row.recall_pct >= DETECTOR_RECALL_FLOOR * 100.0, f"{ftype}: {row}"
+        assert row.precision_pct >= DETECTOR_PRECISION_FLOOR * 100.0, f"{ftype}: {row}"
+
+    extreme_row = by_type["outlier_1000_day"]
+    assert extreme_row.recall_pct >= DETECTOR_RECALL_FLOOR * 100.0, extreme_row
+    assert extreme_row.precision_pct >= DETECTOR_PRECISION_FLOOR * 100.0, extreme_row
+
+    subtle_row = by_type["subtle_duration_outlier"]
+    assert subtle_row.recall_pct >= SUBTLE_OUTLIER_RECALL_FLOOR * 100.0, subtle_row
+    assert subtle_row.precision_pct >= SUBTLE_OUTLIER_PRECISION_FLOOR * 100.0, subtle_row
+
+    assert rep.clean_cycle_fpr_pct <= CLEAN_FPR_CEILING * 100.0, (
+        f"clean FPR {rep.clean_cycle_fpr_pct}% > {CLEAN_FPR_CEILING * 100.0}%"
+    )
 
 
-def test_recovered_mean_consumption_rate_matches_ground_truth(tmp_path: Path) -> None:
+def test_recovered_consumption_rate_matches_ground_truth_across_all_clean_cycles(
+    tmp_path: Path,
+) -> None:
     exports_dir = tmp_path / "exports"
     gt_path = tmp_path / "true_rates.json"
+    fm_path = tmp_path / "injected_faults.json"
     db_path = tmp_path / "nittoo.duckdb"
 
     simulate_households(
-        households=80, months=24, seed=42, exports_dir=exports_dir, ground_truth_path=gt_path
+        households=80,
+        months=24,
+        seed=42,
+        exports_dir=exports_dir,
+        ground_truth_path=gt_path,
+        faults_manifest_path=fm_path,
     )
     ingest_exports(exports_dir=exports_dir, db_path=db_path)
     run_dbt_pipeline(db_path=db_path, generate_docs=False)
 
     gt = json.loads(gt_path.read_text(encoding="utf-8"))
-    prod_info = {
-        rec["product_id"]: (rec["archetype_slug"], float(rec["true_consumption_rate_per_day"]))
+    true_rates = {
+        rec["product_id"]: float(rec["true_consumption_rate_per_day"])
         for rec in gt["records"]
+    }
+    fault_ids = {
+        f["record_id"]
+        for f in json.loads(fm_path.read_text(encoding="utf-8"))["faults"]
+        if f.get("entity_type") == "usage_period"
     }
 
     con = duckdb.connect(str(db_path), read_only=True)
     try:
         rows = con.execute(
             """
-            WITH stable_products AS (
-                SELECT product_id
-                FROM main_staging.stg_purchases
-                GROUP BY product_id
-                HAVING MAX(price) * 1.0 / NULLIF(MIN(price), 0) <= 1.35
-            )
             SELECT
-                f.product_id,
-                AVG(f.consumption_rate_per_day) AS prod_mean_rate,
-                COUNT(*) AS cnt
-            FROM main_marts.fact_consumption_cycle AS f
-            INNER JOIN stable_products AS sp ON f.product_id = sp.product_id
-            WHERE f.is_valid_for_forecasting = true
-              AND f.status = 'completed'
-              AND f.consumption_rate_per_day IS NOT NULL
-              AND f.duration_days > 0
-            GROUP BY f.product_id
-            HAVING COUNT(*) >= 2
+                usage_period_id,
+                product_id,
+                consumption_rate_per_day,
+                size_changed_from_previous
+            FROM main_marts.fact_consumption_cycle
+            WHERE is_valid_for_forecasting = true
+              AND status = 'completed'
+              AND consumption_rate_per_day IS NOT NULL
+              AND duration_days > 0
             """
         ).fetchall()
     finally:
         con.close()
 
-    by_arch_rec: dict[str, list[float]] = {}
-    by_arch_true: dict[str, list[float]] = {}
-    for prod_id, prod_mean_rate, _cnt in rows:
-        arch, true_rate = prod_info[str(prod_id)]
-        by_arch_rec.setdefault(arch, []).append(float(prod_mean_rate))
-        by_arch_true.setdefault(arch, []).append(true_rate)
-
-    checked = 0
-    for arch, rec_vals in by_arch_rec.items():
-        if len(rec_vals) < 3:
+    by_prod: dict[str, list[float]] = {}
+    switched_prods: set[str] = set()
+    for uid, pid, rate, size_changed in rows:
+        if str(uid) in fault_ids:
             continue
-        checked += 1
-        rec_med = median(rec_vals)
-        true_med = median(by_arch_true[arch])
-        rel_err = abs(rec_med - true_med) / true_med
-        assert rel_err <= 0.25, f"{arch}: recovered={rec_med:.3f} vs true={true_med:.3f}"
-    assert checked >= 5
+        by_prod.setdefault(str(pid), []).append(float(rate))
+        if size_changed:
+            switched_prods.add(str(pid))
+
+    rel_errors: list[float] = []
+    switched_rel_errors: list[float] = []
+    for pid, rates in by_prod.items():
+        if len(rates) < 3:
+            continue
+        err = abs(median(rates) - true_rates[pid]) / true_rates[pid]
+        rel_errors.append(err)
+        if pid in switched_prods:
+            switched_rel_errors.append(err)
+
+    assert len(rel_errors) >= 100
+    assert len(switched_rel_errors) >= 10
+    assert median(rel_errors) <= RATE_RECOVERY_REL_TOL
+    assert median(switched_rel_errors) <= RATE_RECOVERY_REL_TOL
+
+
+def test_size_switch_propagation_and_size_changed_from_previous(tmp_path: Path) -> None:
+    exports_dir = tmp_path / "exports"
+    exports_dir.mkdir(parents=True, exist_ok=True)
+    db_path = tmp_path / "nittoo.duckdb"
+
+    payload = {
+        "version": "1.1.0",
+        "exported_at": "2026-11-15T10:00:00.000Z",
+        "user": {"id": "u-size", "email": "u-size@example.com"},
+        "summary": {
+            "total_products": 1,
+            "total_purchases": 3,
+            "active_essentials": 0,
+            "unopened_purchases": 0,
+            "completed_usage_cycles": 3,
+            "estimated_monthly_consumption": None,
+            "categories": ["Skincare"],
+            "category_breakdown": [],
+        },
+        "products": [
+            {
+                "id": "p-1",
+                "name": "Cleanser",
+                "brand": "CeraVe",
+                "category": "Skincare",
+                "size": 236,
+                "unit": "ml",
+                "created_at": "2026-01-01T00:00:00.000Z",
+            }
+        ],
+        "purchases": [
+            {
+                "id": "pu-1",
+                "product_id": "p-1",
+                "product_name": "Cleanser",
+                "brand": "CeraVe",
+                "category": "Skincare",
+                "purchase_date": "2026-01-01",
+                "price": 1000,
+                "currency": "BDT",
+                "store_vendor": "Shajgoj",
+                "size_value": None,
+                "size_unit": None,
+            },
+            {
+                "id": "pu-2",
+                "product_id": "p-1",
+                "product_name": "Cleanser",
+                "brand": "CeraVe",
+                "category": "Skincare",
+                "purchase_date": "2026-03-01",
+                "price": 1800,
+                "currency": "BDT",
+                "store_vendor": "Shajgoj",
+                "size_value": 473,
+                "size_unit": "ml",
+            },
+            {
+                "id": "pu-3",
+                "product_id": "p-1",
+                "product_name": "Cleanser",
+                "brand": "CeraVe",
+                "category": "Skincare",
+                "purchase_date": "2026-07-01",
+                "price": 1800,
+                "currency": "BDT",
+                "store_vendor": "Shajgoj",
+                "size_value": 473,
+                "size_unit": "ml",
+            },
+        ],
+        "usage_periods": [
+            {
+                "id": "up-1",
+                "product_id": "p-1",
+                "product_name": "Cleanser",
+                "purchase_id": "pu-1",
+                "opened_date": "2026-01-02",
+                "finished_date": "2026-02-28",
+                "status": "completed",
+                "days_used": 57,
+                "purchase_price": 1000,
+                "currency": "BDT",
+                "cost_per_day": 17.54,
+            },
+            {
+                "id": "up-2",
+                "product_id": "p-1",
+                "product_name": "Cleanser",
+                "purchase_id": "pu-2",
+                "opened_date": "2026-03-02",
+                "finished_date": "2026-06-28",
+                "status": "completed",
+                "days_used": 118,
+                "purchase_price": 1800,
+                "currency": "BDT",
+                "cost_per_day": 15.25,
+            },
+            {
+                "id": "up-3",
+                "product_id": "p-1",
+                "product_name": "Cleanser",
+                "purchase_id": "pu-3",
+                "opened_date": "2026-07-02",
+                "finished_date": "2026-10-28",
+                "status": "completed",
+                "days_used": 118,
+                "purchase_price": 1800,
+                "currency": "BDT",
+                "cost_per_day": 15.25,
+            },
+        ],
+        "inventory": [],
+        "analytics": [],
+        "insights": [],
+        "restock_plans": [],
+    }
+    (exports_dir / "u_size.json").write_text(json.dumps(payload), encoding="utf-8")
+
+    ingest_exports(exports_dir=exports_dir, db_path=db_path)
+    run_dbt_pipeline(db_path=db_path, generate_docs=False)
+
+    con = duckdb.connect(str(db_path), read_only=True)
+    try:
+        raw_sizes = con.execute(
+            "SELECT id, size_value, size_unit FROM raw.purchases ORDER BY id"
+        ).fetchall()
+        cycles = con.execute(
+            """
+            SELECT
+                usage_period_id,
+                effective_size_value,
+                effective_size_unit,
+                size_changed_from_previous
+            FROM main_marts.fact_consumption_cycle
+            ORDER BY opened_date
+            """
+        ).fetchall()
+    finally:
+        con.close()
+
+    assert raw_sizes == [
+        ("pu-1", None, None),
+        ("pu-2", 473.0, "ml"),
+        ("pu-3", 473.0, "ml"),
+    ]
+    assert cycles == [
+        ("up-1", 236.0, "ml", False),
+        ("up-2", 473.0, "ml", True),
+        ("up-3", 473.0, "ml", False),
+    ]
