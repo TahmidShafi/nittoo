@@ -1,7 +1,7 @@
 # Nittoo Forecast Lab — Rolling-Origin Backtest Report
 
-Generated at: `2026-11-15T13:57:46+00:00`  
-Scale: `500 households x 24 months` | Seed: `4001 (holdout) / 7 (dev) / 4002 (2.5x noise)` | Git commit: `53e6209`  
+Generated at: `2026-11-15T14:07:52+00:00`  
+Scale: `500 households x 24 months` | Seed: `4001 (holdout) / 7 (dev) / 4002 (2.5x noise) / 4003 (eps=0.3) / 4004 (eps=0.6)` | Git commit: `0728b1e`  
 Config: `MIN_TRAIN_CYCLES=2`, `EWMA_DURATION_ALPHA=0.85`, `EWMA_RATE_ALPHA=0.25`, `BONFERRONI_CI=99.58%` (`m=12`).
 
 ## 1. Selection Rule & Primary Comparison (Rule-Clean Next Cycles)
@@ -128,7 +128,7 @@ Selection metric: MAE on rule-clean next cycles (`n=48,169`, excluding only targ
 
 ## 4. Dev vs Holdout vs High-Noise (`2.5x`) Comparison (Rule-Clean MAE)
 
-| Method | Variant | Dev (seed=7) | Holdout (seed=4001) | High-Noise 2.5x (seed=4002) |
+| Method | Variant | Dev (seed=7) | Holdout (seed=4001, eps=0.0) | High-Noise 2.5x (seed=4002) |
 | :--- | :--- | ---: | ---: | ---: |
 | `baseline` | `none` | 16.70 | 17.42 | 19.62 |
 | `baseline` | `rule_only` | 12.42 | 12.71 | 15.16 |
@@ -144,8 +144,65 @@ Selection metric: MAE on rule-clean next cycles (`n=48,169`, excluding only targ
 | `rate_ewma` | `rule_only` | 4.55 | 4.63 | 9.50 |
 | `rate_ewma` | `rule_plus_rate_outlier` | 4.37 | 4.46 | 9.43 |
 
-## 5. Plain-English Summary
+## 5. Size-History Decomposition (Primary Rule-Clean Targets)
+
+- **Group (a) `constant_size`** (no switch in `1..k` and `k+1` equals history size): `16,613` targets (`34.5%`)
+- **Group (b) `any_size_change`** (at least one switch in `1..k` or `k+1`): `31,556` targets (`65.5%`)
+- **Purchase size overrides (`raw.purchases.size_value IS NOT NULL`):** `23,622 / 62,533` (`37.8%`)
+- **Products with >= 1 size switch:** `3,728 / 4,483` (`83.2%`)
+
+| Method | Variant | (a) Constant Size MAE (d) | (b) Any Size Change MAE (d) |
+| :--- | :--- | ---: | ---: |
+| `baseline` | `none` | 9.48 | 21.59 |
+| `baseline` | `rule_only` | 4.02 | 17.29 |
+| `baseline` | `rule_plus_rate_outlier` | 3.81 | 17.18 |
+| `median_duration` | `rule_only` | 3.86 | 17.62 |
+| `median_duration` | `rule_plus_rate_outlier` | 3.86 | 17.62 |
+| `ewma_duration` | `rule_only` | 4.46 | 12.58 |
+| `ewma_duration` | `rule_plus_rate_outlier` | 4.17 | 12.18 |
+| `rate_mean` | `rule_only` | 3.88 | 4.88 |
+| `rate_mean` | `rule_plus_rate_outlier` | 3.76 | 4.69 |
+| `rate_median` | `rule_only` | 3.84 | 4.78 |
+| `rate_median` | `rule_plus_rate_outlier` | 3.83 | 4.78 |
+| `rate_ewma` | `rule_only` | 3.94 | 4.98 |
+| `rate_ewma` | `rule_plus_rate_outlier` | 3.83 | 4.78 |
+
+## 6. Pack-Size Elasticity Robustness (`rate proportional to size^eps`, 500 x 24)
+
+Evaluation-only stress test with frozen config (no re-selection).
+
+| Method | Variant | Holdout (seed=4001, eps=0.0) | Elasticity eps=0.3 (seed=4003) | Elasticity eps=0.6 (seed=4004) |
+| :--- | :--- | ---: | ---: | ---: |
+| `baseline` | `none` | 17.42 | 13.20 | 10.96 |
+| `baseline` | `rule_only` | 12.71 | 8.83 | 5.62 |
+| `baseline` | `rule_plus_rate_outlier` | 12.57 | 8.72 | 5.55 |
+| `median_duration` | `rule_only` | 12.88 | 8.96 | 5.65 |
+| `median_duration` | `rule_plus_rate_outlier` | 12.87 | 8.96 | 5.67 |
+| `ewma_duration` | `rule_only` | 9.78 | 7.39 | 5.34 |
+| `ewma_duration` | `rule_plus_rate_outlier` | 9.42 | 7.11 | 5.34 |
+| `rate_mean` | `rule_only` | 4.53 | 5.84 | 7.91 |
+| `rate_mean` | `rule_plus_rate_outlier` | 4.37 | 5.76 | 8.36 |
+| `rate_median` | `rule_only` | 4.46 | 6.01 | 8.61 |
+| `rate_median` | `rule_plus_rate_outlier` | 4.45 | 6.01 | 8.73 |
+| `rate_ewma` | `rule_only` | 4.63 | 5.70 | 7.26 |
+| `rate_ewma` | `rule_plus_rate_outlier` | 4.46 | 5.60 | 7.92 |
+
+## 7. Why `EWMA_DURATION_ALPHA = 0.85` Is High
+
+Comparison of `ewma_duration (rule_only)` at `alpha=0.25` vs `alpha=0.85` against `baseline (rule_only)` on rule-clean targets:
+
+| History Group | `baseline (rule_only)` MAE | `ewma (alpha=0.25)` MAE | `ewma (alpha=0.85)` MAE |
+| :--- | ---: | ---: | ---: |
+| `constant_size` | 4.02 | 4.09 | 4.46 |
+| `any_size_change` | 17.29 | 16.14 | 12.58 |
+
+## 8. Plain-English Summary
 
 - **Data cleaning vs method choice:** `baseline (none)` vs `baseline (rule_only)` separates outlier removal from forecasting (`17.42` d vs `12.71` d).
 - **Winner (`rate_mean (rule_plus_rate_outlier)`):** achieves `4.37` d MAE (vs `17.42` d for the current app baseline).
 - **Where the baseline wins / matches:** when pack size does **not** change (`size_changed_from_previous=False`), `baseline (none)` (`15.08` d) is close to `rate_mean` (`4.22` d); on pack-size switches (`size_changed_from_previous=True`), `baseline (none)` degrades to `30.46` d while size-normalized `rate_mean` stays at `5.20` d.
+
+## 9. Limitations
+
+- **Synthetic data assumption:** These results come from a synthetic generator whose baseline (`eps=0.0`) assumes a stable per-household daily consumption rate independent of pack size — the exact property that rate-based methods exploit. The magnitude of the improvement on real Nittoo user histories is therefore unknown.
+- **Sensitivity to pack-size elasticity:** When consumption scales with pack size (`eps=0.3` and `eps=0.6` in Section 6), rate-based MAE degrades substantially because a constant daily rate no longer transfers across pack sizes.
