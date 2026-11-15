@@ -6,6 +6,8 @@
 
 A modern, high-precision personal essentials tracker for everyday consumables: skincare, haircare, oral care, household supplies, and daily essentials.
 
+[![CI](https://github.com/TahmidShafi/nittoo/actions/workflows/ci.yml/badge.svg)](https://github.com/TahmidShafi/nittoo/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/badge/Coverage-80.65%25_src%2Flib-2D6A4F)](.github/workflows/ci.yml)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-6-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
