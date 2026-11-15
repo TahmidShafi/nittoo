@@ -95,6 +95,12 @@ models:
           - not_null
           - accepted_values:
               values: ["completed", "active"]
+      - name: effective_size_value
+        description: "Effective pack size for the cycle: COALESCE(purchase.size_value, product.size_value)."
+      - name: effective_size_unit
+        description: "Effective pack unit for the cycle: COALESCE(purchase.size_unit, product.size_unit)."
+      - name: size_changed_from_previous
+        description: "True if effective_size_value differs from the immediately preceding cycle for the same product_id."
       - name: is_zero_day
         description: "True if completed cycle has 0-day duration."
       - name: is_duration_outlier

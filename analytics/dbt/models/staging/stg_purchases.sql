@@ -15,6 +15,8 @@ with ranked as (
         cast(price as double) as price,
         currency,
         coalesce(nullif(trim(store_vendor), ''), 'Unspecified') as vendor_name,
+        cast(size_value as double) as size_value,
+        size_unit,
         source_file,
         row_number() over (
             partition by id
@@ -34,6 +36,8 @@ select
     price,
     currency,
     vendor_name,
+    size_value,
+    size_unit,
     source_file
 from ranked
 where _rn = 1

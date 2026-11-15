@@ -8,8 +8,8 @@ with base as (
 group_medians as (
     select
         product_name,
-        size_value,
-        size_unit,
+        effective_size_value,
+        effective_size_unit,
         median(duration_days) as median_days
     from base
     where status = 'completed'
@@ -21,15 +21,15 @@ group_medians as (
 group_mads as (
     select
         b.product_name,
-        b.size_value,
-        b.size_unit,
+        b.effective_size_value,
+        b.effective_size_unit,
         m.median_days,
         median(abs(b.duration_days - m.median_days)) as mad_days
     from base as b
     inner join group_medians as m
         on b.product_name = m.product_name
-       and b.size_value is not distinct from m.size_value
-       and b.size_unit is not distinct from m.size_unit
+       and b.effective_size_value is not distinct from m.effective_size_value
+       and b.effective_size_unit is not distinct from m.effective_size_unit
     where b.status = 'completed'
       and b.duration_days is not null
       and b.duration_days > 0
@@ -68,8 +68,8 @@ scored as (
     from base as b
     left join group_mads as gm
         on b.product_name = gm.product_name
-       and b.size_value is not distinct from gm.size_value
-       and b.size_unit is not distinct from gm.size_unit
+       and b.effective_size_value is not distinct from gm.effective_size_value
+       and b.effective_size_unit is not distinct from gm.effective_size_unit
 )
 select
     usage_period_id,
@@ -82,8 +82,9 @@ select
     status,
     brand,
     category,
-    size_value,
-    size_unit,
+    effective_size_value,
+    effective_size_unit,
+    size_changed_from_previous,
     purchase_price,
     currency,
     duration_days,

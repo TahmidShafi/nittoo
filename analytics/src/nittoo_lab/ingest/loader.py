@@ -63,6 +63,8 @@ def _ensure_schema(con: duckdb.DuckDBPyConnection) -> None:
             price DOUBLE NOT NULL,
             currency VARCHAR NOT NULL,
             store_vendor VARCHAR,
+            size_value DOUBLE,
+            size_unit VARCHAR,
             source_file VARCHAR NOT NULL
         )
         """
@@ -237,6 +239,8 @@ def ingest_exports(
                     pu.price,
                     pu.currency,
                     pu.store_vendor,
+                    pu.size_value,
+                    pu.size_unit,
                     fname,
                 )
             )
@@ -340,6 +344,8 @@ def ingest_exports(
                     "price",
                     "currency",
                     "store_vendor",
+                    "size_value",
+                    "size_unit",
                     "source_file",
                 ],
                 purchases_rows,
