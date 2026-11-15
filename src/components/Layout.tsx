@@ -100,19 +100,19 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FBFBFB] text-[#111827]">
-      {/* Persistent Demo Mode Banner */}
+      {/* Persistent Demo Mode Banner (slim, light, compact) */}
       {isDemoMode && (
         <div
           role="status"
-          className="bg-[#2D6A4F] text-white text-xs px-4 py-2 border-b border-[#23533D] animate-banner-in"
+          className="bg-primary-50 text-brand-dark text-xs px-4 py-1.5 border-b border-primary-200/70 animate-banner-in"
         >
-          <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-2">
-            <p className="font-medium">
+          <div className="max-w-6xl mx-auto flex items-center justify-between gap-2">
+            <p className="font-medium truncate">
               Demo — sample data stored only in this browser.{' '}
               <button
                 type="button"
                 onClick={handleDemoSignUp}
-                className="underline font-semibold hover:text-emerald-100 cursor-pointer"
+                className="underline font-semibold text-brand-primary hover:text-brand-dark cursor-pointer"
               >
                 Sign up to save your own.
               </button>
@@ -120,7 +120,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             <button
               type="button"
               onClick={handleExitDemo}
-              className="btn-press px-2.5 py-1 rounded-md bg-white/15 hover:bg-white/25 text-white font-semibold transition-colors cursor-pointer"
+              className="btn-press shrink-0 px-2.5 py-0.5 rounded-md bg-white/80 hover:bg-white border border-primary-200 text-brand-dark font-semibold transition-colors cursor-pointer"
             >
               Exit demo
             </button>

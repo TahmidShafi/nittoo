@@ -848,7 +848,7 @@ export const ProductDetailPage: React.FC = () => {
               {effectiveRestockPlan &&
                 effectiveRestockPlan.status === 'planned' &&
                 getRestockDisplayStatus(effectiveRestockPlan, activeUsageData.active.status) === 'due' && (
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-status-attention-bg rounded-xl p-3.5 border border-status-attention-border">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white rounded-xl p-3.5 border border-surface-border border-l-4 border-l-status-attention-fill">
                     <div>
                       <div className="flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-status-attention-fill animate-pulse" />

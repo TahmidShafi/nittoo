@@ -319,22 +319,22 @@ export const DashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* Due Restock Reminders (Stage 21) - Only rendered when due items exist */}
+      {/* Due Restock Reminders (Stage 21) - Quiet white card with amber left accent */}
       {!loading && !error && dueRestockProducts.length > 0 && (
-        <div className="bg-status-attention-bg border border-status-attention-border rounded-2xl p-5 shadow-xs space-y-3">
+        <div className="bg-white border border-surface-border border-l-4 border-l-status-attention-fill rounded-2xl p-4 sm:p-5 shadow-xs space-y-2.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-status-attention-fill animate-pulse" />
-              <span className="text-[11px] font-bold uppercase tracking-wider text-status-attention-text">
-                Restock Reminders
+              <span className="text-xs font-semibold text-neutral-900">
+                Restock reminders
               </span>
             </div>
-            <span className="text-xs font-semibold text-status-attention-text bg-status-attention-bg px-2.5 py-0.5 rounded-full">
+            <span className="text-xs font-semibold text-status-attention-text bg-status-attention-bg border border-status-attention-border px-2.5 py-0.5 rounded-full">
               {dueRestockProducts.length} due
             </span>
           </div>
 
-          <div className="divide-y divide-status-attention-border/60">
+          <div className="divide-y divide-neutral-100">
             {dueRestockProducts.map((p) => {
               const avgLifespan = calculatePredictedLifespan({
                 usagePeriods: p.finished_periods || [],
@@ -350,10 +350,10 @@ export const DashboardPage: React.FC = () => {
               return (
                 <div
                   key={p.id}
-                  className="py-3 first:pt-1 last:pb-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  className="py-2.5 first:pt-1 last:pb-1 flex items-center justify-between gap-3"
                 >
-                  <div>
-                    <h4 className="text-sm font-bold text-neutral-900">{p.name}</h4>
+                  <div className="min-w-0">
+                    <h4 className="text-sm font-bold text-neutral-900 truncate">{p.name}</h4>
                     <p className="text-xs text-neutral-600 mt-0.5">
                       {expectedFinish ? (
                         <>
@@ -367,10 +367,10 @@ export const DashboardPage: React.FC = () => {
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2 self-start sm:self-auto">
+                  <div className="flex items-center gap-2 shrink-0">
                     <Link
                       to={`/product/${p.id}`}
-                      className="btn-press px-3.5 py-1.5 rounded-xl bg-white border border-status-attention-border hover:bg-status-attention-bg text-neutral-800 text-xs font-semibold transition-colors cursor-pointer"
+                      className="btn-press px-3 py-1.5 rounded-xl bg-white border border-neutral-200/80 hover:bg-neutral-50 text-neutral-800 text-xs font-semibold transition-colors cursor-pointer"
                     >
                       View
                     </Link>
@@ -414,15 +414,34 @@ export const DashboardPage: React.FC = () => {
               Attention Needed
             </span>
             <div className="mt-2 flex items-baseline gap-2">
-              <span className={`text-3xl font-bold tracking-tight ${summaryMetrics.overdueCount > 0 ? 'text-status-critical-text' : summaryMetrics.runningSoonCount > 0 ? 'text-status-attention-text' : 'text-neutral-900'}`}>
+              <span className="text-3xl font-bold tracking-tight text-neutral-900">
                 <CountUpValue value={summaryMetrics.overdueCount + summaryMetrics.runningSoonCount} />
               </span>
-              <span className="text-xs text-neutral-500 font-medium">
-                {summaryMetrics.overdueCount > 0
-                  ? `${summaryMetrics.overdueCount} overdue`
-                  : summaryMetrics.runningSoonCount > 0
-                  ? `${summaryMetrics.runningSoonCount} running out soon`
-                  : 'all healthy'}
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium">
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    summaryMetrics.overdueCount > 0
+                      ? 'bg-status-critical-fill'
+                      : summaryMetrics.runningSoonCount > 0
+                      ? 'bg-status-attention-fill'
+                      : 'bg-status-healthy-fill'
+                  }`}
+                />
+                <span
+                  className={
+                    summaryMetrics.overdueCount > 0
+                      ? 'text-status-critical-text'
+                      : summaryMetrics.runningSoonCount > 0
+                      ? 'text-status-attention-text'
+                      : 'text-neutral-600'
+                  }
+                >
+                  {summaryMetrics.overdueCount > 0
+                    ? `${summaryMetrics.overdueCount} overdue`
+                    : summaryMetrics.runningSoonCount > 0
+                    ? `${summaryMetrics.runningSoonCount} running out soon`
+                    : 'all healthy'}
+                </span>
               </span>
             </div>
           </div>
