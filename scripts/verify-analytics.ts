@@ -218,6 +218,75 @@ async function runAnalyticsVerification() {
   ]);
   assert(zeroDayAvg === null, 'calculateAverageLifespan returns null (not 0) when all cycles are 0-day');
 
+  // 5H: Price basis consistency: active ৳500 + unopened backup ৳650
+  const activeWithBackup: ProductWithHistory = {
+    product: {
+      id: 'p-backup-price',
+      user_id: 'u1',
+      name: 'Backup Price Test',
+      category: 'Skincare',
+      brand: 'Test',
+      size_value: 100,
+      size_unit: 'ml',
+      created_at: '2026-01-01T00:00:00Z',
+    },
+    purchases: [
+      {
+        id: 'pu-active',
+        product_id: 'p-backup-price',
+        purchase_date: '2026-07-01',
+        price: 500,
+        currency: 'BDT',
+        store_vendor: null,
+        created_at: '2026-07-01T00:00:00Z',
+      },
+      {
+        id: 'pu-backup',
+        product_id: 'p-backup-price',
+        purchase_date: '2026-08-20',
+        price: 650,
+        currency: 'BDT',
+        store_vendor: null,
+        created_at: '2026-08-20T00:00:00Z',
+      },
+    ],
+    finished_periods: [
+      {
+        id: 'fin-1',
+        product_id: 'p-backup-price',
+        purchase_id: 'pu-active',
+        opened_date: '2026-07-01',
+        finished_date: '2026-07-31',
+        status: 'finished',
+        created_at: '2026-07-01T00:00:00Z',
+      },
+    ],
+    active_usage: {
+      id: 'act-1',
+      product_id: 'p-backup-price',
+      purchase_id: 'pu-active',
+      opened_date: '2026-08-01',
+      finished_date: null,
+      status: 'active',
+      created_at: '2026-08-01T00:00:00Z',
+    },
+  };
+  const backupRunRate = calculateEstimatedMonthlyConsumption([activeWithBackup]);
+  assert(
+    backupRunRate !== null && Math.abs(backupRunRate - 500) < 0.01,
+    `Monthly run rate uses active purchase ৳500, not backup ৳650 (got: ৳${backupRunRate})`
+  );
+  const backupEfficiency = getCostEfficiencyRankings([activeWithBackup]);
+  assert(
+    Math.abs(backupEfficiency.mostEfficient[0].costPerDay - 500 / 30) < 0.01,
+    `Cost efficiency uses active purchase ৳500/30d (got: ${backupEfficiency.mostEfficient[0].costPerDay})`
+  );
+  const backupUpcoming = getUpcomingPurchases([activeWithBackup], '2026-08-25');
+  assert(
+    backupUpcoming.length === 1 && backupUpcoming[0].estimatedNextPrice === 575,
+    `getUpcomingPurchases uses calculateEstimatedNextPrice average ৳575 (got: ৳${backupUpcoming[0]?.estimatedNextPrice})`
+  );
+
   console.log('\n=================================================================');
   console.log('✅ ALL STAGE 6 ANALYTICS VERIFICATIONS PASSED SUCCESSFULLY');
   console.log('=================================================================');

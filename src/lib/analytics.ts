@@ -1,6 +1,15 @@
 // ==============================================================================
 // Nittoo Analytics Engine (Stage 6)
 // Pure, Node-testable calculations for cross-product consumption analytics
+//
+// PRICE BASIS RULE:
+// - Current-cost metrics (calculateEstimatedMonthlyConsumption,
+//   getCostEfficiencyRankings, getCostComparisonChartData, getCategorySpending)
+//   use the ACTIVE purchase's price (matching usePrediction) when an active
+//   usage period is linked, falling back to latest_purchase only when no active
+//   usage exists. An unopened backup bottle never inflates current run-rate.
+// - Forward-looking estimates (getUpcomingPurchases) use
+//   calculateEstimatedNextPrice (historical average purchase price).
 // ==============================================================================
 
 import type { Product, UsagePeriod, ProductWithHistory } from '../types';
@@ -35,11 +44,7 @@ export interface CostComparisonChartPoint {
 }
 
 /**
- * Unified Price Basis Helper:
- * All cross-product analytics (calculateEstimatedMonthlyConsumption, getCostEfficiencyRankings,
- * and getUpcomingPurchases) use the latest recorded purchase price (by purchase_date DESC)
- * so run-rate, efficiency, and upcoming rebuy estimates consistently reflect current replacement cost.
- * Returns null if no valid (>= 0) purchase exists.
+ * Returns the latest valid (>= 0) purchase price by purchase_date DESC, or null.
  */
 export function getLatestPurchasePrice(purchases: ProductWithHistory['purchases']): number | null {
   if (!purchases || purchases.length === 0) return null;
@@ -51,6 +56,28 @@ export function getLatestPurchasePrice(purchases: ProductWithHistory['purchases'
     return null;
   }
   return latest.price;
+}
+
+/**
+ * Current-Cost Price Basis Helper (matches usePrediction):
+ * Uses the active usage period's linked purchase price when an active usage exists,
+ * falling back to getLatestPurchasePrice when no active usage is present.
+ */
+export function getActiveOrLatestPurchasePrice(item: ProductWithHistory): number | null {
+  if (item.active_usage) {
+    const activePurchase = item.purchases.find(
+      (p) => p.id === item.active_usage!.purchase_id
+    );
+    if (
+      activePurchase &&
+      typeof activePurchase.price === 'number' &&
+      !isNaN(activePurchase.price) &&
+      activePurchase.price >= 0
+    ) {
+      return activePurchase.price;
+    }
+  }
+  return getLatestPurchasePrice(item.purchases);
 }
 
 /**
@@ -101,7 +128,7 @@ export function getUpcomingPurchases(
         activeUsage.opened_date,
         Math.round(averageLifespan)
       );
-      const estimatedNextPrice = getLatestPurchasePrice(item.purchases) ?? 0;
+      const estimatedNextPrice = calculateEstimatedNextPrice(item.purchases);
 
       upcoming.push({
         product: item.product,
@@ -125,7 +152,7 @@ export function getUpcomingPurchases(
 
 /**
  * Calculates Estimated Monthly Consumption Cost:
- * Sum of (latest_purchase_price ÷ average finished lifespan × 30) across ACTIVE products
+ * Sum of (active_purchase_price ÷ average finished lifespan × 30) across ACTIVE products
  * with completed history. Inactive products (no active_usage) are excluded.
  * Returns null if no eligible active products exist.
  */
@@ -141,10 +168,10 @@ export function calculateEstimatedMonthlyConsumption(
     const averageLifespan = calculateAverageLifespan(item.finished_periods);
     if (averageLifespan === null || averageLifespan <= 0) continue;
 
-    const latestPrice = getLatestPurchasePrice(item.purchases);
-    if (latestPrice === null) continue;
+    const activePrice = getActiveOrLatestPurchasePrice(item);
+    if (activePrice === null) continue;
 
-    const monthlyCost = (latestPrice / averageLifespan) * 30;
+    const monthlyCost = (activePrice / averageLifespan) * 30;
     if (!isNaN(monthlyCost) && isFinite(monthlyCost)) {
       totalMonthlyCost += monthlyCost;
       eligibleCount++;
@@ -172,13 +199,13 @@ export function getCostEfficiencyRankings(
     const averageLifespan = calculateAverageLifespan(item.finished_periods);
     if (averageLifespan === null || averageLifespan <= 0) continue;
 
-    const latestPrice = getLatestPurchasePrice(item.purchases);
-    if (latestPrice === null) continue;
+    const currentPrice = getActiveOrLatestPurchasePrice(item);
+    if (currentPrice === null) continue;
 
-    const costPerDay = calculateCostPerDay(latestPrice, averageLifespan);
+    const costPerDay = calculateCostPerDay(currentPrice, averageLifespan);
     if (costPerDay === null || isNaN(costPerDay) || !isFinite(costPerDay)) continue;
 
-    const monthlyCost = (latestPrice / averageLifespan) * 30;
+    const monthlyCost = (currentPrice / averageLifespan) * 30;
 
     eligible.push({
       product: item.product,
@@ -255,10 +282,10 @@ export function getCategorySpending(
     const averageLifespan = calculateAverageLifespan(item.finished_periods);
     if (averageLifespan === null || averageLifespan <= 0) continue;
 
-    const latestPrice = getLatestPurchasePrice(item.purchases);
-    if (latestPrice === null) continue;
+    const currentPrice = getActiveOrLatestPurchasePrice(item);
+    if (currentPrice === null) continue;
 
-    const monthlyCost = (latestPrice / averageLifespan) * 30;
+    const monthlyCost = (currentPrice / averageLifespan) * 30;
     if (isNaN(monthlyCost) || !isFinite(monthlyCost)) continue;
 
     totalEligibleMonthly += monthlyCost;

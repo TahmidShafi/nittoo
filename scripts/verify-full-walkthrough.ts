@@ -184,7 +184,7 @@ async function runFullWalkthroughVerification() {
   assert(upcomingNear.length === 1, 'Product appears in upcoming purchases when remaining <= 30 days');
   assert(upcomingNear[0].predictedRemainingDays === 5, 'Upcoming product shows 5 days remaining');
   assert(upcomingNear[0].predictedFinishDate === '2026-10-10', 'Predicted finish date is 2026-10-10');
-  assert(upcomingNear[0].estimatedNextPrice === 1700, 'Estimated next purchase uses unified latest purchase price ৳1,700');
+  assert(upcomingNear[0].estimatedNextPrice === 1675, 'Estimated next purchase uses calculateEstimatedNextPrice average (৳1,675)');
 
   // Monthly consumption: 1700 / 50 * 30 = 1020
   const monthlyCost = calculateEstimatedMonthlyConsumption([fullHistoryWithBottle2!]);
