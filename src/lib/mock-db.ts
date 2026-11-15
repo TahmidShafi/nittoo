@@ -9,6 +9,8 @@ import { dataCache } from './dataCache';
 import type {
   IDataSource,
   Product,
+  ProductCategory,
+  SizeUnit,
   Purchase,
   UsagePeriod,
   RestockPlan,
@@ -1005,10 +1007,10 @@ export class MockDatabase implements IDataSource {
           id: targetId,
           user_id: userId,
           name: p.name.trim(),
-          category: p.category as any,
+          category: p.category as ProductCategory,
           brand: p.brand?.trim() || null,
           size_value: p.size ?? null,
-          size_unit: (p.unit as any) ?? null,
+          size_unit: (p.unit as SizeUnit | null | undefined) ?? null,
           created_at: p.created_at || new Date().toISOString(),
         };
         data.products.push(newProd);

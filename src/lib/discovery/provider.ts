@@ -38,8 +38,8 @@ export interface OpenFactsProviderOptions {
   productBaseUrl?: string;
 }
 
-export type FetchInput = string | URL | any;
-export type FetchFunction = (input: FetchInput, init?: any) => Promise<Response>;
+export type FetchInput = string | URL | Request;
+export type FetchFunction = (input: FetchInput, init?: RequestInit) => Promise<Response>;
 
 const defaultFetch: FetchFunction = (input, init) => {
   return fetch(input, init);
@@ -50,13 +50,13 @@ export const DEFAULT_PROVIDER_TIMEOUT_MS = 7000;
 export async function fetchWithTimeout(
   fetchFn: FetchFunction,
   url: FetchInput,
-  init?: any,
+  init?: RequestInit,
   timeoutMs = DEFAULT_PROVIDER_TIMEOUT_MS
 ): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-  let signal = controller.signal;
+  const signal = controller.signal;
   if (init?.signal) {
     if (init.signal.aborted) {
       controller.abort();

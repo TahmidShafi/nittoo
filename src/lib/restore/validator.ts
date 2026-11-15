@@ -5,7 +5,7 @@
 // ==============================================================================
 
 import type { BackupValidationResult } from './types';
-import type { NittooExportData } from '../export/types';
+import type { NittooExportData, ExportUsageItem } from '../export/types';
 
 export const SUPPORTED_BACKUP_VERSION = '1.0.0';
 export const MAX_BACKUP_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
@@ -20,13 +20,14 @@ const SENSITIVE_KEY_PATTERNS = [
   /api_key/i,
 ];
 
-function containsSensitiveData(obj: any): boolean {
+function containsSensitiveData(obj: unknown): boolean {
   if (!obj || typeof obj !== 'object') return false;
-  for (const key of Object.keys(obj)) {
+  const record = obj as Record<string, unknown>;
+  for (const key of Object.keys(record)) {
     for (const pattern of SENSITIVE_KEY_PATTERNS) {
       if (pattern.test(key)) return true;
     }
-    const val = obj[key];
+    const val = record[key];
     if (typeof val === 'object' && val !== null) {
       if (containsSensitiveData(val)) return true;
     }
@@ -34,7 +35,7 @@ function containsSensitiveData(obj: any): boolean {
   return false;
 }
 
-function isValidIsoDate(str: any): boolean {
+function isValidIsoDate(str: unknown): boolean {
   if (typeof str !== 'string' || !str.trim()) return false;
   const timestamp = Date.parse(str);
   return !isNaN(timestamp);
@@ -63,10 +64,10 @@ export function validateBackupFile(
   }
 
   // 2. Parse JSON
-  let parsed: any;
+  let rawParsed: unknown;
   try {
-    parsed = JSON.parse(fileContent);
-  } catch (err: any) {
+    rawParsed = JSON.parse(fileContent);
+  } catch {
     return {
       valid: false,
       error: "That file isn't a valid Nittoo backup.",
@@ -75,13 +76,18 @@ export function validateBackupFile(
   }
 
   // 3. Root Object Structure
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+  if (!rawParsed || typeof rawParsed !== 'object' || Array.isArray(rawParsed)) {
     return {
       valid: false,
       error: "That file isn't a valid Nittoo backup.",
       details: 'Root element must be a valid JSON object.',
     };
   }
+
+  type RawBackupObject = Partial<NittooExportData> & {
+    usage_periods?: ExportUsageItem[];
+  };
+  const parsed = rawParsed as RawBackupObject;
 
   // 4. Zero Secrets / Sensitive Payload Protection
   if (containsSensitiveData(parsed)) {
