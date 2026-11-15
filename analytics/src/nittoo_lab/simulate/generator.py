@@ -8,10 +8,10 @@ from pathlib import Path
 
 import numpy as np
 
-from contracts.models import ProductCategory, SizeUnit
-from simulate.archetypes import ARCHETYPES, ProductArchetype
+from nittoo_lab.contracts.models import ProductCategory, SizeUnit
+from nittoo_lab.simulate.archetypes import ARCHETYPES, ProductArchetype
 
-ANALYTICS_ROOT = Path(__file__).resolve().parent.parent
+ANALYTICS_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_EXPORTS_DIR = ANALYTICS_ROOT / "data" / "raw" / "exports"
 DEFAULT_GROUND_TRUTH_PATH = ANALYTICS_ROOT / "data" / "ground_truth" / "true_rates.json"
 DEFAULT_FAULTS_MANIFEST_PATH = ANALYTICS_ROOT / "data" / "ground_truth" / "injected_faults.json"

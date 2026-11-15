@@ -3,8 +3,8 @@ from pathlib import Path
 
 import duckdb
 
-from ingest.loader import ingest_exports
-from simulate.generator import simulate_households
+from nittoo_lab.ingest.loader import ingest_exports
+from nittoo_lab.simulate.generator import simulate_households
 
 
 def test_ingest_loads_valid_rows_quarantines_faults_and_is_idempotent(tmp_path: Path) -> None:

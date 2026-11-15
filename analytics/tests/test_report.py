@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from ingest.loader import ingest_exports
-from reports.generator import generate_data_quality_report
-from simulate.generator import simulate_households
-from transform.runner import run_dbt_pipeline
+from nittoo_lab.ingest.loader import ingest_exports
+from nittoo_lab.reporting.generator import generate_data_quality_report
+from nittoo_lab.simulate.generator import simulate_households
+from nittoo_lab.transform.runner import run_dbt_pipeline
 
 
 def test_data_quality_report_contains_layers_rejects_and_dbt_tests(tmp_path: Path) -> None:

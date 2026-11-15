@@ -10,9 +10,9 @@ from pathlib import Path
 import duckdb
 from pydantic import ValidationError
 
-from contracts.models import NittooExportBackup
+from nittoo_lab.contracts.models import NittooExportBackup
 
-ANALYTICS_ROOT = Path(__file__).resolve().parent.parent
+ANALYTICS_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_DB_PATH = ANALYTICS_ROOT / "data" / "nittoo.duckdb"
 DEFAULT_EXPORTS_DIR = ANALYTICS_ROOT / "data" / "raw" / "exports"
 

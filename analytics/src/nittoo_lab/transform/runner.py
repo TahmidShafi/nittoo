@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-ANALYTICS_ROOT = Path(__file__).resolve().parent.parent
+ANALYTICS_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_DBT_DIR = ANALYTICS_ROOT / "dbt"
 DEFAULT_DB_PATH = ANALYTICS_ROOT / "data" / "nittoo.duckdb"
 

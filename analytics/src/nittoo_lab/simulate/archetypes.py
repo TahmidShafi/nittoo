@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from contracts.models import ProductCategory, SizeUnit
+from nittoo_lab.contracts.models import ProductCategory, SizeUnit
 
 
 @dataclass(frozen=True)

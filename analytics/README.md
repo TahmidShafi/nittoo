@@ -23,11 +23,12 @@ flowchart LR
 
 | Component | Purpose |
 | :--- | :--- |
-| `contracts/` | Pydantic v2 models (`NittooExportBackup`) and JSON Schema mirroring `src/lib/export/json.ts`, verified against `fixtures/demo_export.json`. |
-| `simulate/` | Seeded NumPy generator creating 500 synthetic households × 24 months across 40 Bangladesh-relevant product archetypes with pack-size switching, category inflation, mild seasonality, abandonment, and ~2% injected data-quality faults (`ASSUMPTIONS.md`). |
-| `ingest/` | Bulk DuckDB NDJSON loader validating every export file against `NittooExportBackup`, isolating malformed files, duplicate purchases, 0-day cycles, `finished < opened`, and 1000-day outliers into `raw.rejects`. Idempotent on re-runs. |
-| `dbt/` | `dbt-core` + `dbt-duckdb` warehouse (`staging` → `intermediate` → `marts`: `dim_product`, `dim_vendor`, `dim_date`, `fact_purchase`, `fact_consumption_cycle`, `mart_monthly_spend`, `mart_category_price_index`), schema & custom SQL tests, plus `dbt docs generate`. |
-| `reports/` | Generates `analytics/reports/data_quality.md` summarizing row counts per layer, rejects by reason code, and dbt test results. |
+| `src/nittoo_lab/contracts/` | Pydantic v2 models (`NittooExportBackup`) and JSON Schema mirroring `src/lib/export/json.ts`, verified against `fixtures/demo_export.json`. |
+| `src/nittoo_lab/simulate/` | Seeded NumPy generator creating 500 synthetic households × 24 months across 40 Bangladesh-relevant product archetypes with pack-size switching, category inflation, mild seasonality, abandonment, and ~2% injected data-quality faults (`ASSUMPTIONS.md`), plus ground-truth & injected-faults manifests. |
+| `src/nittoo_lab/ingest/` | Bulk DuckDB NDJSON contract boundary validating every export file against `NittooExportBackup` and referential/DB constraints (`INVALID_EXPORT_SCHEMA`, `MISSING_PRODUCT_REF`, `MISSING_PURCHASE_REF`, `FINISHED_BEFORE_OPENED`) into `raw.rejects`. Idempotent on re-runs. |
+| `dbt/` | `dbt-core` + `dbt-duckdb` warehouse (`staging` deduplication → `intermediate` MAD z-score & zero-day quality flags → `marts`: `dim_product`, `dim_vendor`, `dim_date`, `fact_purchase`, `fact_consumption_cycle`, `mart_monthly_spend`, `mart_category_price_index`), singular & warning SQL tests, plus `dbt docs generate`. |
+| `src/nittoo_lab/reporting/` | Generates `analytics/reports/data_quality.md` summarizing row counts per layer, contract rejects, fault-detection recall vs ground truth, and dbt test results. |
+| `reports/` | Generated portfolio snapshot output (`data_quality.md`) only. |
 
 ## How to Run
 

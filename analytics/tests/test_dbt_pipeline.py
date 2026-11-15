@@ -4,9 +4,9 @@ from statistics import median
 
 import duckdb
 
-from ingest.loader import ingest_exports
-from simulate.generator import simulate_households
-from transform.runner import run_dbt_pipeline
+from nittoo_lab.ingest.loader import ingest_exports
+from nittoo_lab.simulate.generator import simulate_households
+from nittoo_lab.transform.runner import run_dbt_pipeline
 
 
 def test_dbt_run_test_and_docs_end_to_end(tmp_path: Path) -> None:

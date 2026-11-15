@@ -1,9 +1,9 @@
 import json
 from pathlib import Path
 
-from contracts.models import NittooExportBackup
-from simulate.archetypes import ARCHETYPES
-from simulate.generator import simulate_households
+from nittoo_lab.contracts.models import NittooExportBackup
+from nittoo_lab.simulate.archetypes import ARCHETYPES
+from nittoo_lab.simulate.generator import simulate_households
 
 
 def test_archetype_catalog_has_40_unique_entries() -> None:

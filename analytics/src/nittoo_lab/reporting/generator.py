@@ -9,7 +9,7 @@ from pathlib import Path
 
 import duckdb
 
-ANALYTICS_ROOT = Path(__file__).resolve().parent.parent
+ANALYTICS_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_DB_PATH = ANALYTICS_ROOT / "data" / "nittoo.duckdb"
 DEFAULT_FAULTS_MANIFEST_PATH = ANALYTICS_ROOT / "data" / "ground_truth" / "injected_faults.json"
 DEFAULT_RUN_RESULTS_PATH = ANALYTICS_ROOT / "dbt" / "target" / "run_results.json"
