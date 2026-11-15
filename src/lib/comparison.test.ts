@@ -4,6 +4,7 @@ import {
   compareSizes,
   calculateUnitPrice,
   compareUnitPrices,
+  deriveProductObservedMetrics,
   buildComparisonReport,
 } from './comparison';
 import type { ProductWithHistory } from '../types';
@@ -99,5 +100,72 @@ describe('comparison', () => {
     expect(report.costPerDayComparison).toBeNull();
     expect(report.monthlyConsumptionComparison).toBeNull();
     expect(report.lifespanComparison).toBeNull();
+  });
+
+  it('uses active purchase effective size when active (236ml) + latest backup (473ml), and falls back to latest when no active', () => {
+    const prod = {
+      id: 'p-mix',
+      user_id: 'u1',
+      name: 'Hydrating Cleanser',
+      category: 'Skincare' as const,
+      brand: 'CeraVe',
+      size_value: 236,
+      size_unit: 'ml' as const,
+      created_at: '2026-01-01T00:00:00Z',
+    };
+    const activePurchase = {
+      id: 'pur-active',
+      product_id: 'p-mix',
+      purchase_date: '2026-08-01',
+      price: 1650,
+      currency: 'BDT',
+      store_vendor: 'Shajgoj',
+      size_value: null,
+      size_unit: null,
+      created_at: '2026-08-01T00:00:00Z',
+    };
+    const backupPurchase = {
+      id: 'pur-backup',
+      product_id: 'p-mix',
+      purchase_date: '2026-09-01',
+      price: 2950,
+      currency: 'BDT',
+      store_vendor: 'Shajgoj',
+      size_value: 473,
+      size_unit: 'ml' as const,
+      created_at: '2026-09-01T00:00:00Z',
+    };
+    const activeMetrics = deriveProductObservedMetrics({
+      product: prod,
+      purchases: [backupPurchase, activePurchase],
+      usage_periods: [],
+      active_usage: {
+        id: 'u-act',
+        product_id: 'p-mix',
+        purchase_id: 'pur-active',
+        opened_date: '2026-08-02',
+        finished_date: null,
+        status: 'active',
+        created_at: '2026-08-02T00:00:00Z',
+      },
+      finished_periods: [],
+      unopened_purchases: [backupPurchase],
+    });
+    expect(activeMetrics.sizeValue).toBe(236);
+    expect(activeMetrics.latestPurchasePrice).toBe(1650);
+    expect(activeMetrics.unitPrice).toBeCloseTo(1650 / 236, 2);
+
+    // Without active usage, falls back to latest purchase (473ml @ 2950)
+    const inactiveMetrics = deriveProductObservedMetrics({
+      product: prod,
+      purchases: [backupPurchase, activePurchase],
+      usage_periods: [],
+      active_usage: null,
+      finished_periods: [],
+      unopened_purchases: [backupPurchase],
+    });
+    expect(inactiveMetrics.sizeValue).toBe(473);
+    expect(inactiveMetrics.latestPurchasePrice).toBe(2950);
+    expect(inactiveMetrics.unitPrice).toBeCloseTo(2950 / 473, 2);
   });
 });

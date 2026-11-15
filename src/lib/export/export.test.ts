@@ -19,7 +19,7 @@ describe('export', () => {
     const db = new MockDatabase(new InMemoryStorageAdapter());
     const data = await buildExportData(DEFAULT_MOCK_USER_ID, 'demo@nittoo.local', db);
 
-    expect(data.version).toBe('1.0.0');
+    expect(data.version).toBe('1.1.0');
     expect(data.user.email).toBe('demo@nittoo.local');
     expect(data.products.length).toBe(3);
     expect(data.purchases.length).toBeGreaterThan(0);
@@ -34,7 +34,7 @@ describe('export', () => {
     const data = await buildExportData(DEFAULT_MOCK_USER_ID, 'demo@nittoo.local', db);
     const parsed = JSON.parse(generateJsonBackup(data));
 
-    expect(parsed.version).toBe('1.0.0');
+    expect(parsed.version).toBe('1.1.0');
     expect(parsed.products).toHaveLength(3);
     expect(parsed.summary.total_products).toBe(3);
   });
@@ -104,5 +104,41 @@ describe('export', () => {
     }
     expect(URL.createObjectURL).toHaveBeenCalledTimes(4);
     expect(URL.revokeObjectURL).toHaveBeenCalledTimes(4);
+  });
+
+  it('includes raw purchase size in JSON and effective size + Size Override in CSV/Excel', async () => {
+    const db = new MockDatabase(new InMemoryStorageAdapter());
+    const prod = await db.createProduct(DEFAULT_MOCK_USER_ID, {
+      name: 'Refill Cleanser',
+      category: 'Skincare',
+      brand: 'CeraVe',
+      size_value: 236,
+      size_unit: 'ml',
+    });
+    await db.createPurchase(DEFAULT_MOCK_USER_ID, {
+      product_id: prod.id,
+      purchase_date: '2026-09-01',
+      price: 2950,
+      size_value: 473,
+      size_unit: 'ml',
+    });
+
+    const data = await buildExportData(DEFAULT_MOCK_USER_ID, 'demo@nittoo.local', db);
+    const jsonParsed = JSON.parse(generateJsonBackup(data));
+    const overrideJson = jsonParsed.purchases.find((p: { product_id: string }) => p.product_id === prod.id);
+    expect(overrideJson.size_value).toBe(473);
+    expect(overrideJson.size_unit).toBe('ml');
+
+    const zipBytes = await generateCsvZip(data);
+    const zip = await JSZip.loadAsync(zipBytes);
+    const purchasesCsv = await zip.file('purchases.csv')!.async('string');
+    expect(purchasesCsv).toContain('Pack Size,Unit,Size Override');
+    expect(purchasesCsv).toContain('473,ml,Yes');
+
+    const xlsxBytes = await generateExcelWorkbook(data);
+    const wb = XLSX.read(xlsxBytes, { type: 'array' });
+    const purchaseRows = XLSX.utils.sheet_to_json(wb.Sheets['Purchases'], { header: 1 }) as unknown[][];
+    expect(purchaseRows[0]).toEqual(expect.arrayContaining(['Pack Size', 'Unit', 'Size Override']));
+    expect(purchaseRows.some((r) => r.includes(473) && r.includes('ml') && r.includes('Yes'))).toBe(true);
   });
 });

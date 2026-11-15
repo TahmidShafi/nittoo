@@ -8,6 +8,8 @@
 //   use the ACTIVE purchase's price (matching usePrediction) when an active
 //   usage period is linked, falling back to latest_purchase only when no active
 //   usage exists. An unopened backup bottle never inflates current run-rate.
+//   Where unit economics are computed, effective size is
+//   COALESCE(purchase.size_value, product.size_value) via getEffectiveSize.
 // - Forward-looking estimates (getUpcomingPurchases) use
 //   calculateEstimatedNextPrice (historical average purchase price).
 // ==============================================================================

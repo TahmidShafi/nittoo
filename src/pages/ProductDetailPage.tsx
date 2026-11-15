@@ -24,6 +24,7 @@ import {
   calculateUsageDuration,
   calculatePricePerUnit,
   calculateProgressPercent,
+  getEffectiveSize,
 } from '../lib/prediction';
 import { calculateConfidence, getConfidenceBadgeStyles } from '../lib/confidence';
 import {
@@ -206,11 +207,16 @@ export const ProductDetailPage: React.FC = () => {
     // 4. Number of Purchases
     const purchaseCount = purchases.length;
 
-    // 5. Unit Rate: latest purchase price ÷ size_value (if size exists)
+    // 5. Unit Rate: active purchase's price ÷ effective size (falling back to latest purchase)
+    const activePurchase = history.active_usage
+      ? purchases.find((p) => p.id === history.active_usage!.purchase_id) || null
+      : null;
     const latestPurchase = purchases[0] || null;
+    const currentPurchase = activePurchase || latestPurchase;
+    const effectiveSize = getEffectiveSize(currentPurchase, product);
     const unitRate =
-      latestPurchase && product.size_value
-        ? calculatePricePerUnit(latestPurchase.price, product.size_value)
+      currentPurchase && effectiveSize.size_value
+        ? calculatePricePerUnit(currentPurchase.price, effectiveSize.size_value)
         : null;
 
     return {
@@ -219,6 +225,7 @@ export const ProductDetailPage: React.FC = () => {
       totalSpent,
       purchaseCount,
       unitRate,
+      effectiveSizeUnit: effectiveSize.size_unit,
       latestPurchase,
     };
   }, [history]);
@@ -310,6 +317,10 @@ export const ProductDetailPage: React.FC = () => {
           purchaseDate: linkedPurchase ? formatDisplayDate(linkedPurchase.purchase_date) : '—',
           price: linkedPurchase ? linkedPurchase.price : null,
           storeVendor: linkedPurchase?.store_vendor || null,
+          effectiveSize: linkedPurchase ? getEffectiveSize(linkedPurchase, history.product) : null,
+          hasSizeOverride:
+            Boolean(linkedPurchase?.size_value != null) &&
+            linkedPurchase?.size_value !== history.product.size_value,
           cycleCostPerDay,
         };
       });
@@ -574,6 +585,17 @@ export const ProductDetailPage: React.FC = () => {
                     <span>
                       ৳{activePurchase.price.toLocaleString()} {activePurchase.currency || 'BDT'}
                     </span>
+                    {(() => {
+                      const eff = getEffectiveSize(activePurchase, product);
+                      return eff.size_value ? (
+                        <>
+                          <span className="text-neutral-300 mx-1.5">•</span>
+                          <span>
+                            {eff.size_value} {eff.size_unit}
+                          </span>
+                        </>
+                      ) : null;
+                    })()}
                     {activePurchase.store_vendor && (
                       <>
                         <span className="text-neutral-300 mx-1.5">•</span>
@@ -960,6 +982,22 @@ export const ProductDetailPage: React.FC = () => {
                     <span className="font-bold text-neutral-900">
                       ৳{purchase.price.toLocaleString()} {purchase.currency || 'BDT'}
                     </span>
+                    {(() => {
+                      const eff = getEffectiveSize(purchase, product);
+                      const isOverride =
+                        purchase.size_value !== undefined &&
+                        purchase.size_value !== null &&
+                        purchase.size_value !== product.size_value;
+                      return eff.size_value ? (
+                        <>
+                          <span className="text-neutral-300">•</span>
+                          <span className="font-medium text-neutral-700">
+                            {eff.size_value} {eff.size_unit}
+                            {isOverride ? ' (pack override)' : ''}
+                          </span>
+                        </>
+                      ) : null;
+                    })()}
                     <span className="text-neutral-300">•</span>
                     <span className="text-[10px] font-semibold text-neutral-600 bg-neutral-100 px-2.5 py-0.5 rounded-full border border-neutral-200/60">
                       Unopened
@@ -1068,12 +1106,12 @@ export const ProductDetailPage: React.FC = () => {
           <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
             Unit Rate
           </span>
-          {summaryStats?.unitRate !== null && product.size_unit ? (
+          {summaryStats?.unitRate !== null && summaryStats?.effectiveSizeUnit ? (
             <div className="mt-1">
               <span className="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight">
                 ৳{summaryStats?.unitRate}
               </span>
-              <span className="text-xs text-neutral-500 ml-1">/ {product.size_unit}</span>
+              <span className="text-xs text-neutral-500 ml-1">/ {summaryStats.effectiveSizeUnit}</span>
             </div>
           ) : (
             <div className="text-xs font-semibold italic text-neutral-400 mt-2">
@@ -1178,6 +1216,9 @@ export const ProductDetailPage: React.FC = () => {
                   <p className="text-neutral-400 text-[11px]">
                     Purchased on {cycle.purchaseDate}
                     {cycle.price !== null ? ` for ৳${cycle.price}` : ''}
+                    {cycle.effectiveSize?.size_value
+                      ? ` • ${cycle.effectiveSize.size_value} ${cycle.effectiveSize.size_unit}${cycle.hasSizeOverride ? ' (pack override)' : ''}`
+                      : ''}
                     {cycle.storeVendor ? ` • Store / Vendor: ${cycle.storeVendor}` : ''}
                   </p>
                 </div>

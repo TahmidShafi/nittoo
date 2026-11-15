@@ -7,7 +7,8 @@
 import type { BackupValidationResult } from './types';
 import type { NittooExportData, ExportUsageItem } from '../export/types';
 
-export const SUPPORTED_BACKUP_VERSION = '1.0.0';
+export const SUPPORTED_BACKUP_VERSIONS = ['1.0.0', '1.1.0'] as const;
+export const SUPPORTED_BACKUP_VERSION = '1.1.0';
 export const MAX_BACKUP_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 
 const SENSITIVE_KEY_PATTERNS = [
@@ -107,11 +108,11 @@ export function validateBackupFile(
     };
   }
 
-  if (parsed.version !== SUPPORTED_BACKUP_VERSION) {
+  if (!(SUPPORTED_BACKUP_VERSIONS as readonly string[]).includes(parsed.version)) {
     return {
       valid: false,
       error: "This Nittoo backup version isn't supported by this version of Nittoo.",
-      details: `Backup version '${parsed.version}' is not supported. Supported version is ${SUPPORTED_BACKUP_VERSION}.`,
+      details: `Backup version '${parsed.version}' is not supported. Supported versions: ${SUPPORTED_BACKUP_VERSIONS.join(', ')}.`,
     };
   }
 
@@ -187,6 +188,30 @@ export function validateBackupFile(
         valid: false,
         error: "That file isn't a valid Nittoo backup.",
         details: `Purchase ${pu.id} has invalid price: ${pu.price}.`,
+      };
+    }
+    if (
+      pu.size_value !== undefined &&
+      pu.size_value !== null &&
+      (typeof pu.size_value !== 'number' || !isFinite(pu.size_value) || pu.size_value <= 0)
+    ) {
+      return {
+        valid: false,
+        error: "That file isn't a valid Nittoo backup.",
+        details: `Purchase ${pu.id} has invalid size_value: ${pu.size_value}.`,
+      };
+    }
+    if (
+      pu.size_unit !== undefined &&
+      pu.size_unit !== null &&
+      pu.size_unit !== 'ml' &&
+      pu.size_unit !== 'g' &&
+      pu.size_unit !== 'count'
+    ) {
+      return {
+        valid: false,
+        error: "That file isn't a valid Nittoo backup.",
+        details: `Purchase ${pu.id} has invalid size_unit: ${pu.size_unit}.`,
       };
     }
     purchaseIds.add(pu.id);

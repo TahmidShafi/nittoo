@@ -128,6 +128,11 @@ export async function buildImportPlan(
         price: bpu.price,
         currency: bpu.currency || 'BDT',
         store_vendor: bpu.store_vendor ? (bpu.store_vendor.trim() || null) : null,
+        size_value: bpu.size_value ?? null,
+        size_unit:
+          bpu.size_value != null
+            ? ((bpu.size_unit as 'ml' | 'g' | 'count' | null | undefined) ?? null)
+            : null,
         created_at: (bpu as { created_at?: string }).created_at,
       });
     }

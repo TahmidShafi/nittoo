@@ -8,6 +8,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { db } from '../lib/dataSource';
 import { getTodayLocal } from '../lib/dateUtils';
+import { getEffectiveSize } from '../lib/prediction';
 import {
   PRODUCT_CATEGORIES,
   type Product,
@@ -55,6 +56,7 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
   const [price, setPrice] = useState<string>('');
   const [currency, setCurrency] = useState('BDT');
   const [storeVendor, setStoreVendor] = useState('');
+  const [purchaseSizeValue, setPurchaseSizeValue] = useState<string>('');
 
   // Usage Details (only active bottle)
   const [openedDate, setOpenedDate] = useState('');
@@ -74,6 +76,10 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
       setPrice(String(purchase.price ?? ''));
       setCurrency(purchase.currency || 'BDT');
       setStoreVendor(purchase.store_vendor || '');
+      const eff = getEffectiveSize(purchase, product);
+      setPurchaseSizeValue(
+        eff.size_value !== null && eff.size_value !== undefined ? String(eff.size_value) : ''
+      );
 
       if (mode === 'active_bottle' && usagePeriod) {
         setOpenedDate(usagePeriod.opened_date || '');
@@ -102,6 +108,13 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
     }
     if (sizeValue && (isNaN(Number(sizeValue)) || Number(sizeValue) <= 0)) {
       setError('Size value must be greater than zero.');
+      return;
+    }
+    if (
+      purchaseSizeValue.trim() !== '' &&
+      (isNaN(Number(purchaseSizeValue)) || Number(purchaseSizeValue) <= 0)
+    ) {
+      setError('Purchase pack size must be greater than zero.');
       return;
     }
     if (!purchaseDate) {
@@ -143,12 +156,20 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
         size_unit: sizeValue ? sizeUnit : null,
       });
 
+      const productDefaultSize = sizeValue ? Number(sizeValue) : null;
+      const parsedPurchaseSize =
+        purchaseSizeValue.trim() !== '' ? Number(purchaseSizeValue) : null;
+      const isDifferentSize =
+        parsedPurchaseSize !== null && parsedPurchaseSize !== productDefaultSize;
+
       // 2. Update Purchase
       await db.updatePurchase(user.id, purchase.id, {
         purchase_date: purchaseDate,
         price: Number(price),
         currency: currency.trim() || 'BDT',
         store_vendor: storeVendor.trim() ? storeVendor.trim() : null,
+        size_value: isDifferentSize ? parsedPurchaseSize : null,
+        size_unit: isDifferentSize ? (sizeValue ? sizeUnit : (product.size_unit ?? null)) : null,
       });
 
       // 3. Update Usage Period if active bottle
@@ -347,6 +368,29 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
                   onChange={(e) => setCurrency(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-neutral-200/80 bg-neutral-50/50 focus:bg-white focus:outline-none focus:border-[#2D6A4F] focus:ring-2 focus:ring-[#2D6A4F]/15 transition-all"
                 />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label htmlFor="edit-purchase-size-value" className="font-medium text-neutral-700 block">
+                Pack size (if different)
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  id="edit-purchase-size-value"
+                  type="number"
+                  step="any"
+                  min="0.01"
+                  value={purchaseSizeValue}
+                  onChange={(e) => setPurchaseSizeValue(e.target.value)}
+                  placeholder={sizeValue || 'Optional'}
+                  className="flex-1 px-3 py-2 rounded-xl border border-neutral-200/80 bg-neutral-50/50 focus:bg-white focus:outline-none focus:border-[#2D6A4F] focus:ring-2 focus:ring-[#2D6A4F]/15 transition-all"
+                />
+                {(sizeValue ? sizeUnit : product.size_unit) && (
+                  <span className="px-3 py-2 rounded-xl border border-neutral-200 bg-neutral-100 text-xs font-semibold text-neutral-600">
+                    {sizeValue ? sizeUnit : product.size_unit}
+                  </span>
+                )}
               </div>
             </div>
 

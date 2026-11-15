@@ -430,6 +430,36 @@
           ],
           "default": null,
           "title": "Store Vendor"
+        },
+        "size_value": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Size Value"
+        },
+        "size_unit": {
+          "anyOf": [
+            {
+              "enum": [
+                "ml",
+                "g",
+                "count"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Size Unit"
         }
       },
       "required": [
@@ -704,7 +734,10 @@
   "description": "Exact mirror of `generateJsonBackup` in `src/lib/export/json.ts`.",
   "properties": {
     "version": {
-      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "enum": [
+        "1.0.0",
+        "1.1.0"
+      ],
       "title": "Version",
       "type": "string"
     },

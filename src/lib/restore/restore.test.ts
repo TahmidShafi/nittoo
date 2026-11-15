@@ -205,4 +205,46 @@ describe('restore', () => {
       ).valid
     ).toBe(false);
   });
+
+  it('restores both 1.0.0 backups (no purchase size) and 1.1.0 backups (with purchase size override)', async () => {
+    const dbOld = new MockDatabase(new InMemoryStorageAdapter());
+    const oldBackup = {
+      version: '1.0.0',
+      exported_at: '2026-04-10T00:00:00Z',
+      user: { id: 'u-old', email: 'old@nittoo.local' },
+      products: [
+        { id: 'p-old', name: 'Old Soap', brand: 'Lux', category: 'Body Care', size: 100, unit: 'g', created_at: '2026-01-01T00:00:00Z' },
+      ],
+      purchases: [
+        { id: 'pu-old', product_id: 'p-old', purchase_date: '2026-04-01', price: 50, currency: 'BDT' },
+      ],
+      usage_periods: [],
+    };
+    const oldVal = validateBackupFile(JSON.stringify(oldBackup));
+    expect(oldVal.valid).toBe(true);
+    if (!oldVal.valid) return;
+    const oldPlan = await buildImportPlan(oldVal.backupData, DEFAULT_MOCK_USER_ID, dbOld);
+    expect(oldPlan.purchasesToCreate[0].size_value).toBeNull();
+    const oldExec = await executeRestore(oldPlan, DEFAULT_MOCK_USER_ID, dbOld);
+    expect(oldExec.success).toBe(true);
+
+    const dbNew = new MockDatabase(new InMemoryStorageAdapter());
+    const newBackup = {
+      ...oldBackup,
+      version: '1.1.0',
+      purchases: [
+        { id: 'pu-new', product_id: 'p-old', purchase_date: '2026-04-01', price: 90, currency: 'BDT', size_value: 200, size_unit: 'g' },
+      ],
+    };
+    const newVal = validateBackupFile(JSON.stringify(newBackup));
+    expect(newVal.valid).toBe(true);
+    if (!newVal.valid) return;
+    const newPlan = await buildImportPlan(newVal.backupData, DEFAULT_MOCK_USER_ID, dbNew);
+    expect(newPlan.purchasesToCreate[0].size_value).toBe(200);
+    expect(newPlan.purchasesToCreate[0].size_unit).toBe('g');
+    const newExec = await executeRestore(newPlan, DEFAULT_MOCK_USER_ID, dbNew);
+    expect(newExec.success).toBe(true);
+    const hist = await dbNew.getProductHistory('p-old', DEFAULT_MOCK_USER_ID);
+    expect(hist?.purchases.find((p) => p.id === 'pu-new')?.size_value).toBe(200);
+  });
 });

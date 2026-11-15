@@ -219,4 +219,195 @@ describe('MockDatabase lifecycle & isolation', () => {
     expect(inv.unopened).toHaveLength(0);
     expect(inv.active[0].active_purchase?.price).toBe(650);
   });
+
+  describe('purchase size handling', () => {
+    it('creates, updates, and reads a purchase with size_value and size_unit', async () => {
+      const db = new MockDatabase(new InMemoryStorageAdapter());
+      const u = 'user-size-1';
+      const product = await db.createProduct(u, {
+        name: 'Cleanser',
+        category: 'Skincare',
+        brand: 'CeraVe',
+        size_value: 236,
+        size_unit: 'ml',
+      });
+
+      const created = await db.createPurchase(u, {
+        product_id: product.id,
+        purchase_date: '2026-10-01',
+        price: 1200,
+        size_value: 473,
+        size_unit: 'ml',
+      });
+      expect(created.size_value).toBe(473);
+      expect(created.size_unit).toBe('ml');
+
+      const updated = await db.updatePurchase(u, created.id, {
+        purchase_date: '2026-10-01',
+        price: 1500,
+        currency: 'BDT',
+        size_value: 500,
+        size_unit: 'ml',
+      });
+      expect(updated.size_value).toBe(500);
+      expect(updated.size_unit).toBe('ml');
+
+      const history = await db.getProductHistory(product.id, u);
+      expect(history?.purchases[0].size_value).toBe(500);
+      expect(history?.purchases[0].size_unit).toBe('ml');
+    });
+
+    it('rejects size_value <= 0 and invalid size_unit on createPurchase and updatePurchase', async () => {
+      const db = new MockDatabase(new InMemoryStorageAdapter());
+      const u = 'user-size-2';
+      const product = await db.createProduct(u, {
+        name: 'Cleanser',
+        category: 'Skincare',
+        brand: 'CeraVe',
+        size_value: 236,
+        size_unit: 'ml',
+      });
+
+      await expect(
+        db.createPurchase(u, {
+          product_id: product.id,
+          purchase_date: '2026-10-01',
+          price: 1200,
+          size_value: 0,
+          size_unit: 'ml',
+        })
+      ).rejects.toThrow(/size/i);
+
+      await expect(
+        db.createPurchase(u, {
+          product_id: product.id,
+          purchase_date: '2026-10-01',
+          price: 1200,
+          size_value: -10,
+          size_unit: 'ml',
+        })
+      ).rejects.toThrow(/size/i);
+
+      await expect(
+        db.createPurchase(u, {
+          product_id: product.id,
+          purchase_date: '2026-10-01',
+          price: 1200,
+          size_value: 100,
+          size_unit: 'oz' as never,
+        })
+      ).rejects.toThrow(/size/i);
+
+      const valid = await db.createPurchase(u, {
+        product_id: product.id,
+        purchase_date: '2026-10-01',
+        price: 1200,
+      });
+
+      await expect(
+        db.updatePurchase(u, valid.id, {
+          purchase_date: '2026-10-01',
+          price: 1200,
+          currency: 'BDT',
+          size_value: 0,
+          size_unit: 'ml',
+        })
+      ).rejects.toThrow(/size/i);
+
+      await expect(
+        db.updatePurchase(u, valid.id, {
+          purchase_date: '2026-10-01',
+          price: 1200,
+          currency: 'BDT',
+          size_value: 100,
+          size_unit: 'L' as never,
+        })
+      ).rejects.toThrow(/size/i);
+    });
+
+    it('stores null when entered purchase size equals the product default', async () => {
+      const db = new MockDatabase(new InMemoryStorageAdapter());
+      const u = 'user-size-3';
+      const product = await db.createProduct(u, {
+        name: 'Cleanser',
+        category: 'Skincare',
+        brand: 'CeraVe',
+        size_value: 236,
+        size_unit: 'ml',
+      });
+
+      const created = await db.createPurchase(u, {
+        product_id: product.id,
+        purchase_date: '2026-10-01',
+        price: 1200,
+        size_value: 236,
+        size_unit: 'ml',
+      });
+      expect(created.size_value).toBeNull();
+      expect(created.size_unit).toBeNull();
+
+      const updated = await db.updatePurchase(u, created.id, {
+        purchase_date: '2026-10-01',
+        price: 1200,
+        currency: 'BDT',
+        size_value: 473,
+        size_unit: 'ml',
+      });
+      expect(updated.size_value).toBe(473);
+
+      const reset = await db.updatePurchase(u, created.id, {
+        purchase_date: '2026-10-01',
+        price: 1200,
+        currency: 'BDT',
+        size_value: 236,
+        size_unit: 'ml',
+      });
+      expect(reset.size_value).toBeNull();
+      expect(reset.size_unit).toBeNull();
+    });
+
+    it('reads legacy purchases without size fields back as null', async () => {
+      const adapter = new InMemoryStorageAdapter();
+      const u = 'user-legacy';
+      adapter.setItem(
+        'nittoo_mock_database_v1',
+        JSON.stringify({
+          products: [
+            {
+              id: 'p-leg',
+              user_id: u,
+              name: 'Legacy Cleanser',
+              category: 'Skincare',
+              brand: 'CeraVe',
+              size_value: 236,
+              size_unit: 'ml',
+              created_at: '2026-01-01T00:00:00Z',
+            },
+          ],
+          purchases: [
+            {
+              id: 'pu-leg',
+              product_id: 'p-leg',
+              purchase_date: '2026-01-01',
+              price: 900,
+              created_at: '2026-01-01T00:00:00Z',
+            },
+          ],
+          usage_periods: [],
+          restock_plans: [],
+        })
+      );
+
+      const db = new MockDatabase(adapter);
+      const history = await db.getProductHistory('p-leg', u);
+      expect(history?.purchases).toHaveLength(1);
+      expect(history?.purchases[0].size_value).toBeNull();
+      expect(history?.purchases[0].size_unit).toBeNull();
+
+      const inv = await db.getUserInventory(u);
+      expect(inv.unopened).toHaveLength(1);
+      expect(inv.unopened[0].purchase.size_value).toBeNull();
+      expect(inv.unopened[0].purchase.size_unit).toBeNull();
+    });
+  });
 });
