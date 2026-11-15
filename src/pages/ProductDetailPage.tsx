@@ -35,6 +35,7 @@ import {
   getRestockDisplayStatus,
   getRestockStatusInfo,
   getRelativeOptionLabel,
+  recalculatePlanReminderDate,
 } from '../lib/restock';
 import { FinishUsageModal } from '../components/FinishUsageModal';
 import { EditInventoryModal } from '../components/EditInventoryModal';
@@ -395,6 +396,11 @@ export const ProductDetailPage: React.FC = () => {
     return calculateExpectedFinishDate(activeUsageData.active.opened_date, summaryStats.averageDuration);
   }, [activeUsageData, summaryStats]);
 
+  const effectiveRestockPlan = useMemo(() => {
+    if (!restockPlan) return null;
+    return recalculatePlanReminderDate(restockPlan, expectedFinishDate);
+  }, [restockPlan, expectedFinishDate]);
+
   const handleDismissRestock = async () => {
     if (!user || !restockPlan) return;
     try {
@@ -740,32 +746,32 @@ export const ProductDetailPage: React.FC = () => {
                 <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
                   RESTOCK
                 </span>
-                {restockPlan && restockPlan.status === 'planned' && (
+                {effectiveRestockPlan && effectiveRestockPlan.status === 'planned' && (
                   <span
                     className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
                       getRestockStatusInfo(
-                        getRestockDisplayStatus(restockPlan, activeUsageData.active.status),
-                        restockPlan.reminder_date,
-                        restockPlan.days_before_finish,
-                        restockPlan.mode
+                        getRestockDisplayStatus(effectiveRestockPlan, activeUsageData.active.status),
+                        effectiveRestockPlan.reminder_date,
+                        effectiveRestockPlan.days_before_finish,
+                        effectiveRestockPlan.mode
                       ).badgeClass
                     }`}
                   >
                     <span
                       className={`w-1.5 h-1.5 rounded-full ${
                         getRestockStatusInfo(
-                          getRestockDisplayStatus(restockPlan, activeUsageData.active.status),
-                          restockPlan.reminder_date,
-                          restockPlan.days_before_finish,
-                          restockPlan.mode
+                          getRestockDisplayStatus(effectiveRestockPlan, activeUsageData.active.status),
+                          effectiveRestockPlan.reminder_date,
+                          effectiveRestockPlan.days_before_finish,
+                          effectiveRestockPlan.mode
                         ).dotClass
                       }`}
                     />
                     {getRestockStatusInfo(
-                      getRestockDisplayStatus(restockPlan, activeUsageData.active.status),
-                      restockPlan.reminder_date,
-                      restockPlan.days_before_finish,
-                      restockPlan.mode
+                      getRestockDisplayStatus(effectiveRestockPlan, activeUsageData.active.status),
+                      effectiveRestockPlan.reminder_date,
+                      effectiveRestockPlan.days_before_finish,
+                      effectiveRestockPlan.mode
                     ).label}
                   </span>
                 )}
@@ -802,18 +808,18 @@ export const ProductDetailPage: React.FC = () => {
               )}
 
               {/* State 2: Planned (Future) */}
-              {restockPlan &&
-                restockPlan.status === 'planned' &&
-                getRestockDisplayStatus(restockPlan, activeUsageData.active.status) === 'planned' && (
+              {effectiveRestockPlan &&
+                effectiveRestockPlan.status === 'planned' &&
+                getRestockDisplayStatus(effectiveRestockPlan, activeUsageData.active.status) === 'planned' && (
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-500/5 rounded-xl p-3.5 border border-emerald-500/20">
                     <div>
                       <span className="text-xs text-neutral-500 font-medium">Reminder</span>
                       <p className="text-sm font-bold text-neutral-900">
-                        {formatDisplayDate(restockPlan.reminder_date)}
+                        {formatDisplayDate(effectiveRestockPlan.reminder_date)}
                       </p>
                       <p className="text-[11px] text-neutral-500 mt-0.5">
-                        {restockPlan.mode === 'relative' && restockPlan.days_before_finish !== null
-                          ? `${getRelativeOptionLabel(restockPlan.days_before_finish)} estimated finish`
+                        {effectiveRestockPlan.mode === 'relative' && effectiveRestockPlan.days_before_finish !== null
+                          ? `${getRelativeOptionLabel(effectiveRestockPlan.days_before_finish)} estimated finish`
                           : 'Custom reminder date'}
                       </p>
                     </div>
@@ -837,9 +843,9 @@ export const ProductDetailPage: React.FC = () => {
                 )}
 
               {/* State 3: Due */}
-              {restockPlan &&
-                restockPlan.status === 'planned' &&
-                getRestockDisplayStatus(restockPlan, activeUsageData.active.status) === 'due' && (
+              {effectiveRestockPlan &&
+                effectiveRestockPlan.status === 'planned' &&
+                getRestockDisplayStatus(effectiveRestockPlan, activeUsageData.active.status) === 'due' && (
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-amber-500/10 rounded-xl p-3.5 border border-amber-500/30">
                     <div>
                       <div className="flex items-center gap-1.5">
@@ -849,7 +855,7 @@ export const ProductDetailPage: React.FC = () => {
                         </span>
                       </div>
                       <p className="text-xs text-neutral-600 mt-0.5">
-                        Reminder was scheduled for {formatDisplayDate(restockPlan.reminder_date)}
+                        Reminder was scheduled for {formatDisplayDate(effectiveRestockPlan.reminder_date)}
                         {expectedFinishDate && ` · Estimated finish: ${formatDisplayDate(expectedFinishDate)}`}
                       </p>
                     </div>

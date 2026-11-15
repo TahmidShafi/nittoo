@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import math
+import random
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -12,8 +14,12 @@ from nittoo_lab.config import (
     MIN_TRAIN_CYCLES,
     MIN_VALID_DURATION_DAYS,
 )
+from nittoo_lab.forecast.backtest import load_completed_cycles
 from nittoo_lab.forecast.methods import js_round
 from nittoo_lab.forecast.metrics import history_bucket
+from nittoo_lab.ingest.loader import ingest_exports
+from nittoo_lab.simulate.generator import simulate_households
+from nittoo_lab.transform.runner import run_dbt_pipeline
 
 ANALYTICS_ROOT = Path(__file__).resolve().parents[3]
 REPO_ROOT = ANALYTICS_ROOT.parent
@@ -206,7 +212,8 @@ def build_forecast_parity_payload() -> dict[str, Any]:
     ]
 
     cases_out: list[dict[str, Any]] = []
-    for case in raw_cases:
+    all_cases = raw_cases + _sample_simulator_parity_cases()
+    for case in all_cases:
         out = predict_app_rate_mean(
             cycles=case["cycles"],
             active_size_value=case["active_size_value"],
@@ -228,6 +235,109 @@ def build_forecast_parity_payload() -> dict[str, Any]:
         )
 
     return {"cases": cases_out}
+
+
+def _sample_simulator_parity_cases(
+    sample_size: int = 300,
+    sim_seed: int = 7,
+    sampling_seed: int = 20261115,
+) -> list[dict[str, Any]]:
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_dir = Path(tmp)
+        exports_dir = tmp_dir / "exports"
+        gt_path = tmp_dir / "gt.json"
+        faults_path = tmp_dir / "faults.json"
+        db_path = tmp_dir / "lab.duckdb"
+        simulate_households(
+            households=100,
+            months=24,
+            seed=sim_seed,
+            exports_dir=exports_dir,
+            ground_truth_path=gt_path,
+            faults_manifest_path=faults_path,
+        )
+        ingest_exports(exports_dir=exports_dir, db_path=db_path)
+        run_dbt_pipeline(db_path=db_path, generate_docs=False)
+        grouped, _ = load_completed_cycles(db_path)
+
+    pool_by_stratum: dict[str, list[dict[str, Any]]] = {
+        "rule_excl": [],
+        "k1": [],
+        "k2": [],
+        "k3_4": [],
+        "k5_plus": [],
+        "switch": [],
+    }
+    for key in sorted(grouped):
+        cycles = grouped[key]
+        if len(cycles) < 2:
+            continue
+        for k in range(1, len(cycles)):
+            prefix = cycles[:k]
+            nxt = cycles[k]
+            case = {
+                "name": f"sim_{key[0]}_{key[1]}_k{k}",
+                "active_size_value": nxt.effective_size_value,
+                "active_size_unit": nxt.effective_size_unit,
+                "current_days_used": max(0, nxt.duration_days // 2),
+                "cycles": [
+                    {
+                        "duration_days": c.duration_days,
+                        "effective_size_value": c.effective_size_value,
+                        "effective_size_unit": c.effective_size_unit,
+                    }
+                    for c in prefix
+                ],
+            }
+            has_excl = any(
+                c.duration_days < MIN_VALID_DURATION_DAYS
+                or c.duration_days >= MAX_VALID_DURATION_DAYS
+                for c in prefix
+            )
+            has_switch = nxt.size_changed_from_previous or any(
+                c.size_changed_from_previous for c in prefix
+            )
+            if has_excl:
+                pool_by_stratum["rule_excl"].append(case)
+            elif has_switch:
+                pool_by_stratum["switch"].append(case)
+            elif k == 1:
+                pool_by_stratum["k1"].append(case)
+            elif k == 2:
+                pool_by_stratum["k2"].append(case)
+            elif k <= 4:
+                pool_by_stratum["k3_4"].append(case)
+            else:
+                pool_by_stratum["k5_plus"].append(case)
+
+    rng = random.Random(sampling_seed)
+    sampled: list[dict[str, Any]] = []
+    quotas = {
+        "rule_excl": 30,
+        "switch": 90,
+        "k1": 30,
+        "k2": 50,
+        "k3_4": 50,
+        "k5_plus": 50,
+    }
+    for stratum, quota in quotas.items():
+        items = pool_by_stratum[stratum]
+        take = min(quota, len(items))
+        sampled.extend(rng.sample(items, take))
+
+    # Top up deterministically if any stratum was smaller than quota
+    if len(sampled) < sample_size:
+        seen = {c["name"] for c in sampled}
+        remaining = [
+            c
+            for items in pool_by_stratum.values()
+            for c in items
+            if c["name"] not in seen
+        ]
+        need = min(sample_size - len(sampled), len(remaining))
+        sampled.extend(rng.sample(remaining, need))
+
+    return sampled
 
 
 def export_forecast_parity(out_path: Path = DEFAULT_FORECAST_PARITY_PATH) -> Path:

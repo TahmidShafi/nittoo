@@ -10,7 +10,11 @@ import { usePageMeta } from '../hooks/usePageMeta';
 import { db } from '../lib/dataSource';
 import { formatDisplayDate } from '../lib/dateUtils';
 import { calculatePredictedLifespan } from '../lib/prediction';
-import { isReminderDue, calculateExpectedFinishDate } from '../lib/restock';
+import {
+  isReminderDue,
+  calculateExpectedFinishDate,
+  recalculatePlanReminderDate,
+} from '../lib/restock';
 import { getPredictionMetrics } from '../hooks/usePrediction';
 import { ProductCard } from '../components/ProductCard';
 import { FinishUsageModal } from '../components/FinishUsageModal';
@@ -217,11 +221,22 @@ export const DashboardPage: React.FC = () => {
     });
   }, [sortedProducts, selectedCategory, searchQuery]);
 
-  // Due restock reminders (Stage 21)
+  // Due restock reminders (Stage 21; recompute relative plans against new predicted finish date)
   const dueRestockProducts = useMemo(() => {
     return products.filter((p) => {
       if (!p.restock_plan || p.restock_plan.status !== 'planned') return false;
-      return isReminderDue(p.restock_plan.reminder_date);
+      const avgLifespan = calculatePredictedLifespan({
+        usagePeriods: p.finished_periods || [],
+        product: p,
+        purchases: p.purchases || [],
+        activePurchase: p.active_purchase ?? p.latest_purchase,
+      });
+      const expectedFinish =
+        p.active_usage && avgLifespan !== null && avgLifespan > 0
+          ? calculateExpectedFinishDate(p.active_usage.opened_date, avgLifespan)
+          : null;
+      const effectivePlan = recalculatePlanReminderDate(p.restock_plan, expectedFinish);
+      return isReminderDue(effectivePlan.reminder_date);
     });
   }, [products]);
 

@@ -166,4 +166,32 @@ describe('restock/plan', () => {
       })
     ).rejects.toThrow(/active/i);
   });
+
+  it('recomputes relative plan reminder_date on new predicted finish while preserving custom plans', () => {
+    const relativePlan: RestockPlan = {
+      id: 'rp-rel',
+      user_id: 'u1',
+      product_id: 'p1',
+      usage_period_id: 'up1',
+      mode: 'relative',
+      days_before_finish: 14,
+      reminder_date: '2026-04-01', // stale date from old duration-only forecast
+      status: 'planned',
+      created_at: '2026-03-01T00:00:00Z',
+    };
+    // New rate-normalized expected finish is 2026-05-15 -> reminder moves to 2026-05-01
+    const updatedRelative = recalculatePlanReminderDate(relativePlan, '2026-05-15');
+    expect(updatedRelative.reminder_date).toBe('2026-05-01');
+    expect(getRestockDisplayStatus(updatedRelative, 'active', '2026-04-10')).toBe('planned');
+
+    const customPlan: RestockPlan = {
+      ...relativePlan,
+      id: 'rp-cust',
+      mode: 'custom',
+      days_before_finish: null,
+      reminder_date: '2026-04-05',
+    };
+    const updatedCustom = recalculatePlanReminderDate(customPlan, '2026-05-15');
+    expect(updatedCustom.reminder_date).toBe('2026-04-05');
+  });
 });

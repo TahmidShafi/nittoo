@@ -821,5 +821,51 @@ describe('SupabaseDatabase (mocked Supabase client)', () => {
       expect(exported.purchases[0].size_value).toBeNull();
       expect(exported.purchases[0].size_unit).toBeNull();
     });
+
+    it('loads getActiveProducts in a constant 4 queries regardless of product count N', async () => {
+      for (const n of [2, 10]) {
+        recordedCalls.length = 0;
+        const products = Array.from({ length: n }, (_, i) => ({
+          id: `p-${i}`,
+          user_id: userId,
+          name: `Product ${i}`,
+          category: 'Skincare',
+          brand: null,
+          size_value: 200,
+          size_unit: 'ml',
+          created_at: '2026-01-01T00:00:00Z',
+        }));
+        const purchases = products.map((p, i) => ({
+          id: `pu-${i}`,
+          product_id: p.id,
+          purchase_date: '2026-01-01',
+          price: 500,
+          currency: 'BDT',
+          store_vendor: null,
+          size_value: null,
+          size_unit: null,
+          created_at: '2026-01-01T00:00:00Z',
+        }));
+        const periods = products.map((p, i) => ({
+          id: `up-${i}`,
+          product_id: p.id,
+          purchase_id: `pu-${i}`,
+          opened_date: '2026-01-02',
+          finished_date: null,
+          status: 'active',
+          created_at: '2026-01-02T00:00:00Z',
+        }));
+
+        pushResponse('products', { data: products, error: null });
+        pushResponse('purchases', { data: purchases, error: null });
+        pushResponse('usage_periods', { data: periods, error: null });
+        pushResponse('restock_plans', { data: [], error: null });
+
+        const res = await db.getActiveProducts(userId);
+        expect(res).toHaveLength(n);
+        expect(res[0].purchases).toHaveLength(1);
+        expect(recordedCalls).toHaveLength(4);
+      }
+    });
   });
 });

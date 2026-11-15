@@ -42,7 +42,7 @@ jobs:
           npm ci
           npx tsx scripts/export-demo-fixture.ts
           npx tsx scripts/export-baseline-parity.ts
-          git diff --exit-code analytics/fixtures/baseline_parity.json
+          git diff --exit-code analytics/fixtures/demo_export.json analytics/fixtures/baseline_parity.json
 
       - name: Setup uv & Python 3.12
         uses: astral-sh/setup-uv@v5
