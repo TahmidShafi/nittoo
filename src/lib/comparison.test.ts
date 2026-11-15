@@ -75,4 +75,29 @@ describe('comparison', () => {
     expect(report.lifespanComparison?.absolute).toBe(5);
     expect(report.insightSummary.length).toBeGreaterThan(0);
   });
+
+  it('marks incompatible units (ml vs g) and omits numeric size/unit comparisons safely', () => {
+    const mlItem = makeHist('p1', 'Toner', 600, 200, 20);
+    const gItem = {
+      ...makeHist('p2', 'Cream', 500, 100, 25),
+      product: { ...makeHist('p2', 'Cream', 500, 100, 25).product, size_unit: 'g' as const },
+    };
+
+    const report = buildComparisonReport(mlItem, gItem);
+    expect(report.sizeComparison.isCompatible).toBe(false);
+    expect(report.sizeComparison.difference).toBeNull();
+    expect(report.unitPriceComparison).toBeNull();
+    expect(typeof report.insightSummary).toBe('string');
+  });
+
+  it('handles products with zero finished cycles or no purchases without NaN', () => {
+    const noCycles = { ...makeHist('p1', 'New Item', 400, 100, 20), finished_periods: [] };
+    const noPurchases = { ...makeHist('p2', 'Empty Item', 400, 100, 20), purchases: [], finished_periods: [] };
+
+    const report = buildComparisonReport(noCycles, noPurchases);
+    expect(report.hasBothConsumptionData).toBe(false);
+    expect(report.costPerDayComparison).toBeNull();
+    expect(report.monthlyConsumptionComparison).toBeNull();
+    expect(report.lifespanComparison).toBeNull();
+  });
 });
